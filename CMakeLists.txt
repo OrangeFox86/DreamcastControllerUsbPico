@@ -8,7 +8,12 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/lib/pico-sdk/CMakeLists.txt")
   set(PICO_SDK_PATH "${CMAKE_SOURCE_DIR}/lib/pico-sdk/")
   message("Using local pico SDK at ('${PICO_SDK_PATH}')")
 endif ()
-include(pico_sdk_import.cmake)
+
+if (NOT DEFINED PICO_SDK_PATH AND NOT DEFINED ENV{PICO_SDK_PATH})
+  message(FATAL_ERROR "PICO_SDK_PATH not defined; either execute:\ngit submodule update --recursive --init\nor set PICO_SDK_PATH")
+endif ()
+
+include("${PICO_SDK_PATH}/external/pico_sdk_import.cmake")
 
 project(DreamcastControllerUsbPico)
 pico_sdk_init()
