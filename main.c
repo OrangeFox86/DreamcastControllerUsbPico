@@ -20,46 +20,71 @@ const uint SDCKA_MASK = (1 << SDCKA_PIN);
 const uint SDCKB_MASK = (1 << SDCKB_PIN);
 
 // The size of this doesn't represent bits but rather max number of state changes
-uint32_t states[8192];
-uint32_t* currentState = states;
-uint32_t numStates = 0;
+volatile uint32_t states[1024];
+volatile uint32_t* volatile currentState = states;
+volatile uint32_t numStates = 0;
 
 void isr_systick(void)
 {
-    gpio_put_all(*currentState++);
+    if (numStates > 0)
+    {
+        gpio_put_all(*currentState++);
+        --numStates;
+    }
     
-    if (--numStates == 0)
+    if (numStates == 0)
     {
         // All done
         systick_hw->csr = 0;
     }
 }
 
-void write(uint8_t* bytes, uint32_t len)
+static inline void reset(void)
 {
-    // Make sure tick is disabled
-    systick_hw->csr = 0;
-
-    // Reset
     numStates = 0;
     currentState = states;
+}
+
+static inline volatile uint32_t* flush(volatile uint32_t* ptr)
+{
+    if (ptr != NULL)
+    {
+        numStates = ptr - currentState;
+    }
+    if (numStates > 0)
+    {
+        systick_hw->csr |= (SYST_CSR_CLKSOURCE_MASK | SYST_CSR_TICKINT_MASK | SYST_CSR_ENABLE_MASK);
+        systick_hw->cvr = 0;
+        while (systick_hw->csr & SYST_CSR_ENABLE_MASK);
+    }
+    else
+    {
+        systick_hw->csr = 0;
+    }
+    reset();
+    return currentState;
+}
+
+void write(uint8_t* bytes, uint32_t len)
+{
+    volatile uint32_t* nextState = flush(NULL);
 
     // Ensure it's at neutral for a few cycles
-    *currentState++ = (SDCKA_MASK | SDCKB_MASK);
-    *currentState++ = (SDCKA_MASK | SDCKB_MASK);
-    *currentState++ = (SDCKA_MASK | SDCKB_MASK);
+    *nextState++ = (SDCKA_MASK | SDCKB_MASK);
+    *nextState++ = (SDCKA_MASK | SDCKB_MASK);
+    *nextState++ = (SDCKA_MASK | SDCKB_MASK);
 
     // Start
-    *currentState++ = SDCKB_MASK;
-    *currentState++ = 0;
-    *currentState++ = SDCKB_MASK;
-    *currentState++ = 0;
-    *currentState++ = SDCKB_MASK;
-    *currentState++ = 0;
-    *currentState++ = SDCKB_MASK;
-    *currentState++ = 0;
-    *currentState++ = SDCKB_MASK;
-    *currentState++ = (SDCKA_MASK | SDCKB_MASK);
+    *nextState++ = SDCKB_MASK;
+    *nextState++ = 0;
+    *nextState++ = SDCKB_MASK;
+    *nextState++ = 0;
+    *nextState++ = SDCKB_MASK;
+    *nextState++ = 0;
+    *nextState++ = SDCKB_MASK;
+    *nextState++ = 0;
+    *nextState++ = SDCKB_MASK;
+    *nextState++ = (SDCKA_MASK | SDCKB_MASK);
 
     // Data
     for (uint32_t i = 0; i < len; ++i)
@@ -90,34 +115,33 @@ void write(uint8_t* bytes, uint32_t len)
             }
             
             // Applying preperation state is optional if we're already there
-            if (prepState != *(currentState - 1))
+            if (prepState != *(nextState - 1))
             {
-                *currentState++ = prepState;
+                *nextState++ = prepState;
             }
 
             // Clock it
-           *currentState++ = clockState;
+           *nextState++ = clockState;
+        }
+
+        // flush if buffer is about to overflow
+        if ((nextState + 16) > (states + ((sizeof(states) / sizeof(states[0])) - 1)))
+        {
+            nextState = flush(nextState);
         }
     }
 
     // End
-    *currentState++ = (SDCKA_MASK | SDCKB_MASK);
-    *currentState++ = SDCKA_MASK;
-    *currentState++ = 0;
-    *currentState++ = SDCKA_MASK;
-    *currentState++ = 0;
-    *currentState++ = SDCKA_MASK;
-    *currentState++ = (SDCKA_MASK | SDCKB_MASK);
-    *currentState++ = (SDCKA_MASK | SDCKB_MASK);
+    *nextState++ = (SDCKA_MASK | SDCKB_MASK);
+    *nextState++ = SDCKA_MASK;
+    *nextState++ = 0;
+    *nextState++ = SDCKA_MASK;
+    *nextState++ = 0;
+    *nextState++ = SDCKA_MASK;
+    *nextState++ = (SDCKA_MASK | SDCKB_MASK);
 
-    // Finish up
-    numStates = currentState - states - 1;
-    currentState = states;
-    systick_hw->csr |= (SYST_CSR_CLKSOURCE_MASK | SYST_CSR_TICKINT_MASK | SYST_CSR_ENABLE_MASK);
-    systick_hw->cvr = 0;
-
-    // Block until complete
-    while (systick_hw->csr & SYST_CSR_ENABLE_MASK);
+    // Write and block until done
+    flush(nextState);
 }
 
 int main() 
