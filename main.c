@@ -1,9 +1,3 @@
-/**
- * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
-
 #include "pico/stdlib.h"
 #include "hardware/structs/systick.h"
 
@@ -51,21 +45,21 @@ void write(uint8_t* bytes, uint32_t len)
     currentState = states;
 
     // Ensure it's at neutral for a few cycles
-    *currentState = (SDCKA_MASK | SDCKB_MASK);
-    *++currentState = (SDCKA_MASK | SDCKB_MASK);
-    *++currentState = (SDCKA_MASK | SDCKB_MASK);
+    *currentState++ = (SDCKA_MASK | SDCKB_MASK);
+    *currentState++ = (SDCKA_MASK | SDCKB_MASK);
+    *currentState++ = (SDCKA_MASK | SDCKB_MASK);
 
     // Start
-    *++currentState = SDCKB_MASK;
-    *++currentState = 0;
-    *++currentState = SDCKB_MASK;
-    *++currentState = 0;
-    *++currentState = SDCKB_MASK;
-    *++currentState = 0;
-    *++currentState = SDCKB_MASK;
-    *++currentState = 0;
-    *++currentState = SDCKB_MASK;
-    *++currentState = (SDCKA_MASK | SDCKB_MASK);
+    *currentState++ = SDCKB_MASK;
+    *currentState++ = 0;
+    *currentState++ = SDCKB_MASK;
+    *currentState++ = 0;
+    *currentState++ = SDCKB_MASK;
+    *currentState++ = 0;
+    *currentState++ = SDCKB_MASK;
+    *currentState++ = 0;
+    *currentState++ = SDCKB_MASK;
+    *currentState++ = (SDCKA_MASK | SDCKB_MASK);
 
     // Data
     for (uint32_t i = 0; i < len; ++i)
@@ -96,27 +90,28 @@ void write(uint8_t* bytes, uint32_t len)
             }
             
             // Applying preperation state is optional if we're already there
-            if (prepState != *currentState)
+            if (prepState != *(currentState - 1))
             {
-                *++currentState = prepState;
+                *currentState++ = prepState;
             }
 
             // Clock it
-           *++currentState = clockState;
+           *currentState++ = clockState;
         }
     }
 
     // End
-    *++currentState = (SDCKA_MASK | SDCKB_MASK);
-    *++currentState = SDCKA_MASK;
-    *++currentState = 0;
-    *++currentState = SDCKA_MASK;
-    *++currentState = 0;
-    *++currentState = SDCKA_MASK;
-    *++currentState = (SDCKA_MASK | SDCKB_MASK);
+    *currentState++ = (SDCKA_MASK | SDCKB_MASK);
+    *currentState++ = SDCKA_MASK;
+    *currentState++ = 0;
+    *currentState++ = SDCKA_MASK;
+    *currentState++ = 0;
+    *currentState++ = SDCKA_MASK;
+    *currentState++ = (SDCKA_MASK | SDCKB_MASK);
+    *currentState++ = (SDCKA_MASK | SDCKB_MASK);
 
     // Finish up
-    numStates = currentState - states;
+    numStates = currentState - states - 1;
     currentState = states;
     systick_hw->csr |= (SYST_CSR_CLKSOURCE_MASK | SYST_CSR_TICKINT_MASK | SYST_CSR_ENABLE_MASK);
     systick_hw->cvr = 0;
