@@ -13,163 +13,216 @@
 
 #define A_IS_CLOCK_MASK 0xAA
 
-const uint SDCKA_PIN = 14;
-const uint SDCKB_PIN = 15;
+#define NUMBER_OF_BANKS 2
 
-const uint SDCKA_MASK = (1 << SDCKA_PIN);
-const uint SDCKB_MASK = (1 << SDCKB_PIN);
+const uint32_t SDCKA_PIN = 14;
+const uint32_t SDCKB_PIN = 15;
 
-enum Bank
-{
-    BANK_A = 0,
-    BANK_B,
-
-    BANK_COUNT
-};
+const uint32_t SDCKA_MASK = (1 << SDCKA_PIN);
+const uint32_t SDCKB_MASK = (1 << SDCKB_PIN);
 
 // The size of this doesn't represent bits but rather max number of state changes
 #define ELEMENTS_PER_BANK 256
 
-class DataBank
+class MapleStateBank
 {
     public:
-        DataBank() :
+        MapleStateBank() :
             mData(),
             mCurrent(mData),
             mEnd(mData),
-            mCapacityEnd(mData + ELEMENTS_PER_BANK)
+            mCapacityEnd(mData + ELEMENTS_PER_BANK),
+            mBitShift(0),
+            mSendMask(MASK_AB)
         {}
 
-        inline void reset() volatile
+        inline void reset()
         {
             mEnd = mData;
             mCurrent = mData;
         }
 
-        inline void write(uint32_t datum) volatile
+        inline void write(uint_fast8_t datum)
         {
-            *mEnd++ = datum;
+            *mEnd++ = (datum << mBitShift);
         }
 
-        inline uint32_t read() volatile
+        inline uint_fast32_t readNext()
         {
             return *mCurrent++;
         }
 
-        inline int32_t remainingCapacity() volatile
+        inline int_fast32_t remainingCapacity()
         {
             return (mCapacityEnd - mEnd);
         }
 
-        inline bool empty() volatile
+        inline bool empty()
         {
             return (mEnd == mCurrent);
         }
 
+        inline void setOutPins(uint_fast32_t a, uint_fast32_t b)
+        {
+            assert((b - a) == 1);
+            mBitShift = a;
+            mSendMask = MASK_AB << mBitShift;
+        }
+
+        inline uint_fast32_t getSendMask()
+        {
+            return mSendMask;
+        }
+
+    public:
+        static const uint_fast8_t MASK_A = 0x01;
+        static const uint_fast8_t MASK_B = 0x02;
+        static const uint_fast8_t MASK_AB = (MASK_A | MASK_B);
+
     private:
-        volatile uint32_t mData[ELEMENTS_PER_BANK];
-        volatile uint32_t* volatile mCurrent;
-        volatile uint32_t* volatile mEnd;
-        volatile uint32_t* volatile const mCapacityEnd;
+        // Note: I believe I can get away without volatile keywords because this buffer is never
+        //       read/written to by main code and ISR at the same time. Without volatile, this
+        //       speeds up packing time by about 15%.
+
+        uint_fast32_t mData[ELEMENTS_PER_BANK];
+        uint_fast32_t* mCurrent;
+        uint_fast32_t* mEnd;
+        uint_fast32_t* const mCapacityEnd;
+        uint_fast32_t mBitShift;
+        uint_fast32_t mSendMask;
 };
 
-volatile DataBank g_dataBanks[BANK_COUNT];
-volatile DataBank* g_currentBank = &g_dataBanks[BANK_A];
+MapleStateBank g_dataBanks[NUMBER_OF_BANKS];
+MapleStateBank* g_currentBank = &g_dataBanks[0];
+uint32_t g_nextWrite = 0;
+
+static inline uint32_t is_isr_systick_enabled()
+{
+    return (systick_hw->csr & SYST_CSR_ENABLE_MASK);
+}
+
+static inline void enable_isr_systick()
+{
+    if (!is_isr_systick_enabled() && !g_currentBank->empty())
+    {
+        g_nextWrite = g_currentBank->readNext();
+        systick_hw->csr = (SYST_CSR_CLKSOURCE_MASK | SYST_CSR_TICKINT_MASK | SYST_CSR_ENABLE_MASK);
+        systick_hw->cvr = 0;
+    }
+}
+
+static inline void disable_isr_systick()
+{
+    systick_hw->csr = 0;
+}
 
 extern "C" {
 void isr_systick(void)
 {
-    if (!g_currentBank->empty())
-    {
-        gpio_put_all(g_currentBank->read());
-    }
-    
+    // Doing this send as very first operation makes for more uniform clocking
+    gpio_put_all(g_nextWrite);
+
+    // I played around with masking, but that would increase bit send time by 16 ns
+    // gpio_put_masked(g_currentBank->getSendMask(), g_nextWrite);
+
     if (g_currentBank->empty())
     {
-        // All done
-        systick_hw->csr = 0;
+        disable_isr_systick();
+    }
+    else
+    {
+        g_nextWrite = g_currentBank->readNext();
     }
 }
 }
 
 static inline void reset_all(void)
 {
-    for (uint32_t i = BANK_A; i < BANK_COUNT; ++i)
+    for (uint32_t i = 0; i < NUMBER_OF_BANKS; ++i)
     {
         g_dataBanks[i].reset();
     }
-    g_currentBank = &g_dataBanks[BANK_A];
+    g_currentBank = &g_dataBanks[0];
 }
 
 static inline void flush()
 {
-    if (!(systick_hw->csr & SYST_CSR_ENABLE_MASK))
-    {
-        systick_hw->csr |= (SYST_CSR_CLKSOURCE_MASK | SYST_CSR_TICKINT_MASK | SYST_CSR_ENABLE_MASK);
-        systick_hw->cvr = 0;
-    }
-    while (systick_hw->csr & SYST_CSR_ENABLE_MASK);
+    enable_isr_systick();
+
+    while (is_isr_systick_enabled());
+
+    disable_isr_systick();
     g_currentBank->reset();
 }
 
-static inline Bank send(Bank bank)
+static inline uint32_t send(uint32_t bankIdx)
 {
-    if (&g_dataBanks[bank] != g_currentBank)
+    // Switch to new bank if we aren't already there
+    if (&g_dataBanks[bankIdx] != g_currentBank)
     {
-        if (!g_currentBank->empty())
+        // Wait for current write to complete if it's in the middle of sending
+        if (is_isr_systick_enabled())
+        {
+            while (is_isr_systick_enabled());
+        }
+        // Note: the above check is necessary before checking data within current bank - volatile is
+        //       not used, so read at the same time ISR may be operating on it is not allowed!
+        // Flush anything that is waiting to be sent in the current bank
+        else if (!g_currentBank->empty())
         {
             flush();
         }
-        g_currentBank = &g_dataBanks[bank];
+
+        // Switch over to new bank
+        g_currentBank = &g_dataBanks[bankIdx];
     }
 
-    if (!(systick_hw->csr & SYST_CSR_ENABLE_MASK))
-    {
-        systick_hw->csr |= (SYST_CSR_CLKSOURCE_MASK | SYST_CSR_TICKINT_MASK | SYST_CSR_ENABLE_MASK);
-        systick_hw->cvr = 0;
-    }
+    // Ensure this bank is being sent
+    enable_isr_systick();
 
-    bank = static_cast<Bank>(static_cast<uint32_t>(bank) + 1);
-    if (bank >= BANK_COUNT)
+    // Return the next bank index
+    if (++bankIdx >= NUMBER_OF_BANKS)
     {
-        bank = BANK_A;
+        bankIdx = 0;
     }
-    return bank;
+    return bankIdx;
 }
 
 void write(uint8_t* bytes, uint32_t len)
 {
     reset_all();
-    Bank bank = BANK_A;
-    volatile DataBank* dataBank = &g_dataBanks[bank];
+    uint32_t bankIdx = 0;
+    MapleStateBank* dataBank = &g_dataBanks[bankIdx];
+    dataBank->setOutPins(SDCKA_PIN, SDCKB_PIN);
 
     // Ensure it's at neutral for a few cycles
-    dataBank->write(SDCKA_MASK | SDCKB_MASK);
-    dataBank->write(SDCKA_MASK | SDCKB_MASK);
-    dataBank->write(SDCKA_MASK | SDCKB_MASK);
+    dataBank->write(MapleStateBank::MASK_AB);
+    dataBank->write(MapleStateBank::MASK_AB);
+    dataBank->write(MapleStateBank::MASK_AB);
 
     // Start
-    dataBank->write(SDCKB_MASK);
+    dataBank->write(MapleStateBank::MASK_B);
     dataBank->write(0);
-    dataBank->write(SDCKB_MASK);
+    dataBank->write(MapleStateBank::MASK_B);
     dataBank->write(0);
-    dataBank->write(SDCKB_MASK);
+    dataBank->write(MapleStateBank::MASK_B);
     dataBank->write(0);
-    dataBank->write(SDCKB_MASK);
+    dataBank->write(MapleStateBank::MASK_B);
     dataBank->write(0);
-    dataBank->write(SDCKB_MASK);
-    dataBank->write(SDCKA_MASK | SDCKB_MASK);
+    dataBank->write(MapleStateBank::MASK_B);
+    dataBank->write(MapleStateBank::MASK_AB);
 
     // Data
-    uint32_t lastState = (SDCKA_MASK | SDCKB_MASK);
+    uint32_t lastState = (MapleStateBank::MASK_AB);
     for (uint32_t i = 0; i < len; ++i)
     {
-        // flush if buffer could possibly overflow 
+        // flush if buffer could possibly overflow
         if (dataBank->remainingCapacity() < 16)
         {
-            bank = send(bank);
-            dataBank = &g_dataBanks[bank];
+            bankIdx = send(bankIdx);
+            dataBank = &g_dataBanks[bankIdx];
             dataBank->reset();
+            dataBank->setOutPins(SDCKA_PIN, SDCKB_PIN);
         }
 
         uint8_t b = bytes[i];
@@ -183,20 +236,20 @@ void write(uint8_t* bytes, uint32_t len)
                 // A is clock and B is data
                 if (b & mask)
                 {
-                    clockState = SDCKB_MASK;
+                    clockState = MapleStateBank::MASK_B;
                 }
-                prepState = SDCKA_MASK | clockState;
+                prepState = MapleStateBank::MASK_A | clockState;
             }
             else
             {
                 // B is clock and A is data
                 if (b & mask)
                 {
-                    clockState = SDCKA_MASK;
+                    clockState = MapleStateBank::MASK_A;
                 }
-                prepState = SDCKB_MASK | clockState;
+                prepState = MapleStateBank::MASK_B | clockState;
             }
-            
+
             // Applying preperation state is optional if we're already there
             if (prepState != lastState)
             {
@@ -209,28 +262,28 @@ void write(uint8_t* bytes, uint32_t len)
         }
     }
 
-    // flush if buffer could possibly overflow 
+    // flush if buffer could possibly overflow
     if (dataBank->remainingCapacity() < 7)
     {
-        bank = send(bank);
-        dataBank = &g_dataBanks[bank];
+        bankIdx = send(bankIdx);
+        dataBank = &g_dataBanks[bankIdx];
     }
 
     // End
-    dataBank->write(SDCKA_MASK | SDCKB_MASK);
-    dataBank->write(SDCKA_MASK);
+    dataBank->write(MapleStateBank::MASK_AB);
+    dataBank->write(MapleStateBank::MASK_A);
     dataBank->write(0);
-    dataBank->write(SDCKA_MASK);
+    dataBank->write(MapleStateBank::MASK_A);
     dataBank->write(0);
-    dataBank->write(SDCKA_MASK);
-    dataBank->write(SDCKA_MASK | SDCKB_MASK);
+    dataBank->write(MapleStateBank::MASK_A);
+    dataBank->write(MapleStateBank::MASK_AB);
 
     // Write and block until done
-    send(bank);
+    send(bankIdx);
     flush();
 }
 
-int main() 
+int main()
 {
     gpio_init_mask(SDCKA_MASK | SDCKB_MASK);
     gpio_set_dir_out_masked(SDCKA_MASK | SDCKB_MASK);
@@ -239,22 +292,23 @@ int main()
 
     systick_hw->rvr = CPU_TICKS_PER_PERIOD - 1;
 
+    // This is just to give me a reference point where code starts to actually execute
     gpio_put_all(0);
     sleep_us(1);
     gpio_put_all(SDCKA_MASK | SDCKB_MASK);
 
-    uint8_t data[] = {0x0C, 0xAA, 0x55, 0xFF, 
-                      0x00, 0x01, 0x02, 0x03, 
-                      0x04, 0x05, 0x06, 0x07, 
-                      0x08, 0x09, 0x0A, 0x0B, 
+    uint8_t data[] = {0x0C, 0xAA, 0x55, 0xFF,
+                      0x00, 0x01, 0x02, 0x03,
+                      0x04, 0x05, 0x06, 0x07,
+                      0x08, 0x09, 0x0A, 0x0B,
                       0x0C, 0x0D, 0x0E, 0x0F,
-                      0x10, 0x11, 0x12, 0x13, 
-                      0x14, 0x15, 0x16, 0x17, 
-                      0x18, 0x19, 0x1A, 0x1B, 
+                      0x10, 0x11, 0x12, 0x13,
+                      0x14, 0x15, 0x16, 0x17,
+                      0x18, 0x19, 0x1A, 0x1B,
                       0x1C, 0x1D, 0x1E, 0x1F,
-                      0x20, 0x21, 0x22, 0x23, 
-                      0x24, 0x25, 0x26, 0x27, 
-                      0x28, 0x29, 0x2A, 0x2B, 
+                      0x20, 0x21, 0x22, 0x23,
+                      0x24, 0x25, 0x26, 0x27,
+                      0x28, 0x29, 0x2A, 0x2B,
                       0x2C, 0x2D, 0x2E, 0x2F,
                       0x00};
     write(data, sizeof(data));
