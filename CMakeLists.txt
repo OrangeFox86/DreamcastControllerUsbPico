@@ -18,7 +18,7 @@ include("${PICO_SDK_PATH}/external/pico_sdk_import.cmake")
 project(DreamcastControllerUsbPico)
 pico_sdk_init()
 add_executable(DreamcastControllerUsbPico
-  main.c
+  main.cpp
 )
 pico_add_extra_outputs(DreamcastControllerUsbPico)
 target_link_libraries(DreamcastControllerUsbPico PRIVATE pico_stdlib)
