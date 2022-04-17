@@ -20,7 +20,8 @@ const uint SDCKA_MASK = (1 << SDCKA_PIN);
 const uint SDCKB_MASK = (1 << SDCKB_PIN);
 
 // The size of this doesn't represent bits but rather max number of state changes
-volatile uint32_t states[1024];
+// This should be able to handle a minumum of 31 x 32-bit words plus crc byte
+volatile uint32_t states[2048];
 volatile uint32_t* volatile currentState = states;
 volatile uint32_t numStates = 0;
 
@@ -51,6 +52,7 @@ static inline volatile uint32_t* flush(volatile uint32_t* ptr)
     {
         numStates = ptr - currentState;
     }
+
     if (numStates > 0)
     {
         systick_hw->csr |= (SYST_CSR_CLKSOURCE_MASK | SYST_CSR_TICKINT_MASK | SYST_CSR_ENABLE_MASK);
@@ -61,7 +63,9 @@ static inline volatile uint32_t* flush(volatile uint32_t* ptr)
     {
         systick_hw->csr = 0;
     }
+
     reset();
+
     return currentState;
 }
 
