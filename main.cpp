@@ -1,19 +1,23 @@
 #include "pico/stdlib.h"
 #include "hardware/structs/systick.h"
 
-#define CPU_FREQ_MHZ 133
-#define CPU_FREQ_KHZ (CPU_FREQ_MHZ * 1000)
+#include "MapleStateBank.hpp"
+#include "configuration.h"
 
-#define CLOCK_PERIOD_NS 320
-#define CPU_TICKS_PER_PERIOD (int)(CLOCK_PERIOD_NS * CPU_FREQ_MHZ / 1000.0 + 0.5)
-
+// From datasheet
 #define SYST_CSR_CLKSOURCE_MASK 0x00000004 // 1 for processor; 0 for external
 #define SYST_CSR_TICKINT_MASK   0x00000002 // 1 enables isr_systick; 0 disables
 #define SYST_CSR_ENABLE_MASK    0x00000001 // 1 enables counter; 0 disables
 
+// When masking the current bit mask with this, anything other than 0 means A channel is clock
 #define A_IS_CLOCK_MASK 0xAA
 
+// Code is tightly coupled to "2" banks, so it makes no sense to have this be anyting but
 #define NUMBER_OF_BANKS 2
+
+#if (ELEMENTS_PER_BANK < 16)
+   #error "ELEMENTS_PER_BANK must be set to at least 16"
+#endif
 
 const uint32_t SDCKA_PIN = 14;
 const uint32_t SDCKB_PIN = 15;
@@ -21,77 +25,9 @@ const uint32_t SDCKB_PIN = 15;
 const uint32_t SDCKA_MASK = (1 << SDCKA_PIN);
 const uint32_t SDCKB_MASK = (1 << SDCKB_PIN);
 
-// The size of this doesn't represent bits but rather max number of state changes
-#define ELEMENTS_PER_BANK 256
-
-class MapleStateBank
-{
-    public:
-        MapleStateBank() :
-            mData(),
-            mCurrent(mData),
-            mEnd(mData),
-            mCapacityEnd(mData + ELEMENTS_PER_BANK),
-            mBitShift(0),
-            mSendMask(MASK_AB)
-        {}
-
-        inline void reset()
-        {
-            mEnd = mData;
-            mCurrent = mData;
-        }
-
-        inline void write(uint_fast8_t datum)
-        {
-            *mEnd++ = (datum << mBitShift);
-        }
-
-        inline uint_fast32_t readNext()
-        {
-            return *mCurrent++;
-        }
-
-        inline int_fast32_t remainingCapacity()
-        {
-            return (mCapacityEnd - mEnd);
-        }
-
-        inline bool empty()
-        {
-            return (mEnd == mCurrent);
-        }
-
-        inline void setOutPins(uint_fast32_t a, uint_fast32_t b)
-        {
-            assert((b - a) == 1);
-            mBitShift = a;
-            mSendMask = MASK_AB << mBitShift;
-        }
-
-        inline uint_fast32_t getSendMask()
-        {
-            return mSendMask;
-        }
-
-    public:
-        static const uint_fast8_t MASK_A = 0x01;
-        static const uint_fast8_t MASK_B = 0x02;
-        static const uint_fast8_t MASK_AB = (MASK_A | MASK_B);
-
-    private:
-        // Note: I believe I can get away without volatile keywords because this buffer is never
-        //       read/written to by main code and ISR at the same time. Without volatile, this
-        //       speeds up packing time by about 15%.
-
-        uint_fast32_t mData[ELEMENTS_PER_BANK];
-        uint_fast32_t* mCurrent;
-        uint_fast32_t* mEnd;
-        uint_fast32_t* const mCapacityEnd;
-        uint_fast32_t mBitShift;
-        uint_fast32_t mSendMask;
-};
-
+// Note: I believe I can get away without volatile keywords because this buffer is never
+//       read/written to by main code and ISR at the same time. Without volatile, this
+//       speeds up packing time by about 15%.
 MapleStateBank g_dataBanks[NUMBER_OF_BANKS];
 MapleStateBank* g_currentBank = &g_dataBanks[0];
 uint32_t g_nextWrite = 0;
