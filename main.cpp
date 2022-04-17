@@ -169,6 +169,7 @@ void write(uint8_t* bytes, uint32_t len)
         {
             bank = send(bank);
             dataBank = &g_dataBanks[bank];
+            dataBank->reset();
         }
 
         uint8_t b = bytes[i];
