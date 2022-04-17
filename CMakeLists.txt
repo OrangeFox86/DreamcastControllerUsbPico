@@ -17,11 +17,12 @@ include("${PICO_SDK_PATH}/external/pico_sdk_import.cmake")
 
 project(DreamcastControllerUsbPico)
 pico_sdk_init()
+file(GLOB SRC "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/*.c")
 add_executable(DreamcastControllerUsbPico
-  main.cpp
+  ${SRC}
 )
 pico_add_extra_outputs(DreamcastControllerUsbPico)
-target_link_libraries(DreamcastControllerUsbPico PRIVATE pico_stdlib)
+target_link_libraries(DreamcastControllerUsbPico PRIVATE pico_stdlib pico_multicore)
 
 target_include_directories(DreamcastControllerUsbPico PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 

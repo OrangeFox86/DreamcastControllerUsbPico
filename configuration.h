@@ -1,3 +1,6 @@
+#ifndef __CONFIGURATION_H__
+#define __CONFIGURATION_H__
+
 // Adjust the CPU clock frequency here
 #define CPU_FREQ_MHZ 133
 #define CPU_FREQ_KHZ (CPU_FREQ_MHZ * 1000)
@@ -10,3 +13,5 @@
 // Increasing this will increase RAM usage and may increase data encode time but decrease number
 // of data stalls during write; decreasing will do the opposite of all that.
 #define ELEMENTS_PER_BANK 256
+
+#endif // __CONFIGURATION_H__

@@ -1,5 +1,9 @@
+#ifndef __MAPLE_STATE_BANK_H__
+#define __MAPLE_STATE_BANK_H__
+
 #include <stdint.h>
 #include "configuration.h"
+#include "MapleBus.hpp"
 
 //! Contains encoded Maple Bus states
 class MapleStateBank
@@ -48,13 +52,12 @@ class MapleStateBank
             return (mEnd == mCurrent);
         }
 
-        //! Sets the pins this bank writes to
-        //! @param[in] a  The "A" output
-        //! @param[in] a  The "B" output (must be very next gpio)
-        inline void setOutPins(uint_fast32_t a, uint_fast32_t b)
+        //! Sets the bus this bank writes to
+        //! @param[in] mapleBus  The bus this state bank must conform to
+        inline void setMapleBus(const MapleBus& mapleBus)
         {
-            assert((b - a) == 1);
-            mBitShift = a;
+            assert((mapleBus.mPinB - mapleBus.mPinA) == 1);
+            mBitShift = mapleBus.mPinA;
             mSendMask = MASK_AB << mBitShift;
         }
 
@@ -86,3 +89,5 @@ class MapleStateBank
         //! The gpio mask this bank is setup for
         uint_fast32_t mSendMask;
 };
+
+#endif // __MAPLE_STATE_BANK_H__
