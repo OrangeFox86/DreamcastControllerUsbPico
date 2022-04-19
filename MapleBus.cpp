@@ -18,10 +18,13 @@
 // interrupt with all of the delays associated with that
 void MapleBus::putAB(const uint32_t& value)
 {
+    // Compute the bits we'd like to toggle
     uint32_t toggle = (sio_hw->gpio_out ^ value) & mMaskAB;
-
-    while(systick_hw->cvr > (SYSTICK_NOMINAL_THRESHOLD + CLOCK_BIT_BIAS));
+    // Wait for systick to decrement past the threshold
+    while(systick_hw->cvr > SYSTICK_THRESHOLD);
+    // Send out the bits
     sio_hw->gpio_togl = toggle;
+    // Reset systick for next put
     systick_hw->cvr = 0;
 }
 
