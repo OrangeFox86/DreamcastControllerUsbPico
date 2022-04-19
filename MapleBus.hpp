@@ -8,21 +8,29 @@
 class MapleBus
 {
     public:
-        MapleBus(uint32_t pinA, uint32_t pinB);
-        void write(uint8_t* bytes, uint32_t len);
+        MapleBus(uint32_t pinA, uint32_t pinB, uint8_t senderAddr);
+        bool write(uint8_t command, uint8_t recipientAddr, uint32_t* words, uint8_t len);
+
 
     private:
 
-        bool writeInit() const;
-        void writeComplete() const;
+        bool writeInit();
+        void writeComplete();
+
+        void writeStartSequence();
+        void writeEndSequence();
+        void writeByte(const uint8_t& byte);
 
         void putAB(const uint32_t& value);
 
+        uint32_t mLastPut;
         const uint32_t mPinA;
         const uint32_t mPinB;
         const uint32_t mMaskA;
         const uint32_t mMaskB;
         const uint32_t mMaskAB;
+        const uint8_t mSenderAddr;
+        uint32_t mCrc;
 
         // Reload value for systick
         static const uint32_t SYSTICK_RELOAD_VALUE = 0x00FFFFFF;

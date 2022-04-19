@@ -7,6 +7,7 @@
 
 void core1()
 {
+    set_sys_clock_khz(CPU_FREQ_KHZ, true);
     while(true);
 }
 
@@ -16,28 +17,25 @@ int main()
     multicore_launch_core1(core1);
 
     // The one bus on pins 14 and 15
-    MapleBus busP1(14, 15);
+    MapleBus busP1(14, 15, 0);
 
     while(true)
     {
-        uint8_t data[] = {0x0C, 0xAA, 0x55, 0xFF,
-                        0x00, 0x01, 0x02, 0x03,
-                        0x04, 0x05, 0x06, 0x07,
-                        0x08, 0x09, 0x0A, 0x0B,
-                        0x0C, 0x0D, 0x0E, 0x0F,
-                        0x10, 0x11, 0x12, 0x13,
-                        0x14, 0x15, 0x16, 0x17,
-                        0x18, 0x19, 0x1A, 0x1B,
-                        0x1C, 0x1D, 0x1E, 0x1F,
-                        0x20, 0x21, 0x22, 0x23,
-                        0x24, 0x25, 0x26, 0x27,
-                        0x28, 0x29, 0x2A, 0x2B,
-                        0x2C, 0x2D, 0x2E, 0x2F,
-                        0x00};
-        busP1.write(data, sizeof(data));
+        uint32_t data[] = {0x03020100,
+                           0x07060504,
+                           0x0B0A0908,
+                           0x0F0E0D0C,
+                           0x13121110,
+                           0x17161514,
+                           0x1B1A1918,
+                           0x1F1E1D1C,
+                           0x23222120,
+                           0x27262524,
+                           0x2B2A2928,
+                           0x2F2E2D2C};
+        busP1.write(0xFF, 0x55, data, sizeof(data) / sizeof(data[1]));
 
-        uint8_t data2[] = {0x00, 0x55, 0xFF, 0xAA, 0x00};
-        busP1.write(data2, sizeof(data2));
+        sleep_ms(100);
     }
 }
 

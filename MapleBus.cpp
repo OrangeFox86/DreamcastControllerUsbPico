@@ -14,26 +14,15 @@
 #define MASK_AB (MASK_A | MASK_B)
 
 
-// This is a bit imprecise, but it gets a better throughput than wasting cycles on an
-// interrupt with all of the delays associated with that
-void MapleBus::putAB(const uint32_t& value)
-{
-    // Compute the bits we'd like to toggle
-    uint32_t toggle = (sio_hw->gpio_out ^ value) & mMaskAB;
-    // Wait for systick to decrement past the threshold
-    while(systick_hw->cvr > SYSTICK_THRESHOLD);
-    // Send out the bits
-    sio_hw->gpio_togl = toggle;
-    // Reset systick for next put
-    systick_hw->cvr = 0;
-}
-
-MapleBus::MapleBus(uint32_t pinA, uint32_t pinB) :
+MapleBus::MapleBus(uint32_t pinA, uint32_t pinB, uint8_t senderAddr) :
+    mLastPut(0),
     mPinA(pinA),
     mPinB(pinB),
     mMaskA(1 << pinA),
     mMaskB(1 << pinB),
-    mMaskAB(mMaskA | mMaskB)
+    mMaskAB(mMaskA | mMaskB),
+    mSenderAddr(senderAddr),
+    mCrc(0)
 {
     // B must be the very next output from A
     assert((pinB - pinA) == 1);
@@ -45,8 +34,24 @@ MapleBus::MapleBus(uint32_t pinA, uint32_t pinB) :
     gpio_set_pulls(mPinB, true, false);
 }
 
-bool MapleBus::writeInit() const
+// This is a bit imprecise, but it gets a better throughput than wasting cycles on an
+// interrupt with all of the delays associated with that
+void MapleBus::putAB(const uint32_t& value)
 {
+    mLastPut = value;
+    // Compute the bits we'd like to toggle
+    uint32_t toggle = (sio_hw->gpio_out ^ value) & mMaskAB;
+    // Wait for systick to decrement past the threshold
+    while(systick_hw->cvr > SYSTICK_THRESHOLD);
+    // Send out the bits
+    sio_hw->gpio_togl = toggle;
+    // Reset systick for next put
+    systick_hw->cvr = 0;
+}
+
+bool MapleBus::writeInit()
+{
+    mCrc = 0;
     // Make sure the clock is turned on
     systick_hw->csr = (SYST_CSR_CLKSOURCE_MASK | SYST_CSR_ENABLE_MASK);
     systick_hw->rvr = SYSTICK_RELOAD_VALUE;
@@ -67,22 +72,17 @@ bool MapleBus::writeInit() const
     }
 }
 
-void MapleBus::writeComplete() const
+void MapleBus::writeComplete()
 {
-    // Make everything input
-    gpio_set_dir_in_masked(0xFFFFFFFF);
+    // Make A and B inputs
+    gpio_set_dir_in_masked(mMaskAB);
     // Pull up setting shouldn't have changed, but just for good measure...
     gpio_set_pulls(mPinA, true, false);
     gpio_set_pulls(mPinB, true, false);
 }
 
-void MapleBus::write(uint8_t* bytes, uint32_t len)
+void MapleBus::writeStartSequence()
 {
-    uint8_t* bytePtr = bytes;
-    uint8_t* const endPtr = bytes + len;
-
-    writeInit();
-
     // Ensure it's at neutral for a few cycles
     putAB(mMaskAB);
     putAB(mMaskAB);
@@ -99,57 +99,10 @@ void MapleBus::write(uint8_t* bytes, uint32_t len)
     putAB(0);
     putAB(mMaskB);
     putAB(mMaskAB);
+}
 
-    // Data
-    uint32_t lastState = mMaskAB;
-    for (; bytePtr < endPtr; ++bytePtr)
-    {
-        for (uint8_t mask = 0x80; mask != 0; mask = mask >> 1)
-        {
-            // A is clock and B is data
-            if (*bytePtr & mask)
-            {
-                if (lastState != mMaskAB)
-                {
-                    putAB(mMaskAB);
-                }
-                lastState = mMaskB;
-                putAB(lastState);
-            }
-            else
-            {
-                if (lastState != mMaskA)
-                {
-                    putAB(mMaskA);
-                }
-                lastState = 0;
-                putAB(lastState);
-            }
-
-            mask = mask >> 1;
-
-            // B is clock and A is data
-            if (*bytePtr & mask)
-            {
-                if (lastState != mMaskAB)
-                {
-                    putAB(mMaskAB);
-                }
-                lastState = mMaskA;
-                putAB(lastState);
-            }
-            else
-            {
-                if (lastState != mMaskB)
-                {
-                    putAB(mMaskB);
-                }
-                lastState = 0;
-                putAB(lastState);
-            }
-        }
-    }
-
+void MapleBus::writeEndSequence()
+{
     // End
     putAB(mMaskAB);
     putAB(mMaskA);
@@ -158,6 +111,86 @@ void MapleBus::write(uint8_t* bytes, uint32_t len)
     putAB(0);
     putAB(mMaskA);
     putAB(mMaskAB);
+}
 
-    writeComplete();
+void MapleBus::writeByte(const uint8_t& byte)
+{
+    for (uint8_t mask = 0x80; mask != 0; mask = mask >> 1)
+    {
+        // A is clock and B is data
+        if (byte & mask)
+        {
+            if (mLastPut != mMaskAB)
+            {
+                putAB(mMaskAB);
+            }
+            putAB(mMaskB);
+        }
+        else
+        {
+            if (mLastPut != mMaskA)
+            {
+                putAB(mMaskA);
+            }
+            putAB(0);
+        }
+
+        mask = mask >> 1;
+
+        // B is clock and A is data
+        if (byte & mask)
+        {
+            if (mLastPut != mMaskAB)
+            {
+                putAB(mMaskAB);
+            }
+            putAB(mMaskA);
+        }
+        else
+        {
+            if (mLastPut != mMaskB)
+            {
+                putAB(mMaskB);
+            }
+            putAB(0);
+        }
+    }
+    mCrc = mCrc ^ byte;
+}
+
+bool MapleBus::write(uint8_t command, uint8_t recipientAddr, uint32_t* words, uint8_t len)
+{
+    bool rv = false;
+    // assuming this is running little-endian already
+    uint8_t* bytePtr = reinterpret_cast<uint8_t*>(words);
+    uint8_t* const endPtr = bytePtr + (len * sizeof(*words));
+
+    if (writeInit())
+    {
+        // Start
+        writeStartSequence();
+
+        // Frame word
+        writeByte(len);
+        writeByte(mSenderAddr);
+        writeByte(recipientAddr);
+        writeByte(command);
+
+        // Payload
+        for (; bytePtr < endPtr; ++bytePtr)
+        {
+            writeByte(*bytePtr);
+        }
+
+        // CRC
+        writeByte(mCrc);
+
+        // End
+        writeEndSequence();
+
+        writeComplete();
+
+        rv = true;
+    }
+    return rv;
 }
