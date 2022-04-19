@@ -20,9 +20,9 @@
 #define MASK_B 0x02
 #define MASK_AB (MASK_A | MASK_B)
 
-// 13 is approximately the number of operations after the while loop that it takes to write bits and
+// 11 is approximately the number of operations after the while loop that it takes to write bits and
 // reset cvr
-#define CLOCK_BIT_BIAS 13
+#define CLOCK_BIT_BIAS 11
 
 // This is a bit imprecise, but it gets a better throughput than wasting cycles on an interrupt with
 // all of the delays associated with that
