@@ -20,26 +20,18 @@
 #define MASK_B 0x02
 #define MASK_AB (MASK_A | MASK_B)
 
-// 13 is approximately the number of operations after the while loop that it takes to write and
+// 13 is approximately the number of operations after the while loop that it takes to write bits and
 // reset cvr
 #define CLOCK_BIT_BIAS 13
 
 // This is a bit imprecise, but it gets a better throughput than wasting cycles on an interrupt with
 // all of the delays associated with that
-inline void clockBit(const uint32_t& value)
+inline void clockBit(const uint32_t& mask, const uint32_t& value)
 {
+    uint32_t toggle = (sio_hw->gpio_out ^ value) & mask;
+
     while(systick_hw->cvr > (SYSTICK_NOMINAL_THRESHOLD + CLOCK_BIT_BIAS));
-    sio_hw->gpio_out = value;
-    systick_hw->cvr = 0;
-}
-
-// Clock slightly faster for some operations
-#define CLOCK_BIT_FAST_BIAS (CLOCK_BIT_BIAS + 2)
-
-inline void clockBitFast(const uint32_t& value)
-{
-    while(systick_hw->cvr > (SYSTICK_NOMINAL_THRESHOLD + CLOCK_BIT_FAST_BIAS));
-    sio_hw->gpio_out = value;
+    sio_hw->gpio_togl = toggle;
     systick_hw->cvr = 0;
 }
 
@@ -54,22 +46,21 @@ void write(const MapleBus& mapleBus, uint8_t* bytes, uint32_t len)
     mapleBus.writeInit();
 
     // Ensure it's at neutral for a few cycles
-    clockBit(maskAB);
-    clockBit(maskAB);
-    clockBit(maskAB);
+    clockBit(maskAB, maskAB);
+    clockBit(maskAB, maskAB);
+    clockBit(maskAB, maskAB);
 
-    // Start - I think it's good for the start clocks to be slightly faster
-    //         Slower devices that may be close to tolerance will fail to capture this
-    clockBitFast(maskB);
-    clockBitFast(0);
-    clockBitFast(maskB);
-    clockBitFast(0);
-    clockBitFast(maskB);
-    clockBitFast(0);
-    clockBitFast(maskB);
-    clockBitFast(0);
-    clockBitFast(maskB);
-    clockBitFast(maskAB);
+    // Start
+    clockBit(maskAB, maskB);
+    clockBit(maskAB, 0);
+    clockBit(maskAB, maskB);
+    clockBit(maskAB, 0);
+    clockBit(maskAB, maskB);
+    clockBit(maskAB, 0);
+    clockBit(maskAB, maskB);
+    clockBit(maskAB, 0);
+    clockBit(maskAB, maskB);
+    clockBit(maskAB, maskAB);
 
     // Data
     uint32_t lastState = (maskAB);
@@ -82,19 +73,19 @@ void write(const MapleBus& mapleBus, uint8_t* bytes, uint32_t len)
             {
                 if (lastState != maskAB)
                 {
-                    clockBit(maskAB);
+                    clockBit(maskAB, maskAB);
                 }
                 lastState = maskB;
-                clockBit(lastState);
+                clockBit(maskAB, lastState);
             }
             else
             {
                 if (lastState != maskA)
                 {
-                    clockBit(maskA);
+                    clockBit(maskAB, maskA);
                 }
                 lastState = 0;
-                clockBit(lastState);
+                clockBit(maskAB, lastState);
             }
 
             mask = mask >> 1;
@@ -104,31 +95,31 @@ void write(const MapleBus& mapleBus, uint8_t* bytes, uint32_t len)
             {
                 if (lastState != maskAB)
                 {
-                    clockBit(maskAB);
+                    clockBit(maskAB, maskAB);
                 }
                 lastState = maskA;
-                clockBit(lastState);
+                clockBit(maskAB, lastState);
             }
             else
             {
                 if (lastState != maskB)
                 {
-                    clockBit(maskB);
+                    clockBit(maskAB, maskB);
                 }
                 lastState = 0;
-                clockBit(lastState);
+                clockBit(maskAB, lastState);
             }
         }
     }
 
     // End
-    clockBit(maskAB);
-    clockBit(maskA);
-    clockBit(0);
-    clockBit(maskA);
-    clockBit(0);
-    clockBit(maskA);
-    clockBit(maskAB);
+    clockBit(maskAB, maskAB);
+    clockBit(maskAB, maskA);
+    clockBit(maskAB, 0);
+    clockBit(maskAB, maskA);
+    clockBit(maskAB, 0);
+    clockBit(maskAB, maskA);
+    clockBit(maskAB, maskAB);
 
     mapleBus.writeComplete();
 }
