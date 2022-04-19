@@ -7,10 +7,12 @@ class MapleBus
 {
     public:
         MapleBus(uint32_t pinA, uint32_t pinB);
+        void write(uint8_t* bytes, uint32_t len);
 
+    private:
         bool writeInit() const;
-
         void writeComplete() const;
+
 
         const uint32_t mPinA;
         const uint32_t mPinB;

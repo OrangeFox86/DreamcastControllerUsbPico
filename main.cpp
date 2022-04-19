@@ -2,7 +2,6 @@
 #include "pico/multicore.h"
 #include "hardware/structs/systick.h"
 
-#include "mapleBusClocking.hpp"
 #include "MapleBus.hpp"
 #include "configuration.h"
 
@@ -14,7 +13,6 @@ void core1()
 int main()
 {
     set_sys_clock_khz(CPU_FREQ_KHZ, true);
-    clocking_init();
     multicore_launch_core1(core1);
 
     // The one bus on pins 14 and 15
@@ -36,10 +34,10 @@ int main()
                         0x28, 0x29, 0x2A, 0x2B,
                         0x2C, 0x2D, 0x2E, 0x2F,
                         0x00};
-        write(busP1, data, sizeof(data));
+        busP1.write(data, sizeof(data));
 
         uint8_t data2[] = {0x00, 0x55, 0xFF, 0xAA, 0x00};
-        write(busP1, data2, sizeof(data2));
+        busP1.write(data2, sizeof(data2));
     }
 }
 
