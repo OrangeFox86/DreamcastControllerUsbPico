@@ -14,6 +14,17 @@
 #define MASK_AB (MASK_A | MASK_B)
 
 
+// This is a bit imprecise, but it gets a better throughput than wasting cycles on an
+// interrupt with all of the delays associated with that
+void MapleBus::putAB(const uint32_t& value)
+{
+    uint32_t toggle = (sio_hw->gpio_out ^ value) & mMaskAB;
+
+    while(systick_hw->cvr > (SYSTICK_NOMINAL_THRESHOLD + CLOCK_BIT_BIAS));
+    sio_hw->gpio_togl = toggle;
+    systick_hw->cvr = 0;
+}
+
 MapleBus::MapleBus(uint32_t pinA, uint32_t pinB) :
     mPinA(pinA),
     mPinB(pinB),
