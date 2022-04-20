@@ -42,11 +42,14 @@ void MapleBus::putAB(const uint32_t& value)
     // Compute the bits we'd like to toggle
     uint32_t toggle = (sio_hw->gpio_out ^ value) & mMaskAB;
     // Wait for systick to decrement past the threshold
-    while(systick_hw->cvr > SYSTICK_THRESHOLD);
+    while(!(systick_hw->csr & 0x00010000));
     // Send out the bits
     sio_hw->gpio_togl = toggle;
     // Reset systick for next put
     systick_hw->cvr = 0;
+    // For whatever reason, COUNTFLAG sometimes gets set even though clearing CVR should clear it
+    // out. The following read will force COUNTFLAG to be reset.
+    (void)systick_hw->csr;
 }
 
 bool MapleBus::writeInit()
