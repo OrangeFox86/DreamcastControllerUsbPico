@@ -1,18 +1,8 @@
 #include "MapleBus.hpp"
 #include "pico/stdlib.h"
 #include "hardware/structs/systick.h"
+#include "hardware/regs/m0plus.h"
 #include "configuration.h"
-
-// From datasheet
-#define SYST_CSR_CLKSOURCE_MASK 0x00000004 // 1 for processor; 0 for external
-#define SYST_CSR_TICKINT_MASK   0x00000002 // 1 enables isr_systick; 0 disables
-#define SYST_CSR_ENABLE_MASK    0x00000001 // 1 enables counter; 0 disables
-
-// Mask values for sending A and B bits
-#define MASK_A 0x01
-#define MASK_B 0x02
-#define MASK_AB (MASK_A | MASK_B)
-
 
 MapleBus::MapleBus(uint32_t pinA, uint32_t pinB, uint8_t senderAddr) :
     mLastPut(0),
@@ -36,13 +26,13 @@ MapleBus::MapleBus(uint32_t pinA, uint32_t pinB, uint8_t senderAddr) :
 
 // This is a bit imprecise, but it gets a better throughput than wasting cycles on an
 // interrupt with all of the delays associated with that
-void MapleBus::putAB(const uint32_t& value)
+inline void MapleBus::putAB(const uint32_t& value)
 {
     mLastPut = value;
     // Compute the bits we'd like to toggle
     uint32_t toggle = (sio_hw->gpio_out ^ value) & mMaskAB;
     // Wait for systick to decrement past the threshold
-    while(!(systick_hw->csr & 0x00010000));
+    while(!(systick_hw->csr & M0PLUS_SYST_CSR_COUNTFLAG_BITS));
     // Send out the bits
     sio_hw->gpio_togl = toggle;
     // Reset systick for next put
@@ -56,10 +46,8 @@ bool MapleBus::writeInit()
 {
     mCrc = 0;
     // Make sure the clock is turned on
-    systick_hw->csr = (SYST_CSR_CLKSOURCE_MASK | SYST_CSR_ENABLE_MASK);
+    systick_hw->csr = (M0PLUS_SYST_CSR_CLKSOURCE_BITS | M0PLUS_SYST_CSR_ENABLE_BITS);
     systick_hw->rvr = SYSTICK_RELOAD_VALUE;
-    // Only one pair may be output, so make all others input
-    gpio_set_dir_in_masked(~mMaskAB);
     // Ensure no one is pulling low
     if ((gpio_get_all() & mMaskAB) == mMaskAB)
     {
@@ -116,7 +104,7 @@ void MapleBus::writeEndSequence()
     putAB(mMaskAB);
 }
 
-void MapleBus::writeByte(const uint8_t& byte)
+inline void MapleBus::writeByte(const uint8_t& byte)
 {
     for (uint8_t mask = 0x80; mask != 0; mask = mask >> 1)
     {
