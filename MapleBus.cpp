@@ -28,18 +28,48 @@ MapleBus::MapleBus(uint32_t pinA, uint32_t pinB, uint8_t senderAddr) :
 // interrupt with all of the delays associated with that
 inline void MapleBus::putAB(const uint32_t& value)
 {
-    mLastPut = value;
-    // Compute the bits we'd like to toggle
-    uint32_t toggle = (sio_hw->gpio_out ^ value) & mMaskAB;
-    // Wait for systick to decrement past the threshold
-    while(!(systick_hw->csr & M0PLUS_SYST_CSR_COUNTFLAG_BITS));
-    // Send out the bits
-    sio_hw->gpio_togl = toggle;
-    // Reset systick for next put
+    // Don't waste time setting this bit if we're already there
+    if (value != mLastPut)
+    {
+        mLastPut = value;
+        // Compute the bits we'd like to toggle
+        uint32_t toggle = (sio_hw->gpio_out ^ value) & mMaskAB;
+        // Wait for next clock tick
+        delay();
+        // Send out the bits
+        sio_hw->gpio_togl = toggle;
+        // Reset systick for next put
+        systick_hw->cvr = 0;
+        // For whatever reason, COUNTFLAG sometimes gets set even though clearing CVR should clear it
+        // out. The following read will force COUNTFLAG to be reset.
+        (void)systick_hw->csr;
+    }
+}
+
+inline void MapleBus::toggleA()
+{
+    // Same as putAB, but just toggle A
+    mLastPut ^= mMaskA;
+    delay();
+    sio_hw->gpio_togl = mMaskA;
     systick_hw->cvr = 0;
-    // For whatever reason, COUNTFLAG sometimes gets set even though clearing CVR should clear it
-    // out. The following read will force COUNTFLAG to be reset.
     (void)systick_hw->csr;
+}
+
+inline void MapleBus::toggleB()
+{
+    // Same as putAB, but just toggle B
+    mLastPut ^= mMaskB;
+    delay();
+    sio_hw->gpio_togl = mMaskB;
+    systick_hw->cvr = 0;
+    (void)systick_hw->csr;
+}
+
+inline void MapleBus::delay()
+{
+    // Wait for systick to count down to 0
+    while(!(systick_hw->csr & M0PLUS_SYST_CSR_COUNTFLAG_BITS));
 }
 
 bool MapleBus::writeInit()
@@ -52,9 +82,9 @@ bool MapleBus::writeInit()
     if ((gpio_get_all() & mMaskAB) == mMaskAB)
     {
         // Set the two pins at output and keep HIGH
-        gpio_put_all(mMaskAB);
+        gpio_put_masked(mMaskAB, mMaskAB);
         gpio_set_dir_out_masked(mMaskAB);
-        gpio_put_all(mMaskAB);
+        gpio_put_masked(mMaskAB, mMaskAB);
         return true;
     }
     else
@@ -76,32 +106,32 @@ void MapleBus::writeStartSequence()
 {
     // Ensure it's at neutral for a few cycles
     putAB(mMaskAB);
-    putAB(mMaskAB);
-    putAB(mMaskAB);
+    delay();
+    delay();
 
     // Start
-    putAB(mMaskB);
-    putAB(0);
-    putAB(mMaskB);
-    putAB(0);
-    putAB(mMaskB);
-    putAB(0);
-    putAB(mMaskB);
-    putAB(0);
-    putAB(mMaskB);
-    putAB(mMaskAB);
+    toggleA();
+    toggleB();
+    toggleB();
+    toggleB();
+    toggleB();
+    toggleB();
+    toggleB();
+    toggleB();
+    toggleB();
+    toggleA();
 }
 
 void MapleBus::writeEndSequence()
 {
     // End
     putAB(mMaskAB);
-    putAB(mMaskA);
-    putAB(0);
-    putAB(mMaskA);
-    putAB(0);
-    putAB(mMaskA);
-    putAB(mMaskAB);
+    toggleB();
+    toggleA();
+    toggleA();
+    toggleA();
+    toggleA();
+    toggleB();
 }
 
 inline void MapleBus::writeByte(const uint8_t& byte)
@@ -111,42 +141,28 @@ inline void MapleBus::writeByte(const uint8_t& byte)
         // A is clock and B is data
         if (byte & mask)
         {
-            if (mLastPut != mMaskAB)
-            {
-                putAB(mMaskAB);
-            }
-            putAB(mMaskB);
+            putAB(mMaskAB);
         }
         else
         {
-            if (mLastPut != mMaskA)
-            {
-                putAB(mMaskA);
-            }
-            putAB(0);
+            putAB(mMaskA);
         }
+        toggleA();
 
         mask = mask >> 1;
 
         // B is clock and A is data
         if (byte & mask)
         {
-            if (mLastPut != mMaskAB)
-            {
-                putAB(mMaskAB);
-            }
-            putAB(mMaskA);
+            putAB(mMaskAB);
         }
         else
         {
-            if (mLastPut != mMaskB)
-            {
-                putAB(mMaskB);
-            }
-            putAB(0);
+            putAB(mMaskB);
         }
+        toggleB();
     }
-    mCrc = mCrc ^ byte;
+    mCrc ^= byte;
 }
 
 bool MapleBus::write(uint8_t command, uint8_t recipientAddr, uint32_t* words, uint8_t len)

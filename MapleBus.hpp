@@ -45,6 +45,9 @@ class MapleBus
         void writeByte(const uint8_t& byte);
 
         void putAB(const uint32_t& value);
+        void toggleA();
+        void toggleB();
+        void delay();
 
         uint32_t mLastPut;
         const uint32_t mPinA;
