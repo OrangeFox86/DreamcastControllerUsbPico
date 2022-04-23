@@ -10,7 +10,7 @@
 #define MIN_CLOCK_PERIOD_NS 300
 
 // The minimum amount of time we check for an open line before taking control of it
-// This should be at least twice as long as the longest clock period of any device on the line.
+// This should be at least as long as the longest clock period of any device on the line.
 // Note: The Dreamcast controller has a period of about 500 ns.
 #define OPEN_LINE_CHECK_TIME_NS 1500
 

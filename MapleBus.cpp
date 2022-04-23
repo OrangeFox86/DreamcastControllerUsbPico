@@ -145,7 +145,9 @@ void MapleBus::writeEndSequence()
 
 inline void MapleBus::writeByte(const uint8_t& byte)
 {
-    for (uint8_t mask = 0x80; mask != 0; mask = mask >> 1)
+    mCrc ^= byte;
+    uint8_t mask = 0x80;
+    do
     {
         // A is clock and B is data
         if (byte & mask)
@@ -170,8 +172,18 @@ inline void MapleBus::writeByte(const uint8_t& byte)
             putAB(mMaskB);
         }
         toggleB();
+
+        mask = mask >> 1;
+    } while (mask != 0);
+}
+
+inline void MapleBus::writeBytes(const uint8_t* bytePtr, const uint8_t* endPtr)
+{
+    while(bytePtr != endPtr)
+    {
+        writeByte(*bytePtr);
+        ++bytePtr;
     }
-    mCrc ^= byte;
 }
 
 bool MapleBus::write(uint8_t command, uint8_t recipientAddr, uint32_t* words, uint8_t len)
@@ -193,10 +205,7 @@ bool MapleBus::write(uint8_t command, uint8_t recipientAddr, uint32_t* words, ui
         writeByte(command);
 
         // Payload
-        for (; bytePtr < endPtr; ++bytePtr)
-        {
-            writeByte(*bytePtr);
-        }
+        writeBytes(bytePtr, endPtr);
 
         // CRC
         writeByte(mCrc);

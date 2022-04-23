@@ -44,6 +44,7 @@ class MapleBus
         void writeStartSequence();
         void writeEndSequence();
         void writeByte(const uint8_t& byte);
+        void writeBytes(const uint8_t* bytePtr, const uint8_t* endPtr);
 
         void putAB(const uint32_t& value);
         void toggleA();
