@@ -4,6 +4,7 @@
 #include "pico/stdlib.h"
 #include "hardware/structs/systick.h"
 #include "configuration.h"
+#include "utils.h"
 
 class MapleBus
 {
@@ -58,11 +59,15 @@ class MapleBus
         const uint8_t mSenderAddr;
         uint32_t mCrc;
 
+        // Number of CPU clock ticks equal a clocking period
+        static const uint32_t CPU_TICKS_PER_PERIOD = (INT_DIVIDE_ROUND(MIN_CLOCK_PERIOD_NS * CPU_FREQ_MHZ, 1000));
         // 8 is approximately the number of operations after the while loop that it takes to write
         // bits and reset cvr
         static const uint32_t CLOCK_BIT_BIAS = 8;
         // Reload value for systick
         static const uint32_t SYSTICK_RELOAD_VALUE = (CPU_TICKS_PER_PERIOD - 1 - CLOCK_BIT_BIAS);
+        // Number of clocking cycles we wait to confirm line is neutral before taking control
+        static const uint32_t OPEN_LINE_CHECK_CYCLES = (INT_DIVIDE_CEILING(OPEN_LINE_CHECK_TIME_NS, MIN_CLOCK_PERIOD_NS));
 };
 
 #endif // __MAPLE_BUS_H__

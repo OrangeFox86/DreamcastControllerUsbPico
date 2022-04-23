@@ -74,24 +74,34 @@ inline void MapleBus::delay()
 bool MapleBus::writeInit()
 {
     mCrc = 0;
+
     // Make sure the clock is turned on
     systick_hw->csr = (M0PLUS_SYST_CSR_CLKSOURCE_BITS | M0PLUS_SYST_CSR_ENABLE_BITS);
     systick_hw->rvr = SYSTICK_RELOAD_VALUE;
+
     // Ensure no one is pulling low
-    if ((gpio_get_all() & mMaskAB) == mMaskAB)
+    uint32_t count = 0;
+    systick_hw->cvr = 0;
+    while (count < OPEN_LINE_CHECK_CYCLES)
     {
-        // Set the two pins at output and keep HIGH
-        // If I could, I would keep HIGH using pullups and only switch to output when LOW is needed,
-        // but I/O switching doesn't happen as fast as switching levels as output.
-        gpio_put_masked(mMaskAB, mMaskAB);
-        gpio_set_dir_out_masked(mMaskAB);
-        gpio_put_masked(mMaskAB, mMaskAB);
-        return true;
+        if ((gpio_get_all() & mMaskAB) != mMaskAB)
+        {
+            // Something is pulling low
+            return false;
+        }
+
+        // Every time systick overflows, update count
+        if (systick_hw->csr & M0PLUS_SYST_CSR_COUNTFLAG_BITS)
+        {
+            ++count;
+        }
     }
-    else
-    {
-        return false;
-    }
+
+    // Set the two pins at output and keep HIGH
+    gpio_put_masked(mMaskAB, mMaskAB);
+    gpio_set_dir_out_masked(mMaskAB);
+    gpio_put_masked(mMaskAB, mMaskAB);
+    return true;
 }
 
 void MapleBus::writeComplete()

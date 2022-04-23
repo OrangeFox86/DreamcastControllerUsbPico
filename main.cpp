@@ -5,6 +5,8 @@
 #include "MapleBus.hpp"
 #include "configuration.h"
 
+#define CPU_FREQ_KHZ (CPU_FREQ_MHZ * 1000)
+
 void core1()
 {
     set_sys_clock_khz(CPU_FREQ_KHZ, true);
