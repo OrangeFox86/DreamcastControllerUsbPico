@@ -14,8 +14,6 @@ MapleBus::MapleBus(uint32_t pinA, uint32_t pinB, uint8_t senderAddr) :
     mSenderAddr(senderAddr),
     mCrc(0)
 {
-    // B must be the very next output from A
-    assert((pinB - pinA) == 1);
     // Initialize the pins as inputs with pull ups so that idle line will always be high
     gpio_init(mPinA);
     gpio_init(mPinB);
@@ -40,8 +38,9 @@ inline void MapleBus::putAB(const uint32_t& value)
         sio_hw->gpio_togl = toggle;
         // Reset systick for next put
         systick_hw->cvr = 0;
-        // For whatever reason, COUNTFLAG sometimes gets set even though clearing CVR should clear it
-        // out. The following read will force COUNTFLAG to be reset.
+        // In one of my tests, COUNTFLAG got set with the above CVR write (instead of cleared as
+        // documented). I haven't seen that issue since, but just in case, the following should
+        // force it to be cleared.
         (void)systick_hw->csr;
     }
 }
@@ -82,6 +81,8 @@ bool MapleBus::writeInit()
     if ((gpio_get_all() & mMaskAB) == mMaskAB)
     {
         // Set the two pins at output and keep HIGH
+        // If I could, I would keep HIGH using pullups and only switch to output when LOW is needed,
+        // but I/O switching doesn't happen as fast as switching levels as output.
         gpio_put_masked(mMaskAB, mMaskAB);
         gpio_set_dir_out_masked(mMaskAB);
         gpio_put_masked(mMaskAB, mMaskAB);
@@ -95,11 +96,8 @@ bool MapleBus::writeInit()
 
 void MapleBus::writeComplete()
 {
-    // Make A and B inputs
+    // Make A and B inputs once again (pull-ups still active)
     gpio_set_dir_in_masked(mMaskAB);
-    // Pull up setting shouldn't have changed, but just for good measure...
-    gpio_set_pulls(mPinA, true, false);
-    gpio_set_pulls(mPinB, true, false);
 }
 
 void MapleBus::writeStartSequence()
@@ -120,6 +118,7 @@ void MapleBus::writeStartSequence()
     toggleB();
     toggleB();
     toggleA();
+    toggleB();
 }
 
 void MapleBus::writeEndSequence()
