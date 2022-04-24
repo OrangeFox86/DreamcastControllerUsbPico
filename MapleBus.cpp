@@ -237,11 +237,13 @@ bool MapleBus::read(uint32_t* words, uint32_t& len)
     systick_hw->cvr = 0;
     (void)systick_hw->csr; // not necessary, but it makes me happy
 
-    // There's barely enough time to read, so absolutely no processing can be done on the fly here
-    // Just 1 more nop in this loop will cause it to fail much more frequently
+    // There's barely enough time to read
+    // Just 5 more nops in this loop will cause it to fail much more frequently
     while(true)
     {
-        read = sio_hw->gpio_in & mMaskAB;
+        // No masking done here for simplicity. As a result, no other input operations may exist on
+        // the microcontroller at the same time.
+        read = sio_hw->gpio_in;
 
         if (read != lastRead && pReads < pReadsEnd)
         {
@@ -277,7 +279,7 @@ bool MapleBus::read(uint32_t* words, uint32_t& len)
             return false;
         }
 
-        read = *pReads++;
+        read = *pReads++ & mMaskAB;
 
         // Simplified this down to just waiting until A is high and B is low; this should be the
         // start of data as long as no noise is on the line
