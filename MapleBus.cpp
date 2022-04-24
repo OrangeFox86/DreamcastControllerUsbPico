@@ -2,61 +2,18 @@
 #include "pico/stdlib.h"
 #include "hardware/structs/systick.h"
 #include "hardware/regs/m0plus.h"
-#include "hardware/sync.h"
-#include "hardware/structs/iobank0.h"
-#include "hardware/irq.h"
 #include "configuration.h"
-
-#define EDGE_LOW_EVENT (1<<2)
-#define NUM_EVENTS 4
-#define PINS_PER_REG 8
-
-#define MAX_ELEMENTS (1024 * 4)
-
-volatile static io_ro_32* statusReg = NULL;
-volatile static io_rw_32* ioBank = NULL;
-
-volatile static uint32_t regShift = 0;
-
-volatile static uint8_t eventsList[MAX_ELEMENTS];
-volatile static uint32_t stateList[MAX_ELEMENTS];
-
-volatile static uint8_t* eventsPtr = eventsList;
-volatile static const uint8_t* endEventPtr = eventsList + MAX_ELEMENTS;
-volatile static uint32_t* statePtr = stateList;
-
-extern "C"
-{
-    static void maplebus_io_handler(void)
-    {
-        uint32_t events = *statusReg;
-        if (eventsPtr < endEventPtr)
-        {
-            *statePtr++ = sio_hw->gpio_in;
-            *eventsPtr++ = (events >> regShift) & 0xff;
-        }
-        // Acknowledge IRQ
-        *ioBank = events;
-    }
-}
 
 MapleBus::MapleBus(uint32_t pinA, uint32_t pinB, uint8_t senderAddr) :
     mLastPut(0),
-    mCrc(0),
     mPinA(pinA),
     mPinB(pinB),
     mMaskA(1 << pinA),
     mMaskB(1 << pinB),
     mMaskAB(mMaskA | mMaskB),
     mSenderAddr(senderAddr),
-    mStatusReg(&((get_core_num() ? &iobank0_hw->proc1_irq_ctrl : &iobank0_hw->proc0_irq_ctrl)->ints[mPinA / PINS_PER_REG])),
-    mRegShift(NUM_EVENTS * (mPinA % PINS_PER_REG)),
-    mIoBank(&iobank0_hw->intr[mPinA / PINS_PER_REG])
+    mCrc(0)
 {
-    // Both channels must reside within mStatusReg
-    assert((mPinA / PINS_PER_REG) == (mPinB / PINS_PER_REG));
-    // and Pin B must be the next pin from A
-    assert(mPinB == (mPinA + 1));
     // Initialize the pins as inputs with pull ups so that idle line will always be high
     gpio_init(mPinA);
     gpio_init(mPinB);
@@ -268,49 +225,35 @@ bool MapleBus::write(uint8_t command, uint8_t recipientAddr, uint32_t* words, ui
 // interrupt with all the delays associated with that.
 bool MapleBus::read(uint32_t* words, uint32_t& len, uint32_t timeoutUs)
 {
-    statusReg = mStatusReg;
-    ioBank = mIoBank;
-    regShift = mRegShift;
+    uint32_t counts = timeoutUs / SYSTICK_READ_PERIOD_US;
+    uint32_t lastRead = mMaskAB;
+    uint8_t bitMask = 0x80;
+    uint8_t byte = 0;
+    uint8_t sequence = 0;
+    uint32_t read = 0;
+    uint32_t changed = 0;
 
-    // Reset pointers
-    eventsPtr = eventsList;
-    statePtr = stateList;
-
-    // Start the interrupts
-    irq_set_exclusive_handler(IO_IRQ_BANK0, maplebus_io_handler);
-    irq_set_enabled(IO_IRQ_BANK0, true);
-    gpio_set_irq_enabled(mPinA, EDGE_LOW_EVENT, true);
-    gpio_set_irq_enabled(mPinB, EDGE_LOW_EVENT, true);
+    // assuming this is running little-endian already
+    uint8_t* bytePtr = reinterpret_cast<uint8_t*>(words);
+    uint8_t* const endPtr = bytePtr + (len * sizeof(*words));
 
     // Make sure the clock is turned on and set for reading
     systick_hw->csr = (M0PLUS_SYST_CSR_CLKSOURCE_BITS | M0PLUS_SYST_CSR_ENABLE_BITS);
     systick_hw->rvr = SYSTICK_READ_RELOAD_VALUE;
     systick_hw->cvr = 0;
 
-    // assuming this is running little-endian already
-    uint8_t* bytePtr = reinterpret_cast<uint8_t*>(words);
-    uint8_t* const endPtr = bytePtr + (len * sizeof(*words));
-
-    uint32_t counts = INT_DIVIDE_CEILING(timeoutUs, SYSTICK_READ_PERIOD_US);
-    volatile uint8_t* currentEvents = eventsList;
-    volatile uint32_t* currentState = stateList;
-
-    uint8_t byte = 0;
-    uint8_t sequence = 0;
-    uint8_t bitMask = 0x80;
-
     // Wait for start or error
     while(true)
     {
-        if (currentEvents < eventsPtr)
+        read = sio_hw->gpio_in & mMaskAB;
+        if (read != lastRead)
         {
-            uint8_t events = *currentEvents++;
-            uint32_t state = *currentState++;
-
-            if (events & 0x0f)
+            changed = lastRead ^ read;
+            lastRead = read;
+            if ((changed & mMaskA) && !(read & mMaskA))
             {
                 // A went low
-                if (state & mMaskB)
+                if (read & mMaskB)
                 {
                     byte |= bitMask;
                 }
@@ -327,10 +270,10 @@ bool MapleBus::read(uint32_t* words, uint32_t& len, uint32_t timeoutUs)
                     bitMask = bitMask >> 1;
                 }
             }
-            else if (events & 0xf0)
+            else if ((changed & mMaskB) && !(read & mMaskB))
             {
                 // B went low
-                if (state & mMaskA)
+                if (read & mMaskA)
                 {
                     byte |= bitMask;
                 }
@@ -354,13 +297,11 @@ bool MapleBus::read(uint32_t* words, uint32_t& len, uint32_t timeoutUs)
                 }
             }
         }
-
         // Every time systick overflows, update count
-        if (systick_hw->csr & M0PLUS_SYST_CSR_COUNTFLAG_BITS)
+        else if (systick_hw->csr & M0PLUS_SYST_CSR_COUNTFLAG_BITS)
         {
             if (--counts == 0)
             {
-                irq_set_enabled(IO_IRQ_BANK0, false);
                 return false;
             }
         }
@@ -373,50 +314,38 @@ bool MapleBus::read(uint32_t* words, uint32_t& len, uint32_t timeoutUs)
     int_fast16_t expectedByteCount = -1;
     while(true)
     {
-        if (currentEvents < eventsPtr)
+        read = sio_hw->gpio_in & mMaskAB;
+        if (read != lastRead)
         {
-            uint8_t events = *currentEvents++;
-            uint32_t state = *currentState++;
-
-            if (events & 0x0f)
+            changed = lastRead ^ read;
+            lastRead = read;
+            if ((changed & mMaskA) && !(read & mMaskA))
             {
                 // A went low
-                if (state & mMaskB)
+                if (read & mMaskB)
                 {
-                    sio_hw->gpio_set = (1<<13);
                     byte |= bitMask;
-                }
-                else
-                {
-                    sio_hw->gpio_clr = (1<<13);
                 }
 
                 if (bitMask & 0x55)
                 {
                     // Invalid clock sequence
-                    irq_set_enabled(IO_IRQ_BANK0, false);
                     return false;
                 }
 
                 bitMask = bitMask >> 1;
             }
-            else if (events & 0xf0)
+            else if ((changed & mMaskB) && !(read & mMaskB))
             {
                 // B went low
-                if (state & mMaskA)
+                if (read & mMaskA)
                 {
-                    sio_hw->gpio_set = (1<<13);
                     byte |= bitMask;
-                }
-                else
-                {
-                    sio_hw->gpio_clr = (1<<13);
                 }
 
                 if (bitMask & 0xAA)
                 {
                     // Invalid clock sequence
-                    irq_set_enabled(IO_IRQ_BANK0, false);
                     return false;
                 }
                 else if (bitMask == 1)
@@ -448,7 +377,6 @@ bool MapleBus::read(uint32_t* words, uint32_t& len, uint32_t timeoutUs)
                     else
                     {
                         // Overflow
-                        irq_set_enabled(IO_IRQ_BANK0, false);
                         len = len + 1;
                         return false;
                     }
@@ -461,13 +389,11 @@ bool MapleBus::read(uint32_t* words, uint32_t& len, uint32_t timeoutUs)
                 }
             }
         }
-
         // Every time systick overflows, update count
-        if (systick_hw->csr & M0PLUS_SYST_CSR_COUNTFLAG_BITS)
+        else if (systick_hw->csr & M0PLUS_SYST_CSR_COUNTFLAG_BITS)
         {
             if (--counts == 0)
             {
-                irq_set_enabled(IO_IRQ_BANK0, false);
                 return false;
             }
         }
@@ -479,15 +405,15 @@ bool MapleBus::read(uint32_t* words, uint32_t& len, uint32_t timeoutUs)
     // Wait for end or error
     while(true)
     {
-        if (currentEvents < eventsPtr)
+        read = sio_hw->gpio_in & mMaskAB;
+        if (read != lastRead)
         {
-            uint8_t events = *currentEvents++;
-            uint32_t state = *currentState++;
-
-            if (events & 0x0f)
+            changed = lastRead ^ read;
+            lastRead = read;
+            if ((changed & mMaskA) && !(read & mMaskA))
             {
                 // A went low
-                if (state & mMaskB)
+                if (read & mMaskB)
                 {
                     byte |= bitMask;
                 }
@@ -502,7 +428,6 @@ bool MapleBus::read(uint32_t* words, uint32_t& len, uint32_t timeoutUs)
                     else
                     {
                         // Failed to match end sequence
-                        irq_set_enabled(IO_IRQ_BANK0, false);
                         return false;
                     }
                 }
@@ -511,10 +436,10 @@ bool MapleBus::read(uint32_t* words, uint32_t& len, uint32_t timeoutUs)
                     bitMask = bitMask >> 1;
                 }
             }
-            else if (events & 0xf0)
+            else if ((changed & mMaskB) && !(read & mMaskB))
             {
                 // B went low
-                if (state & mMaskA)
+                if (read & mMaskA)
                 {
                     byte |= bitMask;
                 }
@@ -522,7 +447,6 @@ bool MapleBus::read(uint32_t* words, uint32_t& len, uint32_t timeoutUs)
                 if (bitMask == 0x20)
                 {
                     // Failed to match end sequence
-                    irq_set_enabled(IO_IRQ_BANK0, false);
                     return false;
                 }
                 else
@@ -531,31 +455,65 @@ bool MapleBus::read(uint32_t* words, uint32_t& len, uint32_t timeoutUs)
                 }
             }
         }
-
         // Every time systick overflows, update count
-        if (systick_hw->csr & M0PLUS_SYST_CSR_COUNTFLAG_BITS)
+        else if (systick_hw->csr & M0PLUS_SYST_CSR_COUNTFLAG_BITS)
         {
             if (--counts == 0)
             {
-                irq_set_enabled(IO_IRQ_BANK0, false);
                 return false;
             }
         }
     }
 
-    // No longer need this
-    irq_set_enabled(IO_IRQ_BANK0, false);
-
     // Wait for both lines to go back high (A then B)
     while(true)
     {
-        if ((sio_hw->gpio_in & mMaskAB) == mMaskAB)
+        read = sio_hw->gpio_in & mMaskAB;
+        if (read != lastRead)
         {
-            break;
+            changed = lastRead ^ read;
+            lastRead = read;
+            if ((changed & mMaskA))
+            {
+                if (read & mMaskA)
+                {
+                    // A went HIGH
+                    if (read & mMaskB)
+                    {
+                        // A should have gone HIGH first
+                        return false;
+                    }
+                }
+                else
+                {
+                    // A went LOW
+                    return false;
+                }
+            }
+            else if ((changed & mMaskB))
+            {
+                if (read & mMaskB)
+                {
+                    // B went HIGH
+                    if (!(read & mMaskA))
+                    {
+                        // A should have gone HIGH first
+                        return false;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    // B went LOW
+                    return false;
+                }
+            }
         }
-
         // Every time systick overflows, update count
-        if (systick_hw->csr & M0PLUS_SYST_CSR_COUNTFLAG_BITS)
+        else if (systick_hw->csr & M0PLUS_SYST_CSR_COUNTFLAG_BITS)
         {
             if (--counts == 0)
             {

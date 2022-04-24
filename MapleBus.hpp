@@ -53,16 +53,13 @@ class MapleBus
         void delay();
 
         uint32_t mLastPut;
-        uint32_t mCrc;
         const uint32_t mPinA;
         const uint32_t mPinB;
         const uint32_t mMaskA;
         const uint32_t mMaskB;
         const uint32_t mMaskAB;
         const uint8_t mSenderAddr;
-        io_ro_32* const mStatusReg;
-        const uint32_t mRegShift;
-        io_rw_32* const mIoBank;
+        uint32_t mCrc;
 
         // Number of CPU clock ticks equal a clocking period
         static const uint32_t CPU_TICKS_PER_WRITE_PERIOD = (INT_DIVIDE_ROUND(MIN_CLOCK_PERIOD_NS * CPU_FREQ_MHZ, 1000));
@@ -76,7 +73,7 @@ class MapleBus
         // Number of clocking cycles we wait to confirm line is neutral before taking control
         static const uint32_t OPEN_LINE_CHECK_CYCLES = (INT_DIVIDE_CEILING(OPEN_LINE_CHECK_TIME_NS, SYSTICK_WRITE_PERIOD_NS));
         // Same stuff, but for read clocking
-        static const uint32_t SYSTICK_READ_PERIOD_US = 10;
+        static const uint32_t SYSTICK_READ_PERIOD_US = 1;
         static const uint32_t CPU_TICKS_PER_READ_PERIOD = (SYSTICK_READ_PERIOD_US * CPU_FREQ_MHZ);
         static const uint32_t SYSTICK_READ_RELOAD_VALUE = (CPU_TICKS_PER_READ_PERIOD - 1);
 };
