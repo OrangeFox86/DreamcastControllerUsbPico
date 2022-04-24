@@ -14,7 +14,7 @@
 // Note: The Dreamcast controller has a period of about 500 ns.
 #define OPEN_LINE_CHECK_TIME_NS 1500
 
-// How long we should wait for data
+// How long we should buffer input data before processing it
 #define SYSTICK_READ_TIMEOUT_US 1000
 
 #endif // __CONFIGURATION_H__

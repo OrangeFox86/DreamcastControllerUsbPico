@@ -237,6 +237,8 @@ bool MapleBus::read(uint32_t* words, uint32_t& len)
     systick_hw->cvr = 0;
     (void)systick_hw->csr; // not necessary, but it makes me happy
 
+    // There's barely enough time to read, so absolutely no processing can be done on the fly here
+    // Just 1 more nop in this loop will cause it to fail much more frequently
     while(true)
     {
         read = sio_hw->gpio_in & mMaskAB;
@@ -247,7 +249,7 @@ bool MapleBus::read(uint32_t* words, uint32_t& len)
             lastRead = read;
         }
 
-        // If systick overflows, we're done
+        // If systick overflows, we're done reading
         else if (systick_hw->csr & M0PLUS_SYST_CSR_COUNTFLAG_BITS)
         {
             break;
@@ -257,16 +259,15 @@ bool MapleBus::read(uint32_t* words, uint32_t& len)
     // Concatenate and reset pointer
     pReadsEnd = pReads;
     pReads = reads;
-    lastRead = mMaskAB;
 
     uint8_t bitMask = 0x80;
     uint8_t byte = 0;
-    uint8_t sequence = 0;
     uint32_t changed = 0;
 
     // assuming this is running little-endian already
     uint8_t* bytePtr = reinterpret_cast<uint8_t*>(words);
     uint8_t* const endPtr = bytePtr + (len * sizeof(*words));
+    len = 0;
 
     // Wait for start or error
     while(true)
@@ -277,56 +278,17 @@ bool MapleBus::read(uint32_t* words, uint32_t& len)
         }
 
         read = *pReads++;
-        changed = lastRead ^ read;
-        lastRead = read;
-        if ((changed & mMaskA) && !(read & mMaskA))
-        {
-            // A went low
-            if (read & mMaskB)
-            {
-                byte |= bitMask;
-            }
-            sequence |= bitMask;
 
-            if (bitMask == 0x04)
-            {
-                // Failed to match start sequence; keep waiting
-                byte = byte << 1;
-                sequence = sequence << 1;
-            }
-            else
-            {
-                bitMask = bitMask >> 1;
-            }
-        }
-        else if ((changed & mMaskB) && !(read & mMaskB))
+        // Simplified this down to just waiting until A is high and B is low; this should be the
+        // start of data as long as no noise is on the line
+        if (read == mMaskA)
         {
-            // B went low
-            if (read & mMaskA)
-            {
-                byte |= bitMask;
-            }
-
-            if (bitMask == 0x04)
-            {
-                if (sequence == 0x80 && byte == 0x84)
-                {
-                    break;
-                }
-                else
-                {
-                    // Failed to match start sequence; keep waiting
-                    byte = byte << 1;
-                    sequence = sequence << 1;
-                }
-            }
-            else
-            {
-                bitMask = bitMask >> 1;
-            }
+            break;
         }
     }
 
+    // Parse data
+    lastRead = read;
     bitMask = 0x80;
     byte = 0;
     uint8_t expectedCrc = 0;
@@ -413,116 +375,7 @@ bool MapleBus::read(uint32_t* words, uint32_t& len)
         }
     }
 
-    bitMask = 0x80;
-    byte = 0;
-    sequence = 0;
-    // Wait for end or error
-    while(true)
-    {
-        if (pReads == pReadsEnd)
-        {
-            return false;
-        }
-
-        read = *pReads++;
-        changed = lastRead ^ read;
-        lastRead = read;
-        if ((changed & mMaskA) && !(read & mMaskA))
-        {
-            // A went low
-            if (read & mMaskB)
-            {
-                byte |= bitMask;
-            }
-            sequence |= bitMask;
-
-            if (bitMask == 0x20)
-            {
-                if (sequence == 0x60 && byte == 0x80)
-                {
-                    break;
-                }
-                else
-                {
-                    // Failed to match end sequence
-                    return false;
-                }
-            }
-            else
-            {
-                bitMask = bitMask >> 1;
-            }
-        }
-        else if ((changed & mMaskB) && !(read & mMaskB))
-        {
-            // B went low
-            if (read & mMaskA)
-            {
-                byte |= bitMask;
-            }
-
-            if (bitMask == 0x20)
-            {
-                // Failed to match end sequence
-                return false;
-            }
-            else
-            {
-                bitMask = bitMask >> 1;
-            }
-        }
-    }
-
-    // Wait for both lines to go back high (A then B)
-    while(true)
-    {
-        if (pReads == pReadsEnd)
-        {
-            return false;
-        }
-
-        read = *pReads++;
-        changed = lastRead ^ read;
-        lastRead = read;
-        if ((changed & mMaskA))
-        {
-            if (read & mMaskA)
-            {
-                // A went HIGH
-                if (read & mMaskB)
-                {
-                    // A should have gone HIGH first
-                    return false;
-                }
-            }
-            else
-            {
-                // A went LOW
-                return false;
-            }
-        }
-        else if ((changed & mMaskB))
-        {
-            if (read & mMaskB)
-            {
-                // B went HIGH
-                if (!(read & mMaskA))
-                {
-                    // A should have gone HIGH first
-                    return false;
-                }
-                else
-                {
-                    break;
-                }
-            }
-            else
-            {
-                // B went LOW
-                return false;
-            }
-        }
-    }
+    // For simplicity, this doesn't even verify an end sequence
 
     len = (bytePtr - reinterpret_cast<uint8_t*>(words)) / 4;
 
