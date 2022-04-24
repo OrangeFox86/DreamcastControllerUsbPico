@@ -14,9 +14,11 @@
 // Note: The Dreamcast controller has a period of about 500 ns.
 #define OPEN_LINE_CHECK_TIME_NS 1500
 
+// Maximum amount of time to wait for something else to start writing to the bus
+#define SYSTICK_READ_WAIT_US 500
+
 // How long we should buffer input data before processing it
-// 1000 us should be enough to capture at least 80 words of data
-#define SYSTICK_READ_TIMEOUT_US 1000
+#define SYSTICK_READ_TIMEOUT_US 1500
 
 // Maximum number of input states (uint32) we can buffer within SYSTICK_READ_TIMEOUT_US
 // 8 kiB should be enough to capture at least 80 words of data and take up ~13% of RAM

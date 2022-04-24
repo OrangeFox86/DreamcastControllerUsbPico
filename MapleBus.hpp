@@ -73,8 +73,8 @@ class MapleBus
         // Number of clocking cycles we wait to confirm line is neutral before taking control
         static const uint32_t OPEN_LINE_CHECK_CYCLES = (INT_DIVIDE_CEILING(OPEN_LINE_CHECK_TIME_NS, SYSTICK_WRITE_PERIOD_NS));
         // Same stuff, but for read clocking
-        static const uint32_t CPU_TICKS_PER_READ_PERIOD = (SYSTICK_READ_TIMEOUT_US * CPU_FREQ_MHZ);
-        static const uint32_t SYSTICK_READ_RELOAD_VALUE = (CPU_TICKS_PER_READ_PERIOD - 1);
+        static const uint32_t SYSTICK_READ_WAIT_RELOAD_VALUE = (SYSTICK_READ_WAIT_US * CPU_FREQ_MHZ - 1);
+        static const uint32_t SYSTICK_READ_RELOAD_VALUE = (SYSTICK_READ_TIMEOUT_US * CPU_FREQ_MHZ - 1);
 };
 
 #endif // __MAPLE_BUS_H__

@@ -233,14 +233,35 @@ bool MapleBus::read(uint32_t* words, uint32_t& len)
     uint32_t* pReadsEnd = readBuffer + READ_BUFFER_SIZE;
     uint32_t read = 0;
 
-    // Make sure the clock is turned on and set for reading
-    systick_hw->csr = (M0PLUS_SYST_CSR_CLKSOURCE_BITS | M0PLUS_SYST_CSR_ENABLE_BITS);
-    systick_hw->rvr = SYSTICK_READ_RELOAD_VALUE;
-    systick_hw->cvr = 0;
-    (void)systick_hw->csr; // not necessary, but it makes me happy
+    if ((sio_hw->gpio_in & mMaskAB) != mMaskAB)
+    {
+        // Line is not neutral on entry
+        return false;
+    }
 
-    // There's barely enough time to read
-    // Just 5 more nops in this loop will cause it to fail much more frequently
+    // Make sure the clock is turned on and set for read wait timeout
+    systick_hw->csr = (M0PLUS_SYST_CSR_CLKSOURCE_BITS | M0PLUS_SYST_CSR_ENABLE_BITS);
+    systick_hw->rvr = SYSTICK_READ_WAIT_RELOAD_VALUE;
+    systick_hw->cvr = 0; // loads SYSTICK_READ_WAIT_RELOAD_VALUE
+    // Next reload value
+    systick_hw->rvr = SYSTICK_READ_RELOAD_VALUE;
+
+    // Wait for something to pull the line low or timeout
+    while((sio_hw->gpio_in & mMaskAB) == mMaskAB)
+    {
+        if (systick_hw->csr & M0PLUS_SYST_CSR_COUNTFLAG_BITS)
+        {
+            // timeout
+            return false;
+        }
+    }
+
+    // Reset clock (loads SYSTICK_READ_RELOAD_VALUE)
+    systick_hw->cvr = 0;
+
+    // There's barely enough time to read!
+    // This will work reliably with 4 added nops in the loop, but the 5th added nop will cause it
+    // to fail much more frequently. No extra processing should be done here.
     while(true)
     {
         // No masking done here for simplicity. As a result, no other input operations may exist on
