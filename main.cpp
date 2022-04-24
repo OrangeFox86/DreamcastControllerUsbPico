@@ -28,6 +28,9 @@ int main()
     gpio_set_dir_out_masked(1<<PICO_DEFAULT_LED_PIN);
     gpio_xor_mask(1<<PICO_DEFAULT_LED_PIN);
 
+    gpio_init(13);
+    gpio_set_dir_out_masked(1<<13);
+
     // The one bus on pins 14 and 15
     MapleBus busP1(14, 15, 0);
 
@@ -41,7 +44,7 @@ int main()
 
         uint32_t words[256];
         uint32_t len = (sizeof(words) / sizeof(words[0]));
-        bool success = busP1.read(words, len, 1000);
+        bool success = busP1.read(words, len);
 
         if (success)
         {
