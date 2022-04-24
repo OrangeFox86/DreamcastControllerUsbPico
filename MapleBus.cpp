@@ -221,14 +221,16 @@ bool MapleBus::write(uint8_t command, uint8_t recipientAddr, uint32_t* words, ui
     return rv;
 }
 
+// Storage used for buffering read states from GPIO inputs
+static uint32_t readBuffer[READ_BUFFER_SIZE];
+
 // Since this will block until complete anyway, it's faster to poll than it is to rely on
 // interrupt with all the delays associated with that.
 bool MapleBus::read(uint32_t* words, uint32_t& len)
 {
     uint32_t lastRead = mMaskAB;
-    uint32_t reads[1024 * 4];
-    uint32_t* pReads = reads;
-    uint32_t* pReadsEnd = reads + (sizeof(reads) / sizeof(reads[0]));
+    uint32_t* pReads = readBuffer;
+    uint32_t* pReadsEnd = readBuffer + READ_BUFFER_SIZE;
     uint32_t read = 0;
 
     // Make sure the clock is turned on and set for reading
@@ -252,6 +254,7 @@ bool MapleBus::read(uint32_t* words, uint32_t& len)
         }
 
         // If systick overflows, we're done reading
+        // This needs to be done in "else if" in order to speed things up a bit
         else if (systick_hw->csr & M0PLUS_SYST_CSR_COUNTFLAG_BITS)
         {
             break;
@@ -260,7 +263,7 @@ bool MapleBus::read(uint32_t* words, uint32_t& len)
 
     // Concatenate and reset pointer
     pReadsEnd = pReads;
-    pReads = reads;
+    pReads = readBuffer;
 
     uint8_t bitMask = 0x80;
     uint8_t byte = 0;

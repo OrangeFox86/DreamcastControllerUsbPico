@@ -15,6 +15,11 @@
 #define OPEN_LINE_CHECK_TIME_NS 1500
 
 // How long we should buffer input data before processing it
+// 1000 us should be enough to capture at least 80 words of data
 #define SYSTICK_READ_TIMEOUT_US 1000
+
+// Maximum number of input states (uint32) we can buffer within SYSTICK_READ_TIMEOUT_US
+// 8 kiB should be enough to capture at least 80 words of data and take up ~13% of RAM
+#define READ_BUFFER_SIZE (1024 * 8)
 
 #endif // __CONFIGURATION_H__
