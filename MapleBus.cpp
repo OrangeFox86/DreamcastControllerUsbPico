@@ -226,7 +226,7 @@ static uint32_t readBuffer[READ_BUFFER_SIZE];
 
 // Since this will block until complete anyway, it's faster to poll than it is to rely on
 // interrupt with all the delays associated with that.
-bool MapleBus::read(uint32_t* words, uint32_t& len)
+bool MapleBus::read(uint32_t* words, uint32_t& len, uint32_t waitTimeoutUs, uint32_t readTimeoutUs)
 {
     uint32_t lastRead = mMaskAB;
     uint32_t* pReads = readBuffer;
@@ -241,10 +241,10 @@ bool MapleBus::read(uint32_t* words, uint32_t& len)
 
     // Make sure the clock is turned on and set for read wait timeout
     systick_hw->csr = (M0PLUS_SYST_CSR_CLKSOURCE_BITS | M0PLUS_SYST_CSR_ENABLE_BITS);
-    systick_hw->rvr = SYSTICK_READ_WAIT_RELOAD_VALUE;
-    systick_hw->cvr = 0; // loads SYSTICK_READ_WAIT_RELOAD_VALUE
+    systick_hw->rvr = (waitTimeoutUs * CPU_FREQ_MHZ - 1);
+    systick_hw->cvr = 0; // loads wait timeout
     // Next reload value
-    systick_hw->rvr = SYSTICK_READ_RELOAD_VALUE;
+    systick_hw->rvr = (readTimeoutUs * CPU_FREQ_MHZ - 1);
 
     // Wait for something to pull the line low or timeout
     while((sio_hw->gpio_in & mMaskAB) == mMaskAB)
@@ -256,7 +256,7 @@ bool MapleBus::read(uint32_t* words, uint32_t& len)
         }
     }
 
-    // Reset clock (loads SYSTICK_READ_RELOAD_VALUE)
+    // Reset clock (loads read timeout)
     systick_hw->cvr = 0;
 
     // There's barely enough time to read!

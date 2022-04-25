@@ -34,7 +34,10 @@ class MapleBus
     public:
         MapleBus(uint32_t pinA, uint32_t pinB, uint8_t senderAddr);
         bool write(uint8_t command, uint8_t recipientAddr, uint32_t* words, uint8_t len);
-        bool read(uint32_t* words, uint32_t& len);
+        bool read(uint32_t* words,
+                  uint32_t& len,
+                  uint32_t waitTimeoutUs = DEFAULT_SYSTICK_READ_WAIT_US,
+                  uint32_t readTimeoutUs = DEFAULT_SYSTICK_READ_TIMEOUT_US);
 
 
     private:
@@ -72,9 +75,6 @@ class MapleBus
         static const uint32_t SYSTICK_WRITE_PERIOD_NS = ((SYSTICK_WRITE_RELOAD_VALUE + 1) * (1000.0 / CPU_FREQ_MHZ) + 0.5);
         // Number of clocking cycles we wait to confirm line is neutral before taking control
         static const uint32_t OPEN_LINE_CHECK_CYCLES = (INT_DIVIDE_CEILING(OPEN_LINE_CHECK_TIME_NS, SYSTICK_WRITE_PERIOD_NS));
-        // Same stuff, but for read clocking
-        static const uint32_t SYSTICK_READ_WAIT_RELOAD_VALUE = (SYSTICK_READ_WAIT_US * CPU_FREQ_MHZ - 1);
-        static const uint32_t SYSTICK_READ_RELOAD_VALUE = (SYSTICK_READ_TIMEOUT_US * CPU_FREQ_MHZ - 1);
 };
 
 #endif // __MAPLE_BUS_H__
