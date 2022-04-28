@@ -1,0 +1,81 @@
+
+; NOTE: It is up to the program to ensure open line before activating this
+
+.program maple_out
+.side_set 2 opt
+
+.define public MASK_A 0x1
+.define public MASK_B 0x2
+.define public MASK_AB 0x3
+
+; must be even - minimum number of ticks per edge
+.define public TICKS_PER_CLOCK 4
+.define public HALF_TICKS (TICKS_PER_CLOCK / 2)
+
+.wrap_target
+
+; Stalls until first word; first word is how many bits this will send (better be divisible by 8)
+out x, 32 side MASK_AB
+
+; send out the start sequence
+start_sequence:
+set y, 3 side MASK_AB
+
+start_b_toggle_loop:
+set pindirs MASK_AB side MASK_B [TICKS_PER_CLOCK - 1]
+nop side 0 [TICKS_PER_CLOCK - 2]
+jmp y-- start_b_toggle_loop
+
+out y, 1 side MASK_B [TICKS_PER_CLOCK - 1]
+jmp x--, clock_b_data_a_continue side MASK_AB [HALF_TICKS - 1] ; to decrement x by 1 and also put AB high for a while
+
+
+clock_b_data_a_continue:
+jmp !y clock_a_data_b_zero
+; else: fall through to clock_a_data_b_one
+
+; data
+; x scratch register contains how many bits to send
+; y scratch register contains the current bit
+clock_a_data_b_one:
+out y, 1 side MASK_A [HALF_TICKS - 1]
+nop side MASK_AB [HALF_TICKS - 1]
+jmp x-- clock_a_data_b_continue side MASK_B
+; jmp end_sequence ; should never reach here anyway (saves an instruction)
+
+clock_a_data_b_zero:
+out y, 1 side MASK_A [TICKS_PER_CLOCK - 1]
+jmp x-- clock_a_data_b_continue side 0 ; just need to decrement x
+; jmp end_sequence ; should never reach here anyway (saves an instruction)
+
+clock_a_data_b_continue:
+jmp !y clock_b_data_a_zero
+; else: fall through to clock_b_data_a_one
+
+clock_b_data_a_one:
+out y, 1 side MASK_B [HALF_TICKS - 1]
+nop side MASK_AB [HALF_TICKS - 1]
+jmp x-- clock_b_data_a_continue side MASK_A
+jmp end_sequence
+
+clock_b_data_a_zero:
+out y, 1 side MASK_B [TICKS_PER_CLOCK - 1]
+jmp x-- clock_b_data_a_continue side 0
+; Else: fall through to end sequence
+
+; send out the end sequence
+end_sequence:
+nop side MASK_A [HALF_TICKS - 1]
+nop side MASK_AB [TICKS_PER_CLOCK - 1]
+nop side MASK_A [HALF_TICKS - 1]
+nop side 0 [TICKS_PER_CLOCK - 1]
+nop side MASK_A [TICKS_PER_CLOCK - 1]
+nop side 0 [TICKS_PER_CLOCK - 1]
+nop side MASK_A [HALF_TICKS - 1]
+nop side MASK_AB [TICKS_PER_CLOCK - 1]
+
+set pindirs 0
+
+irq wait 0
+
+.wrap
