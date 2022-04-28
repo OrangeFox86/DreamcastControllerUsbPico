@@ -7,6 +7,8 @@
 #include "hardware/structs/systick.h"
 #include "hardware/regs/m0plus.h"
 
+#include "maple.pio.h"
+
 #define CPU_FREQ_KHZ (CPU_FREQ_MHZ * 1000)
 
 void core1()

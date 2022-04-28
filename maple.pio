@@ -14,7 +14,8 @@
 
 .wrap_target
 
-; Stalls until first word; first word is how many bits this will send (better be divisible by 8)
+; Stalls until first word; first word is how many bits this will send
+; The following must be true to be true about x: (x - 8) % 32 == 0 && x >= 40
 out x, 32 side MASK_AB
 
 ; send out the start sequence
@@ -27,16 +28,17 @@ nop side 0 [TICKS_PER_CLOCK - 2]
 jmp y-- start_b_toggle_loop
 
 out y, 1 side MASK_B [TICKS_PER_CLOCK - 1]
-jmp x--, clock_b_data_a_continue side MASK_AB [HALF_TICKS - 1] ; to decrement x by 1 and also put AB high for a while
+nop side MASK_AB [HALF_TICKS - 1]
+jmp x--, clock_b_data_a_continue side MASK_A ; used to decrement x by 1 before continuing
 
-
-clock_b_data_a_continue:
-jmp !y clock_a_data_b_zero
-; else: fall through to clock_a_data_b_one
 
 ; data
 ; x scratch register contains how many bits to send
 ; y scratch register contains the current bit
+clock_b_data_a_continue:
+jmp !y clock_a_data_b_zero
+; else: fall through to clock_a_data_b_one
+
 clock_a_data_b_one:
 out y, 1 side MASK_A [HALF_TICKS - 1]
 nop side MASK_AB [HALF_TICKS - 1]
@@ -72,10 +74,12 @@ nop side 0 [TICKS_PER_CLOCK - 1]
 nop side MASK_A [TICKS_PER_CLOCK - 1]
 nop side 0 [TICKS_PER_CLOCK - 1]
 nop side MASK_A [HALF_TICKS - 1]
-nop side MASK_AB [TICKS_PER_CLOCK - 1]
+out y, 24 side MASK_AB [TICKS_PER_CLOCK - 1] ; last word only has crc byte to send; purge last 24 bits
 
+; Make pins input again in case someone else starts sending right away
 set pindirs 0
 
+; Wait for IRQ to be handled before continuing
 irq wait 0
 
 .wrap
