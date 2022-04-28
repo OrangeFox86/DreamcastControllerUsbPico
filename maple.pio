@@ -15,55 +15,62 @@
 .wrap_target
 
 ; Stalls until first word; first word is how many bits this will send
-; The following must be true to be true about x: (x - 8) % 32 == 0 && x >= 40
+; The following must be true about x: (x - 8) % 32 == 0 && x >= 40
 out x, 32 side MASK_AB
+
+
 
 ; send out the start sequence
 start_sequence:
-set y, 3 side MASK_AB
-
+; First, set pins as output and with A and B set HIGH
+set pindirs MASK_AB side MASK_AB [TICKS_PER_CLOCK - 1]
+; Bing A LOW for a cycle then toggle B LOW then HIGH 3 times
+set y, 3 side MASK_B [TICKS_PER_CLOCK - 1]
 start_b_toggle_loop:
-set pindirs MASK_AB side MASK_B [TICKS_PER_CLOCK - 1]
 nop side 0 [TICKS_PER_CLOCK - 2]
+nop side MASK_B [TICKS_PER_CLOCK - 1]
 jmp y-- start_b_toggle_loop
+; Bring A back HIGH while reading the first bit
+out y, 1 side MASK_AB [HALF_TICKS - 1]
+; Then bring B LOW, decrement x, and start reading data
+jmp x--, clock_a_data_b side MASK_A ; jmp only used to decrement x by 1 before continuing
 
-out y, 1 side MASK_B [TICKS_PER_CLOCK - 1]
-nop side MASK_AB [HALF_TICKS - 1]
-jmp x--, clock_b_data_a_continue side MASK_A ; used to decrement x by 1 before continuing
 
 
-; data
-; x scratch register contains how many bits to send
+; send out packet data
+; x scratch register contains how many bits left to send
 ; y scratch register contains the current bit
-clock_b_data_a_continue:
+clock_a_data_b:
 jmp !y clock_a_data_b_zero
 ; else: fall through to clock_a_data_b_one
 
 clock_a_data_b_one:
 out y, 1 side MASK_A [HALF_TICKS - 1]
 nop side MASK_AB [HALF_TICKS - 1]
-jmp x-- clock_a_data_b_continue side MASK_B
+jmp x-- clock_b_data_a side MASK_B
 ; jmp end_sequence ; should never reach here anyway (saves an instruction)
 
 clock_a_data_b_zero:
 out y, 1 side MASK_A [TICKS_PER_CLOCK - 1]
-jmp x-- clock_a_data_b_continue side 0 ; just need to decrement x
+jmp x-- clock_b_data_a side 0 ; just need to decrement x
 ; jmp end_sequence ; should never reach here anyway (saves an instruction)
 
-clock_a_data_b_continue:
+clock_b_data_a:
 jmp !y clock_b_data_a_zero
 ; else: fall through to clock_b_data_a_one
 
 clock_b_data_a_one:
 out y, 1 side MASK_B [HALF_TICKS - 1]
 nop side MASK_AB [HALF_TICKS - 1]
-jmp x-- clock_b_data_a_continue side MASK_A
+jmp x-- clock_a_data_b side MASK_A
 jmp end_sequence
 
 clock_b_data_a_zero:
 out y, 1 side MASK_B [TICKS_PER_CLOCK - 1]
-jmp x-- clock_b_data_a_continue side 0
+jmp x-- clock_a_data_b side 0
 ; Else: fall through to end sequence
+
+
 
 ; send out the end sequence
 end_sequence:
