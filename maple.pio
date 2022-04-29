@@ -1,5 +1,9 @@
 
-; NOTE: It is up to the program to ensure open line before activating this
+; NOTES:
+; - It is up to the program to ensure open line before activating this
+; - Since bytes are shifted out "to the left" in order to shift out the most significant bit of each
+;   byte first, the most significant byte comes out first too. This means byte order will need to be
+;   swapped before feeding into this.
 
 .program maple_out
 .side_set 2 opt
@@ -27,8 +31,8 @@ set pindirs MASK_AB side MASK_AB [TICKS_PER_CLOCK - 1]
 ; Bing A LOW for a cycle then toggle B LOW then HIGH 3 times
 set y, 3 side MASK_B [TICKS_PER_CLOCK - 1]
 start_b_toggle_loop:
-nop side 0 [TICKS_PER_CLOCK - 2]
-nop side MASK_B [TICKS_PER_CLOCK - 1]
+nop side 0 [TICKS_PER_CLOCK - 1]
+nop side MASK_B [TICKS_PER_CLOCK - 2]
 jmp y-- start_b_toggle_loop
 ; Bring A back HIGH while reading the first bit
 out y, 1 side MASK_AB [HALF_TICKS - 1]
@@ -76,11 +80,11 @@ jmp x-- clock_a_data_b side 0
 end_sequence:
 nop side MASK_A [HALF_TICKS - 1]
 nop side MASK_AB [TICKS_PER_CLOCK - 1]
-nop side MASK_A [HALF_TICKS - 1]
+nop side MASK_A [TICKS_PER_CLOCK - 1]
 nop side 0 [TICKS_PER_CLOCK - 1]
 nop side MASK_A [TICKS_PER_CLOCK - 1]
 nop side 0 [TICKS_PER_CLOCK - 1]
-nop side MASK_A [HALF_TICKS - 1]
+nop side MASK_A [TICKS_PER_CLOCK - 1]
 out y, 24 side MASK_AB [TICKS_PER_CLOCK - 1] ; last word only has crc byte to send; purge last 24 bits
 
 ; Make pins input again in case someone else starts sending right away
@@ -90,3 +94,45 @@ set pindirs 0
 irq wait 0
 
 .wrap
+
+% c-sdk {
+#include "hardware/gpio.h"
+static inline void pio_maple_out_init(
+    PIO pio, uint sm, uint prog_offs, uint sys_freq_khz, uint min_pulse_time_ns, uint pin_a)
+{
+    uint pin_b = pin_a + 1;
+    pio_sm_config c = maple_out_program_get_default_config(prog_offs);
+    sm_config_set_sideset_pins(&c, pin_a);
+    sm_config_set_set_pins(&c, pin_a, 2); // just for set pindirs
+
+    // Shift to left, autopull enabled, 32 bits at a time
+    sm_config_set_out_shift(&c, false, true, 32);
+
+    sm_config_set_clkdiv(
+        &c, (sys_freq_khz * min_pulse_time_ns) / maple_out_TICKS_PER_CLOCK / 1000000.0);
+
+    // Set this pin's GPIO function (connect PIO to the pad)
+    pio_gpio_init(pio, pin_a);
+    pio_gpio_init(pio, pin_b);
+    gpio_set_dir_in_masked((1 << pin_a) | (1 << pin_b));
+    gpio_set_pulls(pin_a, true, false);
+    gpio_set_pulls(pin_b, true, false);
+    // Pin direction starts as input
+    pio_sm_set_consecutive_pindirs(pio, sm, pin_a, 2, false);
+
+    // Load our configuration, and jump to the start of the program
+    pio_sm_init(pio, sm, prog_offs, &c);
+}
+
+static inline void pio_maple_out_start(PIO pio, uint sm)
+{
+    pio_sm_restart(pio, sm);
+    // Set the state machine running
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+static inline void pio_maple_out_stop(PIO pio, uint sm)
+{
+    pio_sm_set_enabled(pio, sm, false);
+}
+%}

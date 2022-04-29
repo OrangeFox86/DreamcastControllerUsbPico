@@ -8,6 +8,7 @@
 #include "hardware/regs/m0plus.h"
 
 #include "maple.pio.h"
+#include "hardware/pio.h"
 
 #define CPU_FREQ_KHZ (CPU_FREQ_MHZ * 1000)
 
@@ -30,52 +31,42 @@ int main()
     gpio_set_dir_out_masked(1<<PICO_DEFAULT_LED_PIN);
     gpio_xor_mask(1<<PICO_DEFAULT_LED_PIN);
 
-    gpio_init(13);
-    gpio_set_dir_out_masked(1<<13);
+    PIO pio = pio0;
+    uint offset = pio_add_program(pio, &maple_out_program);
+    uint sm = pio_claim_unused_sm(pio, true);
+    pio_maple_out_init(pio, sm, offset, CPU_FREQ_KHZ, MIN_CLOCK_PERIOD_NS, 14);
+    pio_maple_out_start(pio, sm);
 
-    // The one bus on pins 14 and 15
-    MapleBus busP1(14, 15, 0);
+    sleep_ms(1000);
 
-    // Wait for steady state
-    sleep_ms(100);
-
-    while(true)
+    uint32_t dat[] = {0x00010203,0x04050607,0x08090A0B,0x0D0E0F10,0x20304050,0x60708090,0xA0B0C0D0,0xE0F0F1F2,0xF3F4F5F6,0xF7F8F9FA,0xFBFCFDFE,0xFF001122,0x33445566};
+    uint32_t crc = 0;
+    // Condition data (flip byte order) and compute crc
+    for (uint i = 0; i < sizeof(dat)/ sizeof(dat[0]); ++i)
     {
-        // Request info from controller
-        busP1.write(MapleBus::COMMAND_DEVICE_INFO_REQUEST, 0x20, NULL, 0);
-
-        uint32_t words[256];
-        uint32_t len = (sizeof(words) / sizeof(words[0]));
-        bool success = busP1.read(words, len);
-
-        if (success)
+        uint32_t word = 0;
+        const uint8_t* src = reinterpret_cast<uint8_t*>(&dat[i]);
+        uint8_t* dst = reinterpret_cast<uint8_t*>(&word) + 3;
+        for (uint j = 0; j < 4; ++j, ++src, --dst)
         {
-            gpio_xor_mask(1<<PICO_DEFAULT_LED_PIN);
-            if (words[0] & 0x00000100)
-            {
-                // memory unit - get its info
-                busP1.write(MapleBus::COMMAND_DEVICE_INFO_REQUEST, 0x01, NULL, 0);
-                success = busP1.read(words, len, DEFAULT_SYSTICK_READ_WAIT_US, 2000);
-                if (success)
-                {
-                    // Write a little VMU icon
-                    uint32_t words1[] = {
-                        0x00000004, 0x00000000, 0x0000FFFF, 0x00000003, 0x8001C000, 0x00060000, 0x6000000C,
-                        0x00003000, 0x0008000C, 0x10000009, 0xDC0C1000, 0x0009DC3F, 0x10000009, 0xDC3F1000,
-                        0x0008000C, 0x10000008, 0x360C1000, 0x00083600, 0x10000008, 0x00001000, 0x00080000,
-                        0x10000008, 0x7FFE1000, 0x0008FFFF, 0x10000008, 0xFFFF1000, 0x0008FFFF, 0x10000008,
-                        0xFFFF1000, 0x0008FFFF, 0x10000008, 0xFFFF1000, 0x0008FFFF, 0x10000008, 0xFFFF1000,
-                        0x0008FFFF, 0x10000008, 0xFFFF1000, 0x0008FFFF, 0x10000008, 0xFFFF1000, 0x0008FFFF,
-                        0x10000008, 0x7FFE1000, 0x000C0000, 0x30000006, 0x00006000, 0x00038001, 0xC0000000,
-                        0xFFFF0000
-                    };
-                    busP1.write(MapleBus::COMMAND_BLOCK_WRITE, 0x01, words1, sizeof(words1) / sizeof(words1[0]));
-                }
-            }
+            *dst = *src;
+            crc ^= *src;
         }
-
-        sleep_ms(1000);
+        dat[i] = word;
     }
+    // The crc byte needs to be shifted to the upper byte of the uint32
+    crc = crc << 24;
+
+    // Send to FIFO!
+    // First word is how many bits are going out
+    pio_sm_put_blocking(pio, sm, sizeof(dat) * 8 + 8);
+    for (uint i = 0; i < sizeof(dat)/ sizeof(dat[0]); ++i)
+    {
+        pio_sm_put_blocking(pio, sm, dat[i]);
+    }
+    pio_sm_put_blocking(pio, sm, crc);
+
+    gpio_xor_mask(1<<PICO_DEFAULT_LED_PIN);
 }
 
 
