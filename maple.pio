@@ -35,7 +35,7 @@ nop side 0 [TICKS_PER_CLOCK - 1]
 nop side MASK_B [TICKS_PER_CLOCK - 2]
 jmp y-- start_b_toggle_loop
 ; Bring A back HIGH while reading the first bit
-out y, 1 side MASK_AB [HALF_TICKS - 1]
+out y, 1 side MASK_AB [HALF_TICKS]
 ; Then bring B LOW, decrement x, and start reading data
 jmp x--, clock_a_data_b side MASK_A ; jmp only used to decrement x by 1 before continuing
 
