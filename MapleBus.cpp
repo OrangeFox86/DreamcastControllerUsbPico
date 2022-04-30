@@ -45,8 +45,8 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
                pio_claim_unused_sm(PIO_IN, true),
                pio_maple_in_get_config(getInProgramOffset(), mPinA))
 {
-    pio_maple_out_pin_init(mPioOutData.pio, mPioOutData.smIdx, mPinA);
-    pio_maple_in_pin_init(mPioOutData.pio, mPioOutData.smIdx, mPinA);
+    pio_maple_out_pin_init(mPioOutData.pio, mPioOutData.smIdx, mPioOutData.programOffset, mPioOutData.config, mPinA);
+    pio_maple_in_pin_init(mPioInData.pio, mPioInData.smIdx, mPioInData.programOffset, mPioInData.config, mPinA);
 }
 
 bool MapleBus::writeInit()
@@ -63,7 +63,7 @@ bool MapleBus::writeInit()
         }
     } while (time_us_64() < targetTime);
 
-    pio_maple_out_start(mPioOutData.pio, mPioOutData.smIdx, mPioOutData.programOffset, mPioOutData.config, mPinA);
+    pio_maple_out_start(mPioOutData.pio, mPioOutData.smIdx, mPinA);
 
     return true;
 }

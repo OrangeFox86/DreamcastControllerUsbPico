@@ -118,7 +118,7 @@ static inline pio_sm_config pio_maple_out_get_config(
     return c;
 }
 
-static inline void pio_maple_out_pin_init(PIO pio, uint sm, uint pin_a)
+static inline void pio_maple_out_pin_init(PIO pio, uint sm, uint prog_offs, const pio_sm_config &c, uint pin_a)
 {
     // Initialize the two pins as inputs with pullups
     uint pin_b = pin_a + 1;
@@ -127,15 +127,18 @@ static inline void pio_maple_out_pin_init(PIO pio, uint sm, uint pin_a)
     gpio_set_pulls(pin_a + 1, true, false);
     // Pin direction starts as input
     pio_sm_set_consecutive_pindirs(pio, sm, pin_a, 2, false);
+    // Load our configuration, and jump to the start of the program
+    pio_sm_init(pio, sm, prog_offs, &c);
 }
 
-static inline void pio_maple_out_start(PIO pio, uint sm, uint prog_offs, const pio_sm_config &c, uint pin_a)
+static inline void pio_maple_out_start(PIO pio, uint sm, uint pin_a)
 {
     // Set this pin's GPIO function (connect PIO to the pad)
     pio_gpio_init(pio, pin_a);
     pio_gpio_init(pio, pin_a + 1);
-    // Load our configuration, and jump to the start of the program
-    pio_sm_init(pio, sm, prog_offs, &c);
+    // Reset pointers
+    pio_sm_clear_fifos(pio, sm);
+    pio_sm_restart(pio, sm);
     // Set the state machine running
     pio_sm_set_enabled(pio, sm, true);
 }
@@ -224,7 +227,7 @@ static inline pio_sm_config pio_maple_in_get_config(uint prog_offs, uint pin_a)
     return c;
 }
 
-static inline void pio_maple_in_pin_init(PIO pio, uint sm, uint pin_a)
+static inline void pio_maple_in_pin_init(PIO pio, uint sm, uint prog_offs, const pio_sm_config &c, uint pin_a)
 {
     // Initialize the two pins as inputs with pullups
     uint pin_b = pin_a + 1;
@@ -233,15 +236,18 @@ static inline void pio_maple_in_pin_init(PIO pio, uint sm, uint pin_a)
     gpio_set_pulls(pin_a + 1, true, false);
     // Pin direction starts as input
     pio_sm_set_consecutive_pindirs(pio, sm, pin_a, 2, false);
+    // Load our configuration, and jump to the start of the program
+    pio_sm_init(pio, sm, prog_offs, &c);
 }
 
-static inline void pio_maple_in_start(PIO pio, uint sm, uint prog_offs, const pio_sm_config &c, uint pin_a)
+static inline void pio_maple_in_start(PIO pio, uint sm, uint pin_a)
 {
     // Set this pin's GPIO function (connect PIO to the pad)
     pio_gpio_init(pio, pin_a);
     pio_gpio_init(pio, pin_a + 1);
-    // Load our configuration, and jump to the start of the program
-    pio_sm_init(pio, sm, prog_offs, &c);
+    // Reset pointers
+    pio_sm_clear_fifos(pio, sm);
+    pio_sm_restart(pio, sm);
     // Set the state machine running
     pio_sm_set_enabled(pio, sm, true);
 }
