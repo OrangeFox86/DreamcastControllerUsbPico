@@ -45,10 +45,8 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
                pio_claim_unused_sm(PIO_IN, true),
                pio_maple_in_get_config(getInProgramOffset(), mPinA))
 {
-    // Initialize the two pins as inputs with pullups
-    gpio_set_dir_in_masked(mMaskAB);
-    gpio_set_pulls(mPinA, true, false);
-    gpio_set_pulls(mPinB, true, false);
+    pio_maple_out_pin_init(mPioOutData.pio, mPioOutData.smIdx, mPinA);
+    pio_maple_in_pin_init(mPioOutData.pio, mPioOutData.smIdx, mPinA);
 }
 
 bool MapleBus::writeInit()

@@ -57,6 +57,7 @@ int main()
     gpio_set_dir_in_masked(1<<BUTTON_PIN);
     gpio_set_pulls(BUTTON_PIN, true, false);
 
+    // Used for debugging
     gpio_init(13);
     gpio_set_dir_out_masked(1<<13);
 
