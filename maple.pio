@@ -1,6 +1,6 @@
 
-; NOTES:
-; - It is up to the program to ensure open line before activating this
+; maple_out notes:
+; - It is up to the system to ensure open line before activating this (no overcurrent protection)
 ; - Since bytes are shifted out "to the left" in order to shift out the most significant bit of each
 ;   byte first, the most significant byte comes out first too. This means byte order will need to be
 ;   swapped before feeding into this.
@@ -13,10 +13,12 @@
 .define public MASK_AB 0x3
 
 ; must be even - minimum number of ticks per edge
-.define public TICKS_PER_CLOCK 4
-.define public HALF_TICKS (TICKS_PER_CLOCK / 2)
+; 3 bits are used for sideset, so 4 is the max here
+.define public FULL_TICKS 4
+.define public HALF_TICKS (FULL_TICKS / 2)
 
 .wrap_target
+maple_out_start:
 
 ; Stalls until first word; first word is how many bits this will send
 ; The following must be true about x: (x - 8) % 32 == 0 && x >= 40
@@ -27,12 +29,12 @@ out x, 32 side MASK_AB
 ; send out the start sequence
 start_sequence:
 ; First, set pins as output and with A and B set HIGH
-set pindirs MASK_AB side MASK_AB [TICKS_PER_CLOCK - 1]
+set pindirs MASK_AB side MASK_AB [FULL_TICKS - 1]
 ; Bing A LOW for a cycle then toggle B LOW then HIGH 3 times
-set y, 3 side MASK_B [TICKS_PER_CLOCK - 1]
+set y, 3 side MASK_B [FULL_TICKS - 1]
 start_b_toggle_loop:
-nop side 0 [TICKS_PER_CLOCK - 1]
-nop side MASK_B [TICKS_PER_CLOCK - 2]
+nop side 0 [FULL_TICKS - 1]
+nop side MASK_B [FULL_TICKS - 2]
 jmp y-- start_b_toggle_loop
 ; Bring A back HIGH while reading the first bit
 out y, 1 side MASK_AB [HALF_TICKS]
@@ -55,7 +57,7 @@ jmp x-- clock_b_data_a side MASK_B
 ; jmp end_sequence ; should never reach here anyway (saves an instruction)
 
 clock_a_data_b_zero:
-out y, 1 side MASK_A [TICKS_PER_CLOCK - 1]
+out y, 1 side MASK_A [FULL_TICKS - 1]
 jmp x-- clock_b_data_a side 0 ; just need to decrement x
 ; jmp end_sequence ; should never reach here anyway (saves an instruction)
 
@@ -70,7 +72,7 @@ jmp x-- clock_a_data_b side MASK_A
 jmp end_sequence
 
 clock_b_data_a_zero:
-out y, 1 side MASK_B [TICKS_PER_CLOCK - 1]
+out y, 1 side MASK_B [FULL_TICKS - 1]
 jmp x-- clock_a_data_b side 0
 ; Else: fall through to end sequence
 
@@ -79,28 +81,30 @@ jmp x-- clock_a_data_b side 0
 ; send out the end sequence
 end_sequence:
 nop side MASK_A [HALF_TICKS - 1]
-nop side MASK_AB [TICKS_PER_CLOCK - 1]
-nop side MASK_A [TICKS_PER_CLOCK - 1]
-nop side 0 [TICKS_PER_CLOCK - 1]
-nop side MASK_A [TICKS_PER_CLOCK - 1]
-nop side 0 [TICKS_PER_CLOCK - 1]
-nop side MASK_A [TICKS_PER_CLOCK - 1]
-out y, 24 side MASK_AB [TICKS_PER_CLOCK - 1] ; last word only has crc byte to send; purge last 24 bits
+nop side MASK_AB [FULL_TICKS - 1]
+nop side MASK_A [FULL_TICKS - 1]
+nop side 0 [FULL_TICKS - 1]
+nop side MASK_A [FULL_TICKS - 1]
+nop side 0 [FULL_TICKS - 1]
+nop side MASK_A [FULL_TICKS - 1]
+out y, 24 side MASK_AB [FULL_TICKS - 1] ; last word only has crc byte to send; purge last 24 bits into y
 
 ; Make pins input again in case someone else starts sending right away
 set pindirs 0
 
+; If the last 24 bits after the crc are 0, don't wait on IRQ
+jmp !y maple_out_start
+
 ; Wait for IRQ to be handled before continuing
-irq wait 0
+irq wait 0 rel
 
 .wrap
 
 % c-sdk {
 #include "hardware/gpio.h"
-static inline void pio_maple_out_init(
-    PIO pio, uint sm, uint prog_offs, uint sys_freq_khz, uint min_pulse_time_ns, uint pin_a)
+static inline pio_sm_config pio_maple_out_get_config(
+    uint prog_offs, uint sys_freq_khz, uint min_pulse_time_ns, uint pin_a)
 {
-    uint pin_b = pin_a + 1;
     pio_sm_config c = maple_out_program_get_default_config(prog_offs);
     sm_config_set_sideset_pins(&c, pin_a);
     sm_config_set_set_pins(&c, pin_a, 2); // just for set pindirs
@@ -109,8 +113,14 @@ static inline void pio_maple_out_init(
     sm_config_set_out_shift(&c, false, true, 32);
 
     sm_config_set_clkdiv(
-        &c, (sys_freq_khz * min_pulse_time_ns) / maple_out_TICKS_PER_CLOCK / 1000000.0);
+        &c, (sys_freq_khz * min_pulse_time_ns) / maple_out_FULL_TICKS / 1000000.0);
 
+    return c;
+}
+
+static inline void pio_maple_out_pin_init(PIO pio, uint sm, uint pin_a)
+{
+    uint pin_b = pin_a + 1;
     // Set this pin's GPIO function (connect PIO to the pad)
     pio_gpio_init(pio, pin_a);
     pio_gpio_init(pio, pin_b);
@@ -119,14 +129,12 @@ static inline void pio_maple_out_init(
     gpio_set_pulls(pin_b, true, false);
     // Pin direction starts as input
     pio_sm_set_consecutive_pindirs(pio, sm, pin_a, 2, false);
-
-    // Load our configuration, and jump to the start of the program
-    pio_sm_init(pio, sm, prog_offs, &c);
 }
 
-static inline void pio_maple_out_start(PIO pio, uint sm)
+static inline void pio_maple_out_start(PIO pio, uint sm, uint prog_offs, const pio_sm_config &c)
 {
-    pio_sm_restart(pio, sm);
+    // Load our configuration, and jump to the start of the program
+    pio_sm_init(pio, sm, prog_offs, &c);
     // Set the state machine running
     pio_sm_set_enabled(pio, sm, true);
 }
@@ -136,3 +144,110 @@ static inline void pio_maple_out_stop(PIO pio, uint sm)
     pio_sm_set_enabled(pio, sm, false);
 }
 %}
+
+.program maple_in
+
+.wrap_target
+
+; Represents A high and B low
+set y, 1
+
+; This is a simplified check for start sequence
+wait_start:
+; wait for A to be high
+wait 1 pin 0
+; wait for A to go low
+wait 0 pin 0
+; wait for A to go back high (B should toggle 4 times, but that is ignored)
+wait 1 pin 0
+; wait for B to go low
+wait 0 pin 1
+; ensure A is still high
+mov x, pins
+; try again if the expected state is not detected
+jmp x!=y wait_start
+
+data_loop:
+; wait for A to be high
+wait 1 pin 0
+
+; wait for B to be high or A go low
+end_detect_b_to_high:
+mov osr, pins ; copy pin values into output shift register
+out x 1
+jmp !x sample_b_from_osr ; if A went low before B went high, then sample B now
+out x 1
+jmp x-- end_detect_b_to_low ; if B went high, go to next end detect phase
+jmp end_detect_b_to_high ; otherwise, try again
+
+; Wait for B to go back low or A to go low
+end_detect_b_to_low:
+mov osr, pins ; copy pin values into output shift register
+out x 1
+jmp !x sample_b_from_osr ; if A went low before B went high, then sample B now
+out x 1
+jmp !x end_detected ; if B went low, go to next end detect phase
+jmp end_detect_b_to_low ; otherwise, try again
+
+sample_b_from_osr:
+in osr 1 ; shift in B value
+
+; wait for B to be high
+wait 1 pin 1
+; wait for B to be low
+wait 0 pin 1
+; shift in A value
+in pins 1
+
+; The full end sequence is not sampled for simplicity
+; Either end is actually there or there was a glitch (rely on len and CRC of packet data in that case)
+end_detected:
+push ; make sure the crc is pushed out
+; Wait for IRQ to be handled before continuing
+irq wait 0 rel
+
+% c-sdk {
+#include "hardware/gpio.h"
+static inline pio_sm_config pio_maple_in_get_config(uint prog_offs, uint pin_a)
+{
+    pio_sm_config c = maple_in_program_get_default_config(prog_offs);
+
+    // Shift to right, autopull disabled, 32 bits at a time
+    sm_config_set_out_shift(&c, true, false, 32);
+    // Shift to left, autopush enabled, 32 bits at a time
+    sm_config_set_in_shift(&c, false, true, 32);
+
+    // Sample as fast as possible
+    sm_config_set_clkdiv(&c, 1);
+
+    return c;
+}
+
+static inline void pio_maple_in_pin_init(PIO pio, uint sm, uint pin_a)
+{
+    uint pin_b = pin_a + 1;
+    // Set this pin's GPIO function (connect PIO to the pad)
+    pio_gpio_init(pio, pin_a);
+    pio_gpio_init(pio, pin_b);
+    gpio_set_dir_in_masked((1 << pin_a) | (1 << pin_b));
+    gpio_set_pulls(pin_a, true, false);
+    gpio_set_pulls(pin_b, true, false);
+    // Pin direction starts as input
+    pio_sm_set_consecutive_pindirs(pio, sm, pin_a, 2, false);
+}
+
+static inline void pio_maple_in_start(PIO pio, uint sm, uint prog_offs, const pio_sm_config &c)
+{
+    // Load our configuration, and jump to the start of the program
+    pio_sm_init(pio, sm, prog_offs, &c);
+    // Set the state machine running
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+static inline void pio_maple_in_stop(PIO pio, uint sm)
+{
+    pio_sm_set_enabled(pio, sm, false);
+}
+%}
+
+.wrap

@@ -3,6 +3,7 @@
 
 // Adjust the CPU clock frequency here (note: overclocking doesn't help - keep at 133 MHz or less)
 #define CPU_FREQ_MHZ 133
+#define CPU_FREQ_KHZ (CPU_FREQ_MHZ * 1000)
 
 // Adjust the minimum time between each edge here
 // 320 ns achieves 2 mbps, just as the dreamcast does
@@ -11,7 +12,7 @@
 // The minimum amount of time we check for an open line before taking control of it
 // This should be at least as long as the longest clock period of any device on the line.
 // Note: The Dreamcast controller has a period of about 500 ns.
-#define OPEN_LINE_CHECK_TIME_NS 1500
+#define OPEN_LINE_CHECK_TIME_US 2
 
 // Maximum amount of time to wait for something else to start writing to the bus
 #define DEFAULT_SYSTICK_READ_WAIT_US 500
