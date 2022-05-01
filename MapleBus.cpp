@@ -5,6 +5,7 @@
 #include "hardware/irq.h"
 #include "configuration.h"
 #include "maple.pio.h"
+#include "string.h"
 
 MapleBus* mapleWriteIsr[4] = {};
 MapleBus* mapleReadIsr[4] = {};
@@ -121,6 +122,12 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     mSmInIdx(pio_claim_unused_sm(PIO_IN, true)),
     mDmaWriteChannel(kDmaCount++),
     mDmaReadChannel(kDmaCount++),
+    mWriteBuffer(),
+    mReadBuffer(),
+    mLastValidRead(),
+    mLastValidReadLen(0),
+    mNewDataAvailable(false),
+    mReadUpdated(false),
     mWriteInProgress(false),
     mExpectingResponse(false),
     mReadInProgress(false),
@@ -135,32 +142,21 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
 
 inline void MapleBus::readIsr()
 {
-    killRead();
+    pio_maple_in_stop(PIO_IN, mSmInIdx);
+    mReadInProgress = false;
+    mReadUpdated = true;
 }
 
 inline void MapleBus::writeIsr()
 {
-    killWrite();
+    pio_maple_out_stop(PIO_OUT, mSmOutIdx);
     if (mExpectingResponse)
     {
         pio_maple_in_start(PIO_IN, mSmInIdx, mPinA);
         mProcKillTime = time_us_64() + MAPLE_READ_TIMEOUT_US;
         mReadInProgress = true;
     }
-}
-
-inline void MapleBus::killRead()
-{
-    pio_maple_in_stop(PIO_IN, mSmInIdx);
-    mReadInProgress = false;
-    dma_hw->abort = 1u << mDmaReadChannel;
-}
-
-inline void MapleBus::killWrite()
-{
-    pio_maple_out_stop(PIO_OUT, mSmOutIdx);
     mWriteInProgress = false;
-    dma_hw->abort = 1u << mDmaWriteChannel;
 }
 
 bool MapleBus::writeInit()
@@ -182,9 +178,11 @@ bool MapleBus::writeInit()
     return true;
 }
 
-bool MapleBus::write(uint32_t frameWord, uint32_t* words, uint8_t len, bool expectResponse)
+bool MapleBus::write(uint32_t frameWord, const uint32_t* payload, uint8_t len, bool expectResponse)
 {
     bool rv = false;
+
+    processEvents();
 
     if (!mWriteInProgress && !mReadInProgress)
     {
@@ -197,13 +195,15 @@ bool MapleBus::write(uint32_t frameWord, uint32_t* words, uint8_t len, bool expe
         swapByteOrder(mWriteBuffer[1], frameWord, crc);
         for (uint32_t i = 0; i < len; ++i)
         {
-            swapByteOrder(mWriteBuffer[i + 2], words[i], crc);
+            swapByteOrder(mWriteBuffer[i + 2], payload[i], crc);
         }
         // Last byte left shifted out is the CRC
         mWriteBuffer[len + 2] = crc << 24;
 
         if (writeInit())
         {
+            // Make sure previous DMA  instance is killed
+            dma_channel_abort(mDmaWriteChannel);
             // Setup DMA to automaticlly put data on the FIFO
             dma_channel_config c = dma_channel_get_default_config(mDmaWriteChannel);
             channel_config_set_read_increment(&c, true);
@@ -218,6 +218,12 @@ bool MapleBus::write(uint32_t frameWord, uint32_t* words, uint8_t len, bool expe
 
             if (expectResponse)
             {
+                // Flush the read buffer
+                updateLastValidReadBuffer();
+                // Clear out the read buffer for good measure
+                memset(mReadBuffer, 0, sizeof(mReadBuffer));
+                // Make sure previous DMA  instance is killed
+                dma_channel_abort(mDmaReadChannel);
                 // Setup DMA to automaticlly read data from the FIFO
                 dma_channel_config c = dma_channel_get_default_config(mDmaReadChannel);
                 channel_config_set_read_increment(&c, false);
@@ -243,18 +249,18 @@ bool MapleBus::write(uint32_t frameWord, uint32_t* words, uint8_t len, bool expe
     return rv;
 }
 
-bool MapleBus::write(uint32_t* words, uint8_t len, bool expectResponse)
+bool MapleBus::write(const uint32_t* words, uint8_t len, bool expectResponse)
 {
     return write(words[0], words + 1, len - 1, expectResponse);
 }
 
-bool MapleBus::write(uint8_t command, uint8_t recipientAddr, uint32_t* words, uint8_t len, bool expectResponse)
+bool MapleBus::write(uint8_t command, uint8_t recipientAddr, const uint32_t* payload, uint8_t len, bool expectResponse)
 {
     uint32_t frameWord = (len) | (mSenderAddr << 8) | (recipientAddr << 16) | (command << 24);
-    return write(frameWord, words, len, expectResponse);
+    return write(frameWord, payload, len, expectResponse);
 }
 
-void MapleBus::task()
+void MapleBus::processEvents()
 {
     if (mWriteInProgress || mReadInProgress)
     {
@@ -262,13 +268,58 @@ void MapleBus::task()
         {
             if (mWriteInProgress)
             {
-                killWrite();
+                pio_maple_out_stop(PIO_OUT, mSmOutIdx);
+                mWriteInProgress = false;
             }
             if (mReadInProgress)
             {
-                killRead();
+                pio_maple_in_stop(PIO_IN, mSmInIdx);
+                mReadInProgress = false;
             }
         }
     }
+}
+
+void MapleBus::updateLastValidReadBuffer()
+{
+    // Note: potential for race condition if somehow DMA got stalled, but I feel chances are remote
+    if (mReadUpdated)
+    {
+        mReadUpdated = false;
+        uint32_t buffer[256];
+        // The frame word always contains how many proceeding words there are [0,255]
+        uint32_t len = mReadBuffer[0] >> 24;
+        uint8_t crc = 0;
+        // Bytes are loaded to the left, but the first byte is actually the LSB.
+        // This means we need to byte swap (compute crc while we're at it)
+        for (uint32_t i = 0; i < len + 1; ++i)
+        {
+            swapByteOrder(buffer[i], mReadBuffer[i], crc);
+        }
+        // crc in the last word does not need to be byte swapped
+        // Data is only valid if the CRC is correct
+        if (crc == mReadBuffer[len + 1])
+        {
+            memcpy(mLastValidRead, buffer, (len + 1) * 4);
+            mLastValidReadLen = len + 1;
+            mNewDataAvailable = true;
+        }
+    }
+}
+
+const uint32_t* MapleBus::getReadData(uint32_t& len, bool& newData)
+{
+    updateLastValidReadBuffer();
+    if (mNewDataAvailable)
+    {
+        mNewDataAvailable = false;
+        newData = true;
+    }
+    else
+    {
+        newData = false;
+    }
+    len = mLastValidReadLen;
+    return mLastValidRead;
 }
 

@@ -36,19 +36,19 @@ class MapleBus
 
     public:
         MapleBus(uint32_t pinA, uint8_t senderAddr);
-        bool write(uint8_t command, uint8_t recipientAddr, uint32_t* words, uint8_t len, bool expectResponse);
-        bool write(uint32_t frameWord, uint32_t* words, uint8_t len, bool expectResponse);
-        bool write(uint32_t* words, uint8_t len, bool expectResponse);
-
-        void task();
+        bool write(uint8_t command, uint8_t recipientAddr, const uint32_t* payload, uint8_t len, bool expectResponse);
+        bool write(uint32_t frameWord, const uint32_t* payload, uint8_t len, bool expectResponse);
+        bool write(const uint32_t* words, uint8_t len, bool expectResponse);
 
         void readIsr();
         void writeIsr();
 
+        const uint32_t* getReadData(uint32_t& len, bool& newData);
+
     private:
         bool writeInit();
-        void killRead();
-        void killWrite();
+        void processEvents();
+        void updateLastValidReadBuffer();
         static inline void swapByteOrder(uint32_t& dest, uint32_t source, uint8_t& crc)
         {
             const uint8_t* src = reinterpret_cast<uint8_t*>(&source);
@@ -81,11 +81,19 @@ class MapleBus
         const uint mDmaWriteChannel;
         const uint mDmaReadChannel;
 
-        uint32_t mWriteBuffer[259];
-        uint32_t mReadBuffer[259];
-        bool mWriteInProgress;
+        // 256 + 2 extra words for bit count and CRC
+        uint32_t mWriteBuffer[258];
+        // 256 + 1 extra word for CRC
+        uint32_t mReadBuffer[257];
+        // Holds the last know valid read buffer
+        uint32_t mLastValidRead[256];
+        // Number of words, including the frame word
+        uint32_t mLastValidReadLen;
+        bool mNewDataAvailable;
+        volatile bool mReadUpdated;
+        volatile bool mWriteInProgress;
         bool mExpectingResponse;
-        bool mReadInProgress;
+        volatile bool mReadInProgress;
         uint64_t mProcKillTime;
 };
 

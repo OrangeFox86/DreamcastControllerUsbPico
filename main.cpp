@@ -66,7 +66,6 @@ int main()
     while(true)
     {
         waitButtonPress();
-        p1.task();
         if (p1.write(MapleBus::COMMAND_DEVICE_INFO_REQUEST, 0x20, NULL, 0, true))
         {
             for (uint i = 0; i < 5; ++i)
@@ -81,6 +80,16 @@ int main()
             gpio_put(PICO_DEFAULT_LED_PIN, true);
             sleep_ms(2000);
             gpio_put(PICO_DEFAULT_LED_PIN, false);
+        }
+
+        uint32_t len;
+        bool newData = false;
+        const uint32_t* dat = p1.getReadData(len, newData);
+        if (newData)
+        {
+            (void)dat; // do something with the data
+            gpio_put(PICO_DEFAULT_LED_PIN, true);
+            sleep_ms(2000);
         }
     }
 }
