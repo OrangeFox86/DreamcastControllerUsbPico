@@ -3,6 +3,7 @@
 
 #include "pico/stdlib.h"
 #include "hardware/structs/systick.h"
+#include "hardware/dma.h"
 #include "configuration.h"
 #include "utils.h"
 #include "maple.pio.h"
@@ -33,23 +34,14 @@ class MapleBus
             COMMAND_RESPONSE_FILE_ERROR = 0xFB
         };
 
-        struct PioData
-        {
-            PIO pio;
-            uint programOffset;
-            uint smIdx;
-            pio_sm_config config;
-
-            PioData(PIO pio, uint programOffset, uint smIdx, pio_sm_config config) :
-                pio(pio), programOffset(programOffset), smIdx(smIdx), config(config)
-            {}
-        };
-
     public:
         MapleBus(uint32_t pinA, uint8_t senderAddr);
         bool write(uint8_t command, uint8_t recipientAddr, uint32_t* words, uint8_t len);
         bool write(uint32_t frameWord, uint32_t* words, uint8_t len);
         bool write(uint32_t* words, uint8_t len);
+
+        void readIsr();
+        void writeIsr();
 
     private:
         bool writeInit();
@@ -65,9 +57,14 @@ class MapleBus
         }
         static uint getOutProgramOffset();
         static uint getInProgramOffset();
+        static void initIsrs();
 
+    public:
         static pio_hw_t* const PIO_OUT;
         static pio_hw_t* const PIO_IN;
+
+    private:
+        static uint kDmaCount;
 
         const uint32_t mPinA;
         const uint32_t mPinB;
@@ -75,10 +72,13 @@ class MapleBus
         const uint32_t mMaskB;
         const uint32_t mMaskAB;
         const uint8_t mSenderAddr;
-        const PioData mPioOutData;
-        const PioData mPioInData;
+        const uint mSmOutIdx;
+        const uint mSmInIdx;
+        const uint mDmaChannel;
 
-        uint32_t mBuffer[258];
+        uint32_t mBuffer[259];
+        bool mWriteInProgress;
+        bool mReadInProgress;
 };
 
 #endif // __MAPLE_BUS_H__

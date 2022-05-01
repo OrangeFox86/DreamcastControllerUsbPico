@@ -23,7 +23,7 @@ add_executable(DreamcastControllerUsbPico
 )
 pico_generate_pio_header(DreamcastControllerUsbPico ${CMAKE_CURRENT_LIST_DIR}/maple.pio)
 pico_add_extra_outputs(DreamcastControllerUsbPico)
-target_link_libraries(DreamcastControllerUsbPico PRIVATE pico_stdlib pico_multicore hardware_pio)
+target_link_libraries(DreamcastControllerUsbPico PRIVATE pico_stdlib pico_multicore hardware_pio hardware_dma)
 
 target_include_directories(DreamcastControllerUsbPico PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 

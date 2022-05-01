@@ -92,9 +92,6 @@ out y, 24 side MASK_AB [FULL_TICKS - 1] ; last word only has crc byte to send; p
 ; Make pins input again in case someone else starts sending right away
 set pindirs 0
 
-; If the last 24 bits after the crc are 0, don't wait on IRQ
-jmp !y maple_out_start
-
 ; Wait for IRQ to be handled before continuing
 irq wait 0 rel
 
@@ -118,7 +115,8 @@ static inline pio_sm_config pio_maple_out_get_config(
     return c;
 }
 
-static inline void pio_maple_out_pin_init(PIO pio, uint sm, uint prog_offs, const pio_sm_config &c, uint pin_a)
+static inline void pio_maple_out_pin_init(
+    PIO pio, uint sm, uint prog_offs, uint sys_freq_khz, uint min_pulse_time_ns, uint pin_a)
 {
     // Initialize the two pins as inputs with pullups
     uint pin_b = pin_a + 1;
@@ -128,6 +126,7 @@ static inline void pio_maple_out_pin_init(PIO pio, uint sm, uint prog_offs, cons
     // Pin direction starts as input
     pio_sm_set_consecutive_pindirs(pio, sm, pin_a, 2, false);
     // Load our configuration, and jump to the start of the program
+    pio_sm_config c = pio_maple_out_get_config(prog_offs, sys_freq_khz, min_pulse_time_ns, pin_a);
     pio_sm_init(pio, sm, prog_offs, &c);
 }
 
@@ -227,7 +226,7 @@ static inline pio_sm_config pio_maple_in_get_config(uint prog_offs, uint pin_a)
     return c;
 }
 
-static inline void pio_maple_in_pin_init(PIO pio, uint sm, uint prog_offs, const pio_sm_config &c, uint pin_a)
+static inline void pio_maple_in_pin_init(PIO pio, uint sm, uint prog_offs, uint pin_a)
 {
     // Initialize the two pins as inputs with pullups
     uint pin_b = pin_a + 1;
@@ -237,6 +236,7 @@ static inline void pio_maple_in_pin_init(PIO pio, uint sm, uint prog_offs, const
     // Pin direction starts as input
     pio_sm_set_consecutive_pindirs(pio, sm, pin_a, 2, false);
     // Load our configuration, and jump to the start of the program
+    pio_sm_config c = pio_maple_in_get_config(prog_offs, pin_a);
     pio_sm_init(pio, sm, prog_offs, &c);
 }
 

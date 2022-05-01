@@ -2,12 +2,72 @@
 #include "pico/stdlib.h"
 #include "hardware/structs/systick.h"
 #include "hardware/regs/m0plus.h"
+#include "hardware/irq.h"
 #include "configuration.h"
 #include "maple.pio.h"
 
+MapleBus* mapleWriteIsr[4] = {};
+MapleBus* mapleReadIsr[4] = {};
+
+extern "C"
+{
+void maple_write_isr0(void)
+{
+    if (MapleBus::PIO_OUT->irq & (0x01))
+    {
+        mapleWriteIsr[0]->writeIsr();
+        hw_set_bits(&MapleBus::PIO_OUT->irq, 0x01);
+    }
+    if (MapleBus::PIO_OUT->irq & (0x04))
+    {
+        mapleWriteIsr[2]->writeIsr();
+        hw_set_bits(&MapleBus::PIO_OUT->irq, 0x04);
+    }
+}
+void maple_write_isr1(void)
+{
+    if (MapleBus::PIO_OUT->irq & (0x02))
+    {
+        mapleWriteIsr[1]->writeIsr();
+        hw_set_bits(&MapleBus::PIO_OUT->irq, 0x02);
+    }
+    if (MapleBus::PIO_OUT->irq & (0x08))
+    {
+        mapleWriteIsr[3]->writeIsr();
+        hw_set_bits(&MapleBus::PIO_OUT->irq, 0x08);
+    }
+}
+void maple_read_isr0(void)
+{
+    if (MapleBus::PIO_IN->irq & (0x01))
+    {
+        mapleReadIsr[0]->readIsr();
+        hw_set_bits(&MapleBus::PIO_IN->irq, 0x01);
+    }
+    if (MapleBus::PIO_IN->irq & (0x04))
+    {
+        mapleReadIsr[2]->readIsr();
+        hw_set_bits(&MapleBus::PIO_IN->irq, 0x04);
+    }
+}
+void maple_read_isr1(void)
+{
+    if (MapleBus::PIO_IN->irq & (0x02))
+    {
+        mapleReadIsr[1]->readIsr();
+        hw_set_bits(&MapleBus::PIO_IN->irq, 0x02);
+    }
+    if (MapleBus::PIO_IN->irq & (0x08))
+    {
+        mapleReadIsr[3]->readIsr();
+        hw_set_bits(&MapleBus::PIO_IN->irq, 0x08);
+    }
+}
+}
+
 pio_hw_t* const MapleBus::PIO_OUT = pio0;
 pio_hw_t* const MapleBus::PIO_IN = pio1;
-
+uint MapleBus::kDmaCount = 0;
 
 uint MapleBus::getOutProgramOffset()
 {
@@ -29,6 +89,27 @@ uint MapleBus::getInProgramOffset()
     return (uint)offset;
 }
 
+void MapleBus::initIsrs()
+{
+    irq_set_exclusive_handler(PIO0_IRQ_0, maple_write_isr0);
+    irq_set_exclusive_handler(PIO0_IRQ_1, maple_write_isr1);
+    irq_set_enabled(PIO0_IRQ_0, true);
+    irq_set_enabled(PIO0_IRQ_1, true);
+    pio_set_irq0_source_enabled(PIO_OUT, pis_interrupt0, true);
+    pio_set_irq0_source_enabled(PIO_OUT, pis_interrupt1, true);
+    pio_set_irq0_source_enabled(PIO_OUT, pis_interrupt2, true);
+    pio_set_irq0_source_enabled(PIO_OUT, pis_interrupt3, true);
+
+    irq_set_exclusive_handler(PIO1_IRQ_0, maple_read_isr0);
+    irq_set_exclusive_handler(PIO1_IRQ_1, maple_read_isr1);
+    irq_set_enabled(PIO1_IRQ_0, true);
+    irq_set_enabled(PIO1_IRQ_1, true);
+    pio_set_irq0_source_enabled(PIO_IN, pis_interrupt0, true);
+    pio_set_irq0_source_enabled(PIO_IN, pis_interrupt1, true);
+    pio_set_irq0_source_enabled(PIO_IN, pis_interrupt2, true);
+    pio_set_irq0_source_enabled(PIO_IN, pis_interrupt3, true);
+}
+
 MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     mPinA(pinA),
     mPinB(pinA + 1),
@@ -36,17 +117,29 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     mMaskB(1 << mPinB),
     mMaskAB(mMaskA | mMaskB),
     mSenderAddr(senderAddr),
-    mPioOutData(PIO_OUT,
-                getOutProgramOffset(),
-                pio_claim_unused_sm(PIO_OUT, true),
-                pio_maple_out_get_config(getOutProgramOffset(), CPU_FREQ_KHZ, MIN_CLOCK_PERIOD_NS, mPinA)),
-    mPioInData(PIO_IN,
-               getInProgramOffset(),
-               pio_claim_unused_sm(PIO_IN, true),
-               pio_maple_in_get_config(getInProgramOffset(), mPinA))
+    mSmOutIdx(pio_claim_unused_sm(PIO_OUT, true)),
+    mSmInIdx(pio_claim_unused_sm(PIO_IN, true)),
+    mDmaChannel(kDmaCount++),
+    mWriteInProgress(false),
+    mReadInProgress(false)
 {
-    pio_maple_out_pin_init(mPioOutData.pio, mPioOutData.smIdx, mPioOutData.programOffset, mPioOutData.config, mPinA);
-    pio_maple_in_pin_init(mPioInData.pio, mPioInData.smIdx, mPioInData.programOffset, mPioInData.config, mPinA);
+    pio_maple_out_pin_init(PIO_OUT, mSmOutIdx, getOutProgramOffset(), CPU_FREQ_KHZ, MIN_CLOCK_PERIOD_NS, mPinA);
+    pio_maple_in_pin_init(PIO_IN, mSmInIdx, getInProgramOffset(), mPinA);
+    mapleWriteIsr[mSmOutIdx] = this;
+    mapleReadIsr[mSmInIdx] = this;
+    initIsrs();
+}
+
+inline void MapleBus::readIsr()
+{
+    pio_maple_in_stop(PIO_IN, mSmInIdx);
+    mReadInProgress = false;
+}
+
+inline void MapleBus::writeIsr()
+{
+    pio_maple_out_stop(PIO_OUT, mSmOutIdx);
+    mWriteInProgress = false;
 }
 
 bool MapleBus::writeInit()
@@ -63,7 +156,7 @@ bool MapleBus::writeInit()
         }
     } while (time_us_64() < targetTime);
 
-    pio_maple_out_start(mPioOutData.pio, mPioOutData.smIdx, mPinA);
+    pio_maple_out_start(PIO_OUT, mSmOutIdx, mPinA);
 
     return true;
 }
@@ -72,31 +165,36 @@ bool MapleBus::write(uint32_t frameWord, uint32_t* words, uint8_t len)
 {
     bool rv = false;
 
-    uint8_t crc = 0;
-    swapByteOrder(mBuffer[0], frameWord, crc);
-    for (uint32_t i = 0; i < len; ++i)
+    if (!mWriteInProgress)
     {
-        swapByteOrder(mBuffer[i + 1], words[i], crc);
-    }
-    mBuffer[len + 1] = crc << 24;
-
-    if (writeInit())
-    {
-        // Send to FIFO!
-        // First word is how many bits are going out
-        uint32_t numBits = (len * 4 + 5) * 8;
-        pio_sm_put_blocking(mPioOutData.pio, mPioOutData.smIdx, numBits);
-        for (int i = 0; i < len + 2; ++i)
+        // First 32 bits sent to the state machine is how many bits to output.
+        mBuffer[0] = (len * 4 + 5) * 8;
+        // The PIO state machine reads from "left to right" to achieve the right bit order, but the data
+        // out needs to be little endian. Therefore, the data bytes needs to be swapped. Might as well
+        // Compute the CRC while we're at it.
+        uint8_t crc = 0;
+        swapByteOrder(mBuffer[1], frameWord, crc);
+        for (uint32_t i = 0; i < len; ++i)
         {
-            pio_sm_put_blocking(mPioOutData.pio, mPioOutData.smIdx, mBuffer[i]);
+            swapByteOrder(mBuffer[i + 2], words[i], crc);
         }
-        rv = true;
+        // Last byte left shifted out is the CRC
+        mBuffer[len + 2] = crc << 24;
+
+        if (writeInit())
+        {
+            // Setup DMA to automaticlly put data on the FIFO
+            dma_channel_config c = dma_channel_get_default_config(mDmaChannel);
+            channel_config_set_read_increment(&c, true);
+            channel_config_set_write_increment(&c, false);
+            channel_config_set_dreq(&c, pio_get_dreq(PIO_OUT, mSmOutIdx, true));
+            dma_channel_configure(mDmaChannel, &c, &PIO_OUT->txf[mSmOutIdx], mBuffer, len + 3, true);
+
+            mWriteInProgress = true;
+
+            rv = true;
+        }
     }
-
-    // For now, just sleep - need to implement ISR later
-    sleep_us(300);
-
-    pio_maple_out_stop(mPioOutData.pio, mPioOutData.smIdx);
 
     return rv;
 }
