@@ -115,7 +115,7 @@ static inline pio_sm_config pio_maple_out_get_config(
     return c;
 }
 
-static inline void pio_maple_out_pin_init(
+static inline void pio_maple_out_init(
     PIO pio, uint sm, uint prog_offs, uint sys_freq_khz, uint min_pulse_time_ns, uint pin_a)
 {
     // Initialize the two pins as inputs with pullups
@@ -152,9 +152,6 @@ static inline void pio_maple_out_stop(PIO pio, uint sm)
 
 .wrap_target
 
-; Represents A high and B low
-set y, 1
-
 ; This is a simplified check for start sequence
 wait_start:
 ; wait for A to be high
@@ -167,8 +164,8 @@ wait 1 pin 0
 wait 0 pin 1
 ; ensure A is still high
 mov x, pins
-; try again if the expected state is not detected
-jmp x!=y wait_start
+; try again if the expected state is not detected (i.e. if both pins are low)
+jmp !x wait_start
 
 data_loop:
 ; wait for A to be high
@@ -202,6 +199,8 @@ wait 0 pin 1
 ; shift in A value
 in pins 1
 
+jmp data_loop
+
 ; The full end sequence is not sampled for simplicity
 ; Either end is actually there or there was a glitch (rely on len and CRC of packet data in that case)
 end_detected:
@@ -227,7 +226,7 @@ static inline pio_sm_config pio_maple_in_get_config(uint prog_offs, uint pin_a)
     return c;
 }
 
-static inline void pio_maple_in_pin_init(PIO pio, uint sm, uint prog_offs, uint pin_a)
+static inline void pio_maple_in_init(PIO pio, uint sm, uint prog_offs, uint pin_a)
 {
     // Initialize the two pins as inputs with pullups
     uint pin_b = pin_a + 1;
@@ -246,8 +245,6 @@ static inline void pio_maple_in_start(PIO pio, uint sm, uint pin_a)
     // Set this pin's GPIO function (connect PIO to the pad)
     pio_gpio_init(pio, pin_a);
     pio_gpio_init(pio, pin_a + 1);
-    // Reset pointers
-    pio_sm_restart(pio, sm);
     // Set the state machine running
     pio_sm_set_enabled(pio, sm, true);
 }
@@ -255,7 +252,9 @@ static inline void pio_maple_in_start(PIO pio, uint sm, uint pin_a)
 static inline void pio_maple_in_stop(PIO pio, uint sm)
 {
     pio_sm_set_enabled(pio, sm, false);
+    // Reset pointers
     pio_sm_clear_fifos(pio, sm);
+    pio_sm_restart(pio, sm);
 }
 %}
 

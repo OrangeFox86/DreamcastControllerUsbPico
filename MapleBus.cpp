@@ -126,8 +126,8 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     mReadInProgress(false),
     mProcKillTime(0xFFFFFFFFFFFFFFFFULL)
 {
-    pio_maple_out_pin_init(PIO_OUT, mSmOutIdx, getOutProgramOffset(), CPU_FREQ_KHZ, MIN_CLOCK_PERIOD_NS, mPinA);
-    pio_maple_in_pin_init(PIO_IN, mSmInIdx, getInProgramOffset(), mPinA);
+    pio_maple_out_init(PIO_OUT, mSmOutIdx, getOutProgramOffset(), CPU_FREQ_KHZ, MIN_CLOCK_PERIOD_NS, mPinA);
+    pio_maple_in_init(PIO_IN, mSmInIdx, getInProgramOffset(), mPinA);
     mapleWriteIsr[mSmOutIdx] = this;
     mapleReadIsr[mSmInIdx] = this;
     initIsrs();
