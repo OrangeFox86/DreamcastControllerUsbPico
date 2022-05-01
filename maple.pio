@@ -214,6 +214,7 @@ irq wait 0 rel
 static inline pio_sm_config pio_maple_in_get_config(uint prog_offs, uint pin_a)
 {
     pio_sm_config c = maple_in_program_get_default_config(prog_offs);
+    sm_config_set_in_pins(&c, pin_a);
 
     // Shift to right, autopull disabled, 32 bits at a time
     sm_config_set_out_shift(&c, true, false, 32);
