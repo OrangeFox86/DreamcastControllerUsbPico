@@ -36,15 +36,19 @@ class MapleBus
 
     public:
         MapleBus(uint32_t pinA, uint8_t senderAddr);
-        bool write(uint8_t command, uint8_t recipientAddr, uint32_t* words, uint8_t len);
-        bool write(uint32_t frameWord, uint32_t* words, uint8_t len);
-        bool write(uint32_t* words, uint8_t len);
+        bool write(uint8_t command, uint8_t recipientAddr, uint32_t* words, uint8_t len, bool expectResponse);
+        bool write(uint32_t frameWord, uint32_t* words, uint8_t len, bool expectResponse);
+        bool write(uint32_t* words, uint8_t len, bool expectResponse);
+
+        void task();
 
         void readIsr();
         void writeIsr();
 
     private:
         bool writeInit();
+        void killRead();
+        void killWrite();
         static inline void swapByteOrder(uint32_t& dest, uint32_t source, uint8_t& crc)
         {
             const uint8_t* src = reinterpret_cast<uint8_t*>(&source);
@@ -74,11 +78,15 @@ class MapleBus
         const uint8_t mSenderAddr;
         const uint mSmOutIdx;
         const uint mSmInIdx;
-        const uint mDmaChannel;
+        const uint mDmaWriteChannel;
+        const uint mDmaReadChannel;
 
-        uint32_t mBuffer[259];
+        uint32_t mWriteBuffer[259];
+        uint32_t mReadBuffer[259];
         bool mWriteInProgress;
+        bool mExpectingResponse;
         bool mReadInProgress;
+        uint64_t mProcKillTime;
 };
 
 #endif // __MAPLE_BUS_H__

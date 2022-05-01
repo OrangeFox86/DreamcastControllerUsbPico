@@ -14,4 +14,10 @@
 // Note: The Dreamcast controller has a period of about 500 ns.
 #define OPEN_LINE_CHECK_TIME_US 2
 
+// Maximum amount of time to spend trying to write on the maple bus
+#define MAPLE_WRITE_TIMEOUT_US 1000
+
+// Maximum amount of time to spend trying to read on the maple bus
+#define MAPLE_READ_TIMEOUT_US 1000
+
 #endif // __CONFIGURATION_H__

@@ -66,7 +66,8 @@ int main()
     while(true)
     {
         waitButtonPress();
-        if (p1.write(MapleBus::COMMAND_DEVICE_INFO_REQUEST, 0x20, NULL, 0))
+        p1.task();
+        if (p1.write(MapleBus::COMMAND_DEVICE_INFO_REQUEST, 0x20, NULL, 0, true))
         {
             for (uint i = 0; i < 5; ++i)
             {

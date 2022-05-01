@@ -246,7 +246,6 @@ static inline void pio_maple_in_start(PIO pio, uint sm, uint pin_a)
     pio_gpio_init(pio, pin_a);
     pio_gpio_init(pio, pin_a + 1);
     // Reset pointers
-    pio_sm_clear_fifos(pio, sm);
     pio_sm_restart(pio, sm);
     // Set the state machine running
     pio_sm_set_enabled(pio, sm, true);
@@ -255,6 +254,7 @@ static inline void pio_maple_in_start(PIO pio, uint sm, uint pin_a)
 static inline void pio_maple_in_stop(PIO pio, uint sm)
 {
     pio_sm_set_enabled(pio, sm, false);
+    pio_sm_clear_fifos(pio, sm);
 }
 %}
 

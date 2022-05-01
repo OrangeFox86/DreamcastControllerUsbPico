@@ -119,9 +119,12 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     mSenderAddr(senderAddr),
     mSmOutIdx(pio_claim_unused_sm(PIO_OUT, true)),
     mSmInIdx(pio_claim_unused_sm(PIO_IN, true)),
-    mDmaChannel(kDmaCount++),
+    mDmaWriteChannel(kDmaCount++),
+    mDmaReadChannel(kDmaCount++),
     mWriteInProgress(false),
-    mReadInProgress(false)
+    mExpectingResponse(false),
+    mReadInProgress(false),
+    mProcKillTime(0xFFFFFFFFFFFFFFFFULL)
 {
     pio_maple_out_pin_init(PIO_OUT, mSmOutIdx, getOutProgramOffset(), CPU_FREQ_KHZ, MIN_CLOCK_PERIOD_NS, mPinA);
     pio_maple_in_pin_init(PIO_IN, mSmInIdx, getInProgramOffset(), mPinA);
@@ -132,14 +135,32 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
 
 inline void MapleBus::readIsr()
 {
-    pio_maple_in_stop(PIO_IN, mSmInIdx);
-    mReadInProgress = false;
+    killRead();
 }
 
 inline void MapleBus::writeIsr()
 {
+    killWrite();
+    if (mExpectingResponse)
+    {
+        pio_maple_in_start(PIO_IN, mSmInIdx, mPinA);
+        mProcKillTime = time_us_64() + MAPLE_READ_TIMEOUT_US;
+        mReadInProgress = true;
+    }
+}
+
+inline void MapleBus::killRead()
+{
+    pio_maple_in_stop(PIO_IN, mSmInIdx);
+    mReadInProgress = false;
+    dma_hw->abort = 1u << mDmaReadChannel;
+}
+
+inline void MapleBus::killWrite()
+{
     pio_maple_out_stop(PIO_OUT, mSmOutIdx);
     mWriteInProgress = false;
+    dma_hw->abort = 1u << mDmaWriteChannel;
 }
 
 bool MapleBus::writeInit()
@@ -161,35 +182,58 @@ bool MapleBus::writeInit()
     return true;
 }
 
-bool MapleBus::write(uint32_t frameWord, uint32_t* words, uint8_t len)
+bool MapleBus::write(uint32_t frameWord, uint32_t* words, uint8_t len, bool expectResponse)
 {
     bool rv = false;
 
-    if (!mWriteInProgress)
+    if (!mWriteInProgress && !mReadInProgress)
     {
         // First 32 bits sent to the state machine is how many bits to output.
-        mBuffer[0] = (len * 4 + 5) * 8;
+        mWriteBuffer[0] = (len * 4 + 5) * 8;
         // The PIO state machine reads from "left to right" to achieve the right bit order, but the data
         // out needs to be little endian. Therefore, the data bytes needs to be swapped. Might as well
         // Compute the CRC while we're at it.
         uint8_t crc = 0;
-        swapByteOrder(mBuffer[1], frameWord, crc);
+        swapByteOrder(mWriteBuffer[1], frameWord, crc);
         for (uint32_t i = 0; i < len; ++i)
         {
-            swapByteOrder(mBuffer[i + 2], words[i], crc);
+            swapByteOrder(mWriteBuffer[i + 2], words[i], crc);
         }
         // Last byte left shifted out is the CRC
-        mBuffer[len + 2] = crc << 24;
+        mWriteBuffer[len + 2] = crc << 24;
 
         if (writeInit())
         {
             // Setup DMA to automaticlly put data on the FIFO
-            dma_channel_config c = dma_channel_get_default_config(mDmaChannel);
+            dma_channel_config c = dma_channel_get_default_config(mDmaWriteChannel);
             channel_config_set_read_increment(&c, true);
             channel_config_set_write_increment(&c, false);
             channel_config_set_dreq(&c, pio_get_dreq(PIO_OUT, mSmOutIdx, true));
-            dma_channel_configure(mDmaChannel, &c, &PIO_OUT->txf[mSmOutIdx], mBuffer, len + 3, true);
+            dma_channel_configure(mDmaWriteChannel,
+                                  &c,
+                                  &PIO_OUT->txf[mSmOutIdx],
+                                  mWriteBuffer,
+                                  len + 3,
+                                  true);
 
+            if (expectResponse)
+            {
+                // Setup DMA to automaticlly read data from the FIFO
+                dma_channel_config c = dma_channel_get_default_config(mDmaReadChannel);
+                channel_config_set_read_increment(&c, false);
+                channel_config_set_write_increment(&c, true);
+                channel_config_set_dreq(&c, pio_get_dreq(PIO_IN, mSmInIdx, false));
+                dma_channel_configure(mDmaReadChannel,
+                                      &c,
+                                      mReadBuffer,
+                                      &PIO_IN->rxf[mSmInIdx],
+                                      (sizeof(mReadBuffer) / sizeof(mReadBuffer[0])),
+                                      true);
+            }
+
+            mProcKillTime = time_us_64() + MAPLE_WRITE_TIMEOUT_US;
+
+            mExpectingResponse = expectResponse;
             mWriteInProgress = true;
 
             rv = true;
@@ -199,14 +243,32 @@ bool MapleBus::write(uint32_t frameWord, uint32_t* words, uint8_t len)
     return rv;
 }
 
-bool MapleBus::write(uint32_t* words, uint8_t len)
+bool MapleBus::write(uint32_t* words, uint8_t len, bool expectResponse)
 {
-    return write(words[0], words + 1, len - 1);
+    return write(words[0], words + 1, len - 1, expectResponse);
 }
 
-bool MapleBus::write(uint8_t command, uint8_t recipientAddr, uint32_t* words, uint8_t len)
+bool MapleBus::write(uint8_t command, uint8_t recipientAddr, uint32_t* words, uint8_t len, bool expectResponse)
 {
     uint32_t frameWord = (len) | (mSenderAddr << 8) | (recipientAddr << 16) | (command << 24);
-    return write(frameWord, words, len);
+    return write(frameWord, words, len, expectResponse);
+}
+
+void MapleBus::task()
+{
+    if (mWriteInProgress || mReadInProgress)
+    {
+        if (time_us_64() > mProcKillTime)
+        {
+            if (mWriteInProgress)
+            {
+                killWrite();
+            }
+            if (mReadInProgress)
+            {
+                killRead();
+            }
+        }
+    }
 }
 
