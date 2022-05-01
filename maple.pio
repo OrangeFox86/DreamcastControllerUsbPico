@@ -154,18 +154,31 @@ static inline void pio_maple_out_stop(PIO pio, uint sm)
 
 ; This is a simplified check for start sequence
 wait_start:
-; wait for A to be high
-wait 1 pin 0
 ; wait for A to go low
 wait 0 pin 0
-; wait for A to go back high (B should toggle 4 times, but that is ignored)
-wait 1 pin 0
-; wait for B to go low
+
+set y, 3
+b_toggle_low_loop:
+wait 0 pin 1 ; wait for B to go low (warning: "A" state changes ignored in this time)
+
+b_toggle_high_loop:
+mov osr, pins ; copy pin values into output shift register
+out x 1 ; put pin A into register x
+jmp x-- wait_start ; A should not be high yet
+out x 1 ; put pin B into register x
+jmp !x b_toggle_high_loop ; keep waiting
+jmp y-- b_toggle_low_loop ; toggle detected; do another wait
+; else: fall through
+
+; wait for B to go low (warning: "A" state changes ignored in this time)
 wait 0 pin 1
 ; ensure A is still high
 mov x, pins
 ; try again if the expected state is not detected (i.e. if both pins are low)
 jmp !x wait_start
+
+
+
 
 data_loop:
 ; wait for A to be high
@@ -201,7 +214,7 @@ in pins 1
 
 jmp data_loop
 
-; The full end sequence is not sampled for simplicity
+; Warning: the full end sequence is not sampled for simplicity
 ; Either end is actually there or there was a glitch (rely on len and CRC of packet data in that case)
 end_detected:
 push ; make sure the crc is pushed out
