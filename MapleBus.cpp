@@ -297,8 +297,8 @@ void MapleBus::updateLastValidReadBuffer()
             swapByteOrder(buffer[i], mReadBuffer[i], crc);
         }
         // crc in the last word does not need to be byte swapped
-        // Data is only valid if the CRC is correct
-        if (crc == mReadBuffer[len + 1])
+        // Data is only valid if the CRC is correct and first word has something in it (cmd 0 is invalid)
+        if (crc == mReadBuffer[len + 1] && mReadBuffer[0] != 0)
         {
             memcpy(mLastValidRead, buffer, (len + 1) * 4);
             mLastValidReadLen = len + 1;
