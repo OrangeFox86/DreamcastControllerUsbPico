@@ -155,28 +155,26 @@ wait_start:
 
 set y, 3
 b_toggle_low_loop:
+jmp pin wait_start ; A should not be high yet
+; `mov x, pins` wouldn't work because I just want the first 2 pins
 mov osr, pins ; copy pin values into output shift register
-out x 1 ; put pin A into register x
-jmp x-- wait_start ; A should not be high yet
-out x 1 ; put pin B into register x
-jmp x-- b_toggle_low_loop ; keep waiting
+out x 2 ; put A and B into register x (should either be 0b10 or 0b00)
+jmp x-- b_toggle_low_loop ; keep waiting if B is high
 ; else: fall through
 
 b_toggle_high_loop:
+jmp pin wait_start ; A should not be high yet
 mov osr, pins ; copy pin values into output shift register
-out x 1 ; put pin A into register x
-jmp x-- wait_start ; A should not be high yet
-out x 1 ; put pin B into register x
-jmp !x b_toggle_high_loop ; keep waiting
-jmp y-- b_toggle_low_loop ; toggle detected; do another wait
+out x 2 ; put A and B into register x (should either be 0b10 or 0b00)
+jmp !x b_toggle_high_loop ; keep waiting if b is low
+jmp y-- b_toggle_low_loop ; toggle detected; decrement do another wait until 0
 ; else: fall through
 
 ; wait for B to go low (warning: "A" state changes ignored in this time)
 wait 0 pin 1
 ; ensure A is still high
-mov x, pins
-; try again if the expected state is not detected (i.e. if both pins are low)
-jmp !x wait_start
+jmp pin data_loop
+jmp wait_start
 
 
 
@@ -209,7 +207,7 @@ end_detected:
 push ; make sure the crc is pushed out
 ; Wait for IRQ to be handled before continuing
 irq wait 0 rel
-; program should be killed and reset after ISR is handled
+jmp wait_start
 
 
 sample_b_from_osr:
@@ -231,6 +229,9 @@ static inline pio_sm_config pio_maple_in_get_config(uint prog_offs, uint pin_a)
 {
     pio_sm_config c = maple_in_program_get_default_config(prog_offs);
     sm_config_set_in_pins(&c, pin_a);
+
+    // jmp pin checks pin A
+    sm_config_set_jmp_pin(&c, pin_a);
 
     // Shift to right, autopull disabled, 32 bits at a time
     sm_config_set_out_shift(&c, true, false, 32);
