@@ -36,10 +36,10 @@ start_b_toggle_loop:
 nop side 0 [FULL_TICKS - 1]
 nop side MASK_B [FULL_TICKS - 2]
 jmp y-- start_b_toggle_loop
-; Bring A back HIGH while reading the first bit
-out y, 1 side MASK_AB [HALF_TICKS]
+; Bring A back HIGH
+nop side MASK_AB [HALF_TICKS]
 ; Then bring B LOW, decrement x, and start reading data
-jmp x--, clock_a_data_b side MASK_A ; jmp only used to decrement x by 1 before continuing
+jmp x--, clock_a_data_b side MASK_A [HALF_TICKS - 1]
 
 
 
@@ -47,33 +47,33 @@ jmp x--, clock_a_data_b side MASK_A ; jmp only used to decrement x by 1 before c
 ; x scratch register contains how many bits left to send
 ; y scratch register contains the current bit
 clock_a_data_b:
+out y, 1 side MASK_A [HALF_TICKS - 2]
 jmp !y clock_a_data_b_zero
 ; else: fall through to clock_a_data_b_one
 
 clock_a_data_b_one:
-out y, 1 side MASK_A [HALF_TICKS - 1]
 nop side MASK_AB [HALF_TICKS - 1]
-jmp x-- clock_b_data_a side MASK_B
+jmp x-- clock_b_data_a side MASK_B [HALF_TICKS - 1]
 ; jmp end_sequence ; should never reach here anyway (saves an instruction)
 
 clock_a_data_b_zero:
-out y, 1 side MASK_A [FULL_TICKS - 1]
-jmp x-- clock_b_data_a side 0 ; just need to decrement x
+nop side MASK_A [HALF_TICKS - 1]
+jmp x-- clock_b_data_a side 0 [HALF_TICKS - 1] ; just need to decrement x
 ; jmp end_sequence ; should never reach here anyway (saves an instruction)
 
 clock_b_data_a:
+out y, 1 side MASK_B [HALF_TICKS - 2]
 jmp !y clock_b_data_a_zero
 ; else: fall through to clock_b_data_a_one
 
 clock_b_data_a_one:
-out y, 1 side MASK_B [HALF_TICKS - 1]
 nop side MASK_AB [HALF_TICKS - 1]
-jmp x-- clock_a_data_b side MASK_A
-jmp end_sequence
+jmp x-- clock_a_data_b side MASK_A [HALF_TICKS - 1]
+jmp end_sequence ; extra tick added here which can't be helped
 
 clock_b_data_a_zero:
-out y, 1 side MASK_B [FULL_TICKS - 1]
-jmp x-- clock_a_data_b side 0
+nop side MASK_B [HALF_TICKS - 1]
+jmp x-- clock_a_data_b side 0 [HALF_TICKS - 1]
 ; Else: fall through to end sequence
 
 
