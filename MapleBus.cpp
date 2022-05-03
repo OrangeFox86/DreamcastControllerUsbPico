@@ -142,17 +142,17 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
 
 inline void MapleBus::readIsr()
 {
-    pio_maple_in_stop(PIO_IN, mSmInIdx);
+    pio_maple_in_stop(PIO_IN, mSmInIdx, mPinA);
     mReadInProgress = false;
     mReadUpdated = true;
 }
 
 inline void MapleBus::writeIsr()
 {
-    pio_maple_out_stop(PIO_OUT, mSmOutIdx);
+    pio_maple_out_stop(PIO_OUT, mSmOutIdx, mPinA);
     if (mExpectingResponse)
     {
-        pio_maple_in_start(PIO_IN, mSmInIdx, mPinA);
+        pio_maple_in_start(PIO_IN, mSmInIdx, getInProgramOffset(), mPinA);
         mProcKillTime = time_us_64() + MAPLE_READ_TIMEOUT_US;
         mReadInProgress = true;
     }
@@ -173,7 +173,7 @@ bool MapleBus::writeInit()
         }
     } while (time_us_64() < targetTime);
 
-    pio_maple_out_start(PIO_OUT, mSmOutIdx, mPinA);
+    pio_maple_out_start(PIO_OUT, mSmOutIdx, getOutProgramOffset(), mPinA);
 
     return true;
 }
@@ -187,7 +187,8 @@ bool MapleBus::write(uint32_t frameWord, const uint32_t* payload, uint8_t len, b
     if (!mWriteInProgress && !mReadInProgress)
     {
         // First 32 bits sent to the state machine is how many bits to output.
-        mWriteBuffer[0] = (len * 4 + 5) * 8;
+        uint32_t numBits = (len * 4 + 5) * 8;
+        mWriteBuffer[0] = numBits;
         // The PIO state machine reads from "left to right" to achieve the right bit order, but the data
         // out needs to be little endian. Therefore, the data bytes needs to be swapped. Might as well
         // Compute the CRC while we're at it.
@@ -237,7 +238,14 @@ bool MapleBus::write(uint32_t frameWord, const uint32_t* payload, uint8_t len, b
                                       true);
             }
 
-            mProcKillTime = time_us_64() + MAPLE_WRITE_TIMEOUT_US;
+            // Each bit takes 1.5 clock periods to send
+            uint32_t totalWriteTimeNs = numBits * (MIN_CLOCK_PERIOD_NS * 3 / 2);
+            // Start and stop sequence takes less than 20 clock periods
+            totalWriteTimeNs += 20 * MIN_CLOCK_PERIOD_NS;
+            // Multiply by the extra percentage
+            totalWriteTimeNs *= (1 + (MAPLE_WRITE_TIMEOUT_EXTRA_PERCENT / 100.0));
+            // And then compute the time which the write process should complete
+            mProcKillTime = time_us_64() + (totalWriteTimeNs / 1000.0 + 0.5) + 1;
 
             mExpectingResponse = expectResponse;
             mWriteInProgress = true;
@@ -268,12 +276,12 @@ void MapleBus::processEvents()
         {
             if (mWriteInProgress)
             {
-                pio_maple_out_stop(PIO_OUT, mSmOutIdx);
+                pio_maple_out_stop(PIO_OUT, mSmOutIdx, mPinA);
                 mWriteInProgress = false;
             }
             if (mReadInProgress)
             {
-                pio_maple_in_stop(PIO_IN, mSmInIdx);
+                pio_maple_in_stop(PIO_IN, mSmInIdx, mPinA);
                 mReadInProgress = false;
             }
         }

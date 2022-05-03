@@ -80,17 +80,15 @@ jmp x-- clock_a_data_b side 0
 
 ; send out the end sequence
 end_sequence:
-nop side MASK_A [HALF_TICKS - 1]
+out y, 24 side MASK_A [HALF_TICKS - 1] ; last word only has crc byte to send; purge last 24 bits
 nop side MASK_AB [FULL_TICKS - 1]
 nop side MASK_A [FULL_TICKS - 1]
 nop side 0 [FULL_TICKS - 1]
 nop side MASK_A [FULL_TICKS - 1]
 nop side 0 [FULL_TICKS - 1]
 nop side MASK_A [FULL_TICKS - 1]
-out y, 24 side MASK_AB [FULL_TICKS - 1] ; last word only has crc byte to send; purge last 24 bits into y
 
-; Make pins input again in case someone else starts sending right away
-set pindirs 0
+; Allow the application to transition AB back HIGH when it's ready to "submit" the data
 
 ; Wait for IRQ to be handled before continuing
 irq wait 0 rel
@@ -119,32 +117,40 @@ static inline void pio_maple_out_init(
     PIO pio, uint sm, uint prog_offs, uint sys_freq_khz, uint min_pulse_time_ns, uint pin_a)
 {
     // Initialize the two pins as inputs with pullups
-    uint pin_b = pin_a + 1;
-    gpio_set_dir_in_masked((1 << pin_a) | (1 << pin_b));
+    gpio_set_dir_in_masked(3 << pin_a);
     gpio_set_pulls(pin_a, true, false);
     gpio_set_pulls(pin_a + 1, true, false);
-    // Pin direction starts as input
-    pio_sm_set_consecutive_pindirs(pio, sm, pin_a, 2, false);
+
     // Load our configuration, and jump to the start of the program
     pio_sm_config c = pio_maple_out_get_config(prog_offs, sys_freq_khz, min_pulse_time_ns, pin_a);
     pio_sm_init(pio, sm, prog_offs, &c);
 }
 
-static inline void pio_maple_out_start(PIO pio, uint sm, uint pin_a)
+static inline void pio_maple_out_start(PIO pio, uint sm, uint prog_offs, uint pin_a)
 {
-    // Set this pin's GPIO function (connect PIO to the pad)
-    pio_gpio_init(pio, pin_a);
-    pio_gpio_init(pio, pin_a + 1);
     // Reset pointers
     pio_sm_clear_fifos(pio, sm);
     pio_sm_restart(pio, sm);
+    pio_sm_clkdiv_restart(pio, sm);
+    pio_sm_exec(pio, sm, pio_encode_jmp(prog_offs));
+    // Pin direction starts as input
+    pio_sm_set_consecutive_pindirs(pio, sm, pin_a, 2, false);
+    // Set this pin's GPIO function (connect PIO to the pad)
+    pio_gpio_init(pio, pin_a);
+    pio_gpio_init(pio, pin_a + 1);
     // Set the state machine running
     pio_sm_set_enabled(pio, sm, true);
 }
 
-static inline void pio_maple_out_stop(PIO pio, uint sm)
+static inline void pio_maple_out_stop(PIO pio, uint sm, uint pin_a)
 {
     pio_sm_set_enabled(pio, sm, false);
+    // Reset the pins' function to standard I/O, transitioning back HIGH before setting to input
+    gpio_set_mask(3 << pin_a);
+    gpio_set_dir_out_masked(3 << pin_a);
+    gpio_set_function(pin_a, GPIO_FUNC_SIO);
+    gpio_set_function(pin_a + 1, GPIO_FUNC_SIO);
+    gpio_set_dir_in_masked(3 << pin_a);
 }
 %}
 
@@ -251,27 +257,33 @@ static inline void pio_maple_in_init(PIO pio, uint sm, uint prog_offs, uint pin_
     gpio_set_dir_in_masked((1 << pin_a) | (1 << pin_b));
     gpio_set_pulls(pin_a, true, false);
     gpio_set_pulls(pin_a + 1, true, false);
-    // Pin direction starts as input
-    pio_sm_set_consecutive_pindirs(pio, sm, pin_a, 2, false);
     // Load our configuration, and jump to the start of the program
     pio_sm_config c = pio_maple_in_get_config(prog_offs, pin_a);
     pio_sm_init(pio, sm, prog_offs, &c);
 }
 
-static inline void pio_maple_in_start(PIO pio, uint sm, uint pin_a)
+static inline void pio_maple_in_start(PIO pio, uint sm, uint prog_offs, uint pin_a)
 {
-    // Set this pin's GPIO function (connect PIO to the pad)
-    pio_gpio_init(pio, pin_a);
-    pio_gpio_init(pio, pin_a + 1);
     // Reset pointers
     pio_sm_clear_fifos(pio, sm);
     pio_sm_restart(pio, sm);
+    pio_sm_clkdiv_restart(pio, sm);
+    pio_sm_exec(pio, sm, pio_encode_jmp(prog_offs));
+    // Pin direction starts as input
+    pio_sm_set_consecutive_pindirs(pio, sm, pin_a, 2, false);
+    // Set this pin's GPIO function (connect PIO to the pad)
+    pio_gpio_init(pio, pin_a);
+    pio_gpio_init(pio, pin_a + 1);
     // Set the state machine running
     pio_sm_set_enabled(pio, sm, true);
 }
 
-static inline void pio_maple_in_stop(PIO pio, uint sm)
+static inline void pio_maple_in_stop(PIO pio, uint sm, uint pin_a)
 {
     pio_sm_set_enabled(pio, sm, false);
+    // Reset the pins' function to standard I/O with pullups
+    gpio_set_function(pin_a, GPIO_FUNC_SIO);
+    gpio_set_function(pin_a + 1, GPIO_FUNC_SIO);
+    gpio_set_dir_in_masked(3 << pin_a);
 }
 %}
