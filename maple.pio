@@ -119,7 +119,7 @@ class PioProgram
 class MapleOutStateMachine
 {
     public:
-        inline MapleOutStateMachine(uint sys_freq_khz, uint min_pulse_time_ns, uint pin_a) :
+        inline MapleOutStateMachine(uint sys_freq_khz, uint ns_per_bit, uint pin_a) :
             mProgram(getMapleOutProgram()),
             mPinA(pin_a),
             mPinB(pin_a + 1),
@@ -139,7 +139,7 @@ class MapleOutStateMachine
             sm_config_set_out_shift(&c, false, true, 32);
 
             sm_config_set_clkdiv(
-                &c, (sys_freq_khz * min_pulse_time_ns) / maple_out_FULL_TICKS / 1000000.0);
+                &c, (sys_freq_khz * (ns_per_bit / 3 * 2)) / maple_out_FULL_TICKS / 1000000.0);
 
             // Load our configuration, and jump to the start of the program
             pio_sm_init(mProgram.mPio, mSmIdx, mProgram.mProgramOffset, &c);

@@ -51,8 +51,14 @@ class MapleBus
         //! @param[in] payload  The payload words to send
         //! @param[in] len  Number of words in payload
         //! @param[in] expectResponse  Set to true in order to start receive after send is complete
+        //! @param[in] readTimeoutUs  When response is expected, the receive timeout in microseconds
         //! @returns true iff the bus was "open" and send has started
-        bool write(uint8_t command, uint8_t recipientAddr, const uint32_t* payload, uint8_t len, bool expectResponse);
+        bool write(uint8_t command,
+                   uint8_t recipientAddr,
+                   const uint32_t* payload,
+                   uint8_t len,
+                   bool expectResponse,
+                   uint32_t readTimeoutUs=DEFAULT_MAPLE_READ_TIMEOUT_US);
 
         //! Writes a command with the given custom frame word. The internal sender address is
         //! ignored and instead the given frame word is sent verbatim.
@@ -60,16 +66,25 @@ class MapleBus
         //! @param[in] payload  The payload words to send
         //! @param[in] len  Number of words in payload
         //! @param[in] expectResponse  Set to true in order to start receive after send is complete
+        //! @param[in] readTimeoutUs  When response is expected, the receive timeout in microseconds
         //! @returns true iff the bus was "open" and send has started
-        bool write(uint32_t frameWord, const uint32_t* payload, uint8_t len, bool expectResponse);
+        bool write(uint32_t frameWord,
+                   const uint32_t* payload,
+                   uint8_t len,
+                   bool expectResponse,
+                   uint32_t readTimeoutUs=DEFAULT_MAPLE_READ_TIMEOUT_US);
 
         //! Writes a command with the given words. The internal sender address is ignored and
         //! instead the given words are sent verbatim.
         //! @param[in] words  All words to send
         //! @param[in] len  Number of words in words (must be at least 1)
         //! @param[in] expectResponse  Set to true in order to start receive after send is complete
+        //! @param[in] readTimeoutUs  When response is expected, the receive timeout in microseconds
         //! @returns true iff the bus was "open" and send has started
-        bool write(const uint32_t* words, uint8_t len, bool expectResponse);
+        bool write(const uint32_t* words,
+                   uint8_t len,
+                   bool expectResponse,
+                   uint32_t readTimeoutUs=DEFAULT_MAPLE_READ_TIMEOUT_US);
 
         //! Called from a PIO ISR when read has completed for this sender.
         void readIsr();
@@ -157,6 +172,8 @@ class MapleBus
         volatile uint64_t mProcKillTime;
         //! True once receive is detected
         volatile bool mRxDetected;
+        //! Receive timeout for the current expected response
+        uint32_t mReadTimeoutUs;
 };
 
 #endif // __MAPLE_BUS_H__

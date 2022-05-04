@@ -98,7 +98,7 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     mMaskB(1 << mPinB),
     mMaskAB(mMaskA | mMaskB),
     mSenderAddr(senderAddr),
-    mSmOut(CPU_FREQ_KHZ, MIN_CLOCK_PERIOD_NS, mPinA),
+    mSmOut(CPU_FREQ_KHZ, MAPLE_NS_PER_BIT, mPinA),
     mSmIn(mPinA),
     mDmaWriteChannel(kDmaCount++),
     mDmaReadChannel(kDmaCount++),
@@ -111,7 +111,9 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     mWriteInProgress(false),
     mExpectingResponse(false),
     mReadInProgress(false),
-    mProcKillTime(0xFFFFFFFFFFFFFFFFULL)
+    mProcKillTime(0xFFFFFFFFFFFFFFFFULL),
+    mRxDetected(false),
+    mReadTimeoutUs(0)
 {
     mapleWriteIsr[mSmOut.mSmIdx] = this;
     mapleReadIsr[mSmIn.mSmIdx] = this;
@@ -123,7 +125,7 @@ inline void MapleBus::readIsr()
     if (!mRxDetected)
     {
         mRxDetected = true;
-        mProcKillTime = time_us_64() + MAPLE_READ_TIMEOUT_US;
+        mProcKillTime = time_us_64() + mReadTimeoutUs;
     }
     else
     {
@@ -147,7 +149,7 @@ inline void MapleBus::writeIsr()
 
 bool MapleBus::writeInit()
 {
-    const uint64_t targetTime = time_us_64() + OPEN_LINE_CHECK_TIME_US + 1;
+    const uint64_t targetTime = time_us_64() + MAPLE_OPEN_LINE_CHECK_TIME_US + 1;
 
     // Ensure no one is pulling low
     do
@@ -164,7 +166,11 @@ bool MapleBus::writeInit()
     return true;
 }
 
-bool MapleBus::write(uint32_t frameWord, const uint32_t* payload, uint8_t len, bool expectResponse)
+bool MapleBus::write(uint32_t frameWord,
+                     const uint32_t* payload,
+                     uint8_t len,
+                     bool expectResponse,
+                     uint32_t readTimeoutUs)
 {
     bool rv = false;
 
@@ -172,6 +178,9 @@ bool MapleBus::write(uint32_t frameWord, const uint32_t* payload, uint8_t len, b
 
     if (!mWriteInProgress && !mReadInProgress)
     {
+        mRxDetected = false;
+        mReadTimeoutUs = readTimeoutUs;
+
         // First 32 bits sent to the state machine is how many bits to output.
         uint32_t numBits = (len * 4 + 5) * 8;
         mWriteBuffer[0] = numBits;
@@ -186,8 +195,6 @@ bool MapleBus::write(uint32_t frameWord, const uint32_t* payload, uint8_t len, b
         }
         // Last byte left shifted out is the CRC
         mWriteBuffer[len + 2] = crc << 24;
-
-        mRxDetected = false;
 
         if (writeInit())
         {
@@ -226,10 +233,9 @@ bool MapleBus::write(uint32_t frameWord, const uint32_t* payload, uint8_t len, b
                                       true);
             }
 
-            // Each bit takes 1.5 clock periods to send
-            uint32_t totalWriteTimeNs = numBits * (MIN_CLOCK_PERIOD_NS * 3 / 2);
-            // Start and stop sequence takes less than 20 clock periods
-            totalWriteTimeNs += 20 * MIN_CLOCK_PERIOD_NS;
+            uint32_t totalWriteTimeNs = numBits * MAPLE_NS_PER_BIT;
+            // Start and stop sequence takes less than 14 bit periods
+            totalWriteTimeNs += 14 * MAPLE_NS_PER_BIT;
             // Multiply by the extra percentage
             totalWriteTimeNs *= (1 + (MAPLE_WRITE_TIMEOUT_EXTRA_PERCENT / 100.0));
             // And then compute the time which the write process should complete
@@ -245,15 +251,23 @@ bool MapleBus::write(uint32_t frameWord, const uint32_t* payload, uint8_t len, b
     return rv;
 }
 
-bool MapleBus::write(const uint32_t* words, uint8_t len, bool expectResponse)
+bool MapleBus::write(const uint32_t* words,
+                     uint8_t len,
+                     bool expectResponse,
+                     uint32_t readTimeoutUs)
 {
-    return write(words[0], words + 1, len - 1, expectResponse);
+    return write(words[0], words + 1, len - 1, expectResponse, readTimeoutUs);
 }
 
-bool MapleBus::write(uint8_t command, uint8_t recipientAddr, const uint32_t* payload, uint8_t len, bool expectResponse)
+bool MapleBus::write(uint8_t command,
+                     uint8_t recipientAddr,
+                     const uint32_t* payload,
+                     uint8_t len,
+                     bool expectResponse,
+                     uint32_t readTimeoutUs)
 {
     uint32_t frameWord = (len) | (mSenderAddr << 8) | (recipientAddr << 16) | (command << 24);
-    return write(frameWord, payload, len, expectResponse);
+    return write(frameWord, payload, len, expectResponse, readTimeoutUs);
 }
 
 void MapleBus::processEvents()
