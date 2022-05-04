@@ -14,101 +14,81 @@ extern "C"
 {
 void maple_write_isr0(void)
 {
-    if (MapleBus::PIO_OUT->irq & (0x01))
+    if (MAPLE_OUT_PIO->irq & (0x01))
     {
         mapleWriteIsr[0]->writeIsr();
-        hw_set_bits(&MapleBus::PIO_OUT->irq, 0x01);
+        hw_set_bits(&MAPLE_OUT_PIO->irq, 0x01);
     }
-    if (MapleBus::PIO_OUT->irq & (0x04))
+    if (MAPLE_OUT_PIO->irq & (0x04))
     {
         mapleWriteIsr[2]->writeIsr();
-        hw_set_bits(&MapleBus::PIO_OUT->irq, 0x04);
+        hw_set_bits(&MAPLE_OUT_PIO->irq, 0x04);
     }
 }
 void maple_write_isr1(void)
 {
-    if (MapleBus::PIO_OUT->irq & (0x02))
+    if (MAPLE_OUT_PIO->irq & (0x02))
     {
         mapleWriteIsr[1]->writeIsr();
-        hw_set_bits(&MapleBus::PIO_OUT->irq, 0x02);
+        hw_set_bits(&MAPLE_OUT_PIO->irq, 0x02);
     }
-    if (MapleBus::PIO_OUT->irq & (0x08))
+    if (MAPLE_OUT_PIO->irq & (0x08))
     {
         mapleWriteIsr[3]->writeIsr();
-        hw_set_bits(&MapleBus::PIO_OUT->irq, 0x08);
+        hw_set_bits(&MAPLE_OUT_PIO->irq, 0x08);
     }
 }
 void maple_read_isr0(void)
 {
-    if (MapleBus::PIO_IN->irq & (0x01))
+    if (MAPLE_IN_PIO->irq & (0x01))
     {
         mapleReadIsr[0]->readIsr();
-        hw_set_bits(&MapleBus::PIO_IN->irq, 0x01);
+        hw_set_bits(&MAPLE_IN_PIO->irq, 0x01);
     }
-    if (MapleBus::PIO_IN->irq & (0x04))
+    if (MAPLE_IN_PIO->irq & (0x04))
     {
         mapleReadIsr[2]->readIsr();
-        hw_set_bits(&MapleBus::PIO_IN->irq, 0x04);
+        hw_set_bits(&MAPLE_IN_PIO->irq, 0x04);
     }
 }
 void maple_read_isr1(void)
 {
-    if (MapleBus::PIO_IN->irq & (0x02))
+    if (MAPLE_IN_PIO->irq & (0x02))
     {
         mapleReadIsr[1]->readIsr();
-        hw_set_bits(&MapleBus::PIO_IN->irq, 0x02);
+        hw_set_bits(&MAPLE_IN_PIO->irq, 0x02);
     }
-    if (MapleBus::PIO_IN->irq & (0x08))
+    if (MAPLE_IN_PIO->irq & (0x08))
     {
         mapleReadIsr[3]->readIsr();
-        hw_set_bits(&MapleBus::PIO_IN->irq, 0x08);
+        hw_set_bits(&MAPLE_IN_PIO->irq, 0x08);
     }
 }
 }
 
-pio_hw_t* const MapleBus::PIO_OUT = pio0;
-pio_hw_t* const MapleBus::PIO_IN = pio1;
 uint MapleBus::kDmaCount = 0;
-
-uint MapleBus::getOutProgramOffset()
-{
-    static int offset = -1;
-    if (offset < 0)
-    {
-        offset = pio_add_program(MapleBus::PIO_OUT, &maple_out_program);
-    }
-    return (uint)offset;
-}
-
-uint MapleBus::getInProgramOffset()
-{
-    static int offset = -1;
-    if (offset < 0)
-    {
-        offset = pio_add_program(MapleBus::PIO_IN, &maple_in_program);
-    }
-    return (uint)offset;
-}
 
 void MapleBus::initIsrs()
 {
-    irq_set_exclusive_handler(PIO0_IRQ_0, maple_write_isr0);
-    irq_set_exclusive_handler(PIO0_IRQ_1, maple_write_isr1);
-    irq_set_enabled(PIO0_IRQ_0, true);
-    irq_set_enabled(PIO0_IRQ_1, true);
-    pio_set_irq0_source_enabled(PIO_OUT, pis_interrupt0, true);
-    pio_set_irq0_source_enabled(PIO_OUT, pis_interrupt1, true);
-    pio_set_irq0_source_enabled(PIO_OUT, pis_interrupt2, true);
-    pio_set_irq0_source_enabled(PIO_OUT, pis_interrupt3, true);
+    uint outIdx = pio_get_index(MAPLE_OUT_PIO);
+    irq_set_exclusive_handler(PIO0_IRQ_0 + (outIdx * 2), maple_write_isr0);
+    irq_set_exclusive_handler(PIO0_IRQ_1 + (outIdx * 2), maple_write_isr1);
+    irq_set_enabled(PIO0_IRQ_0 + (outIdx * 2), true);
+    irq_set_enabled(PIO0_IRQ_1 + (outIdx * 2), true);
+    pio_set_irq0_source_enabled(MAPLE_OUT_PIO, pis_interrupt0, true);
+    pio_set_irq1_source_enabled(MAPLE_OUT_PIO, pis_interrupt1, true);
+    pio_set_irq0_source_enabled(MAPLE_OUT_PIO, pis_interrupt2, true);
+    pio_set_irq1_source_enabled(MAPLE_OUT_PIO, pis_interrupt3, true);
 
-    irq_set_exclusive_handler(PIO1_IRQ_0, maple_read_isr0);
-    irq_set_exclusive_handler(PIO1_IRQ_1, maple_read_isr1);
-    irq_set_enabled(PIO1_IRQ_0, true);
-    irq_set_enabled(PIO1_IRQ_1, true);
-    pio_set_irq0_source_enabled(PIO_IN, pis_interrupt0, true);
-    pio_set_irq0_source_enabled(PIO_IN, pis_interrupt1, true);
-    pio_set_irq0_source_enabled(PIO_IN, pis_interrupt2, true);
-    pio_set_irq0_source_enabled(PIO_IN, pis_interrupt3, true);
+    uint inIdx = pio_get_index(MAPLE_IN_PIO);
+    irq_set_exclusive_handler(PIO0_IRQ_0 + (inIdx * 2), maple_read_isr0);
+    irq_set_exclusive_handler(PIO0_IRQ_1 + (inIdx * 2), maple_read_isr1);
+    irq_set_enabled(PIO0_IRQ_0 + (inIdx * 2), true);
+    irq_set_enabled(PIO0_IRQ_1 + (inIdx * 2), true);
+    pio_set_irq0_source_enabled(MAPLE_IN_PIO, pis_interrupt0, true);
+    pio_set_irq1_source_enabled(MAPLE_IN_PIO, pis_interrupt1, true);
+    pio_set_irq0_source_enabled(MAPLE_IN_PIO, pis_interrupt2, true);
+    pio_set_irq1_source_enabled(MAPLE_IN_PIO, pis_interrupt3, true);
 }
 
 MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
@@ -118,8 +98,8 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     mMaskB(1 << mPinB),
     mMaskAB(mMaskA | mMaskB),
     mSenderAddr(senderAddr),
-    mSmOutIdx(pio_claim_unused_sm(PIO_OUT, true)),
-    mSmInIdx(pio_claim_unused_sm(PIO_IN, true)),
+    mSmOut(CPU_FREQ_KHZ, MIN_CLOCK_PERIOD_NS, mPinA),
+    mSmIn(mPinA),
     mDmaWriteChannel(kDmaCount++),
     mDmaReadChannel(kDmaCount++),
     mWriteBuffer(),
@@ -133,26 +113,24 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     mReadInProgress(false),
     mProcKillTime(0xFFFFFFFFFFFFFFFFULL)
 {
-    pio_maple_out_init(PIO_OUT, mSmOutIdx, getOutProgramOffset(), CPU_FREQ_KHZ, MIN_CLOCK_PERIOD_NS, mPinA);
-    pio_maple_in_init(PIO_IN, mSmInIdx, getInProgramOffset(), mPinA);
-    mapleWriteIsr[mSmOutIdx] = this;
-    mapleReadIsr[mSmInIdx] = this;
+    mapleWriteIsr[mSmOut.mSmIdx] = this;
+    mapleReadIsr[mSmIn.mSmIdx] = this;
     initIsrs();
 }
 
 inline void MapleBus::readIsr()
 {
-    pio_maple_in_stop(PIO_IN, mSmInIdx, mPinA);
+    mSmIn.stop();
     mReadInProgress = false;
     mReadUpdated = true;
 }
 
 inline void MapleBus::writeIsr()
 {
-    pio_maple_out_stop(PIO_OUT, mSmOutIdx, mPinA);
+    mSmOut.stop();
     if (mExpectingResponse)
     {
-        pio_maple_in_start(PIO_IN, mSmInIdx, getInProgramOffset(), mPinA);
+        mSmIn.start();
         mProcKillTime = time_us_64() + MAPLE_READ_TIMEOUT_US;
         mReadInProgress = true;
     }
@@ -173,7 +151,7 @@ bool MapleBus::writeInit()
         }
     } while (time_us_64() < targetTime);
 
-    pio_maple_out_start(PIO_OUT, mSmOutIdx, getOutProgramOffset(), mPinA);
+    mSmOut.start();
 
     return true;
 }
@@ -209,10 +187,10 @@ bool MapleBus::write(uint32_t frameWord, const uint32_t* payload, uint8_t len, b
             dma_channel_config c = dma_channel_get_default_config(mDmaWriteChannel);
             channel_config_set_read_increment(&c, true);
             channel_config_set_write_increment(&c, false);
-            channel_config_set_dreq(&c, pio_get_dreq(PIO_OUT, mSmOutIdx, true));
+            channel_config_set_dreq(&c, pio_get_dreq(mSmOut.mProgram.mPio, mSmOut.mSmIdx, true));
             dma_channel_configure(mDmaWriteChannel,
                                   &c,
-                                  &PIO_OUT->txf[mSmOutIdx],
+                                  &mSmOut.mProgram.mPio->txf[mSmOut.mSmIdx],
                                   mWriteBuffer,
                                   len + 3,
                                   true);
@@ -229,11 +207,11 @@ bool MapleBus::write(uint32_t frameWord, const uint32_t* payload, uint8_t len, b
                 dma_channel_config c = dma_channel_get_default_config(mDmaReadChannel);
                 channel_config_set_read_increment(&c, false);
                 channel_config_set_write_increment(&c, true);
-                channel_config_set_dreq(&c, pio_get_dreq(PIO_IN, mSmInIdx, false));
+                channel_config_set_dreq(&c, pio_get_dreq(mSmIn.mProgram.mPio, mSmIn.mSmIdx, false));
                 dma_channel_configure(mDmaReadChannel,
                                       &c,
                                       mReadBuffer,
-                                      &PIO_IN->rxf[mSmInIdx],
+                                      &mSmIn.mProgram.mPio->rxf[mSmIn.mSmIdx],
                                       (sizeof(mReadBuffer) / sizeof(mReadBuffer[0])),
                                       true);
             }
@@ -276,12 +254,12 @@ void MapleBus::processEvents()
         {
             if (mWriteInProgress)
             {
-                pio_maple_out_stop(PIO_OUT, mSmOutIdx, mPinA);
+                mSmOut.stop();
                 mWriteInProgress = false;
             }
             if (mReadInProgress)
             {
-                pio_maple_in_stop(PIO_IN, mSmInIdx, mPinA);
+                mSmIn.stop();
                 mReadInProgress = false;
             }
         }

@@ -107,20 +107,8 @@ class MapleBus
             }
         }
 
-        //! @returns the program offset for the PIO program maple_out
-        static uint getOutProgramOffset();
-
-        //! @returns the program offset for the PIO program maple_in
-        static uint getInProgramOffset();
-
         //! Initializes all interrupt service routines for all Maple Busses
         static void initIsrs();
-
-    public:
-        //! The PIO bank used for the maple_out program
-        static pio_hw_t* const PIO_OUT;
-        //! The PIO bank used for the maple_in program
-        static pio_hw_t* const PIO_IN;
 
     private:
         //! Total number of DMAs used by Maple Busses (2 used by each instance)
@@ -138,10 +126,10 @@ class MapleBus
         const uint32_t mMaskAB;
         //! The address of this device
         const uint8_t mSenderAddr;
-        //! The PIO state machine index used for output by this bus
-        const uint mSmOutIdx;
+        //! The PIO state machine used for output by this bus
+        const MapleOutStateMachine mSmOut;
         //! The PIO state machine index used for input by this bus
-        const uint mSmInIdx;
+        const MapleInStateMachine mSmIn;
         //! The DMA channel used for writing by this bus
         const uint mDmaWriteChannel;
         //! The DMA channel used for reading by this bus

@@ -88,7 +88,8 @@ nop side MASK_A [FULL_TICKS - 1]
 nop side 0 [FULL_TICKS - 1]
 nop side MASK_A [FULL_TICKS - 1]
 
-; Allow the application to transition AB back HIGH when it's ready to "submit" the data
+; Allow the application to transition AB back HIGH when it's ready to "submit" the data.
+; See MapleOutStateMachine::stop()
 
 ; Wait for IRQ to be handled before continuing
 irq wait 0 rel
@@ -97,61 +98,95 @@ irq wait 0 rel
 
 % c-sdk {
 #include "hardware/gpio.h"
-static inline pio_sm_config pio_maple_out_get_config(
-    uint prog_offs, uint sys_freq_khz, uint min_pulse_time_ns, uint pin_a)
+#include "hardware/pio.h"
+
+#define MAPLE_OUT_PIO pio0
+
+class PioProgram
 {
-    pio_sm_config c = maple_out_program_get_default_config(prog_offs);
-    sm_config_set_sideset_pins(&c, pin_a);
-    sm_config_set_set_pins(&c, pin_a, 2); // just for set pindirs
+    public:
+        inline PioProgram(pio_hw_t* pio, const pio_program_t *program) :
+            mPio(pio),
+            mProgram(program),
+            mProgramOffset(pio_add_program(pio, program))
+        {}
 
-    // Shift to left, autopull enabled, 32 bits at a time
-    sm_config_set_out_shift(&c, false, true, 32);
+        pio_hw_t* const mPio;
+        const pio_program_t* const mProgram;
+        const uint mProgramOffset;
+};
 
-    sm_config_set_clkdiv(
-        &c, (sys_freq_khz * min_pulse_time_ns) / maple_out_FULL_TICKS / 1000000.0);
-
-    return c;
-}
-
-static inline void pio_maple_out_init(
-    PIO pio, uint sm, uint prog_offs, uint sys_freq_khz, uint min_pulse_time_ns, uint pin_a)
+class MapleOutStateMachine
 {
-    // Initialize the two pins as inputs with pullups
-    gpio_set_dir_in_masked(3 << pin_a);
-    gpio_set_pulls(pin_a, true, false);
-    gpio_set_pulls(pin_a + 1, true, false);
+    public:
+        inline MapleOutStateMachine(uint sys_freq_khz, uint min_pulse_time_ns, uint pin_a) :
+            mProgram(getMapleOutProgram()),
+            mPinA(pin_a),
+            mPinB(pin_a + 1),
+            mMaskAB(3 << pin_a),
+            mSmIdx(pio_claim_unused_sm(mProgram.mPio, true))
+        {
+            // Initialize the two pins as inputs with pullups
+            gpio_set_dir_in_masked(mMaskAB);
+            gpio_set_pulls(mPinA, true, false);
+            gpio_set_pulls(mPinB, true, false);
 
-    // Load our configuration, and jump to the start of the program
-    pio_sm_config c = pio_maple_out_get_config(prog_offs, sys_freq_khz, min_pulse_time_ns, pin_a);
-    pio_sm_init(pio, sm, prog_offs, &c);
-}
+            pio_sm_config c = maple_out_program_get_default_config(mProgram.mProgramOffset);
+            sm_config_set_sideset_pins(&c, mPinA);
+            sm_config_set_set_pins(&c, mPinA, 2); // just for set pindirs
 
-static inline void pio_maple_out_start(PIO pio, uint sm, uint prog_offs, uint pin_a)
-{
-    // Reset pointers
-    pio_sm_clear_fifos(pio, sm);
-    pio_sm_restart(pio, sm);
-    pio_sm_clkdiv_restart(pio, sm);
-    pio_sm_exec(pio, sm, pio_encode_jmp(prog_offs));
-    // Pin direction starts as input
-    pio_sm_set_consecutive_pindirs(pio, sm, pin_a, 2, false);
-    // Set this pin's GPIO function (connect PIO to the pad)
-    pio_gpio_init(pio, pin_a);
-    pio_gpio_init(pio, pin_a + 1);
-    // Set the state machine running
-    pio_sm_set_enabled(pio, sm, true);
-}
+            // Shift to left, autopull enabled, 32 bits at a time
+            sm_config_set_out_shift(&c, false, true, 32);
 
-static inline void pio_maple_out_stop(PIO pio, uint sm, uint pin_a)
-{
-    pio_sm_set_enabled(pio, sm, false);
-    // Reset the pins' function to standard I/O, transitioning back HIGH before setting to input
-    gpio_set_mask(3 << pin_a);
-    gpio_set_dir_out_masked(3 << pin_a);
-    gpio_set_function(pin_a, GPIO_FUNC_SIO);
-    gpio_set_function(pin_a + 1, GPIO_FUNC_SIO);
-    gpio_set_dir_in_masked(3 << pin_a);
-}
+            sm_config_set_clkdiv(
+                &c, (sys_freq_khz * min_pulse_time_ns) / maple_out_FULL_TICKS / 1000000.0);
+
+            // Load our configuration, and jump to the start of the program
+            pio_sm_init(mProgram.mPio, mSmIdx, mProgram.mProgramOffset, &c);
+        }
+
+        inline void start() const
+        {
+            // Reset pointers
+            pio_sm_clear_fifos(mProgram.mPio, mSmIdx);
+            pio_sm_restart(mProgram.mPio, mSmIdx);
+            pio_sm_clkdiv_restart(mProgram.mPio, mSmIdx);
+            pio_sm_exec(mProgram.mPio, mSmIdx, pio_encode_jmp(mProgram.mProgramOffset));
+            // Pin direction starts as input
+            pio_sm_set_consecutive_pindirs(mProgram.mPio, mSmIdx, mPinA, 2, false);
+            // Set this pin's GPIO function (connect PIO to the pad)
+            pio_gpio_init(mProgram.mPio, mPinA);
+            pio_gpio_init(mProgram.mPio, mPinB);
+            // Set the state machine running
+            pio_sm_set_enabled(mProgram.mPio, mSmIdx, true);
+        }
+
+        inline void stop() const
+        {
+            pio_sm_set_enabled(mProgram.mPio, mSmIdx, false);
+            // Reset the pins' function to standard I/O, transitioning back HIGH before setting to input
+            gpio_set_mask(mMaskAB);
+            gpio_set_dir_out_masked(mMaskAB);
+            gpio_set_function(mPinA, GPIO_FUNC_SIO);
+            gpio_set_function(mPinB, GPIO_FUNC_SIO);
+            gpio_set_dir_in_masked(mMaskAB);
+        }
+
+    private:
+        inline static const PioProgram& getMapleOutProgram()
+        {
+            static const PioProgram program(MAPLE_OUT_PIO, &maple_out_program);
+            return program;
+        }
+
+    public:
+        const PioProgram& mProgram;
+        const uint mPinA;
+        const uint mPinB;
+        const uint mMaskAB;
+        const uint mSmIdx;
+};
+
 %}
 
 .program maple_in
@@ -231,59 +266,81 @@ in pins 1
 
 % c-sdk {
 #include "hardware/gpio.h"
-static inline pio_sm_config pio_maple_in_get_config(uint prog_offs, uint pin_a)
+#include "hardware/pio.h"
+
+#define MAPLE_IN_PIO pio1
+
+class MapleInStateMachine
 {
-    pio_sm_config c = maple_in_program_get_default_config(prog_offs);
-    sm_config_set_in_pins(&c, pin_a);
+    public:
+        inline MapleInStateMachine(uint pin_a) :
+            mProgram(getMapleInProgram()),
+            mPinA(pin_a),
+            mPinB(pin_a + 1),
+            mMaskAB(3 << pin_a),
+            mSmIdx(pio_claim_unused_sm(mProgram.mPio, true))
+        {
+            // Initialize the two pins as inputs with pullups
+            gpio_set_dir_in_masked(mMaskAB);
+            gpio_set_pulls(mPinA, true, false);
+            gpio_set_pulls(mPinB, true, false);
 
-    // jmp pin checks pin A
-    sm_config_set_jmp_pin(&c, pin_a);
+            pio_sm_config c = maple_in_program_get_default_config(mProgram.mProgramOffset);
+            sm_config_set_in_pins(&c, mPinA);
 
-    // Shift to right, autopull disabled, 32 bits at a time
-    sm_config_set_out_shift(&c, true, false, 32);
-    // Shift to left, autopush enabled, 32 bits at a time
-    sm_config_set_in_shift(&c, false, true, 32);
+            // jmp pin checks pin A
+            sm_config_set_jmp_pin(&c, mPinA);
 
-    // Sample as fast as possible
-    sm_config_set_clkdiv(&c, 1);
+            // Shift to right, autopull disabled, 32 bits at a time
+            sm_config_set_out_shift(&c, true, false, 32);
+            // Shift to left, autopush enabled, 32 bits at a time
+            sm_config_set_in_shift(&c, false, true, 32);
 
-    return c;
-}
+            // Sample as fast as possible
+            sm_config_set_clkdiv(&c, 1);
 
-static inline void pio_maple_in_init(PIO pio, uint sm, uint prog_offs, uint pin_a)
-{
-    // Initialize the two pins as inputs with pullups
-    uint pin_b = pin_a + 1;
-    gpio_set_dir_in_masked((1 << pin_a) | (1 << pin_b));
-    gpio_set_pulls(pin_a, true, false);
-    gpio_set_pulls(pin_a + 1, true, false);
-    // Load our configuration, and jump to the start of the program
-    pio_sm_config c = pio_maple_in_get_config(prog_offs, pin_a);
-    pio_sm_init(pio, sm, prog_offs, &c);
-}
+            // Load our configuration, and jump to the start of the program
+            pio_sm_init(mProgram.mPio, mSmIdx, mProgram.mProgramOffset, &c);
+        }
 
-static inline void pio_maple_in_start(PIO pio, uint sm, uint prog_offs, uint pin_a)
-{
-    // Reset pointers
-    pio_sm_clear_fifos(pio, sm);
-    pio_sm_restart(pio, sm);
-    pio_sm_clkdiv_restart(pio, sm);
-    pio_sm_exec(pio, sm, pio_encode_jmp(prog_offs));
-    // Pin direction starts as input
-    pio_sm_set_consecutive_pindirs(pio, sm, pin_a, 2, false);
-    // Set this pin's GPIO function (connect PIO to the pad)
-    pio_gpio_init(pio, pin_a);
-    pio_gpio_init(pio, pin_a + 1);
-    // Set the state machine running
-    pio_sm_set_enabled(pio, sm, true);
-}
+        inline void start() const
+        {
+            // Reset pointers
+            pio_sm_clear_fifos(mProgram.mPio, mSmIdx);
+            pio_sm_restart(mProgram.mPio, mSmIdx);
+            pio_sm_clkdiv_restart(mProgram.mPio, mSmIdx);
+            pio_sm_exec(mProgram.mPio, mSmIdx, pio_encode_jmp(mProgram.mProgramOffset));
+            // Pin direction starts as input
+            pio_sm_set_consecutive_pindirs(mProgram.mPio, mSmIdx, mPinA, 2, false);
+            // Set this pin's GPIO function (connect PIO to the pad)
+            pio_gpio_init(mProgram.mPio, mPinA);
+            pio_gpio_init(mProgram.mPio, mPinB);
+            // Set the state machine running
+            pio_sm_set_enabled(mProgram.mPio, mSmIdx, true);
+        }
 
-static inline void pio_maple_in_stop(PIO pio, uint sm, uint pin_a)
-{
-    pio_sm_set_enabled(pio, sm, false);
-    // Reset the pins' function to standard I/O with pullups
-    gpio_set_function(pin_a, GPIO_FUNC_SIO);
-    gpio_set_function(pin_a + 1, GPIO_FUNC_SIO);
-    gpio_set_dir_in_masked(3 << pin_a);
-}
+        inline void stop() const
+        {
+            pio_sm_set_enabled(mProgram.mPio, mSmIdx, false);
+            // Reset the pins' function to standard I/O with pullups
+            gpio_set_function(mPinA, GPIO_FUNC_SIO);
+            gpio_set_function(mPinB, GPIO_FUNC_SIO);
+            gpio_set_dir_in_masked(mMaskAB);
+        }
+
+    private:
+        inline static const PioProgram& getMapleInProgram()
+        {
+            static const PioProgram program(MAPLE_IN_PIO, &maple_in_program);
+            return program;
+        }
+
+    public:
+        const PioProgram& mProgram;
+        const uint mPinA;
+        const uint mPinB;
+        const uint mMaskAB;
+        const uint mSmIdx;
+};
+
 %}

@@ -1,9 +1,8 @@
 #ifndef __CONFIGURATION_H__
 #define __CONFIGURATION_H__
 
-// Adjust the CPU clock frequency here (note: overclocking doesn't help - keep at 133 MHz or less)
-#define CPU_FREQ_MHZ 133
-#define CPU_FREQ_KHZ (CPU_FREQ_MHZ * 1000)
+// Adjust the CPU clock frequency here
+#define CPU_FREQ_KHZ 133000
 
 // Adjust the minimum time between each edge here
 // 320 ns achieves 2 mbps, just as the dreamcast does
