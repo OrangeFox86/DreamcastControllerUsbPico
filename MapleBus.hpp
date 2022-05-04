@@ -154,7 +154,9 @@ class MapleBus
         //! True when read is currently in progress
         volatile bool mReadInProgress;
         //! The time at which the next timeout will occur
-        uint64_t mProcKillTime;
+        volatile uint64_t mProcKillTime;
+        //! True once receive is detected
+        volatile bool mRxDetected;
 };
 
 #endif // __MAPLE_BUS_H__

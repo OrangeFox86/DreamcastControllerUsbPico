@@ -16,8 +16,11 @@
 // Added percentage on top of the expected completion time
 #define MAPLE_WRITE_TIMEOUT_EXTRA_PERCENT 20
 
+// Maximum amount of time waiting for response when one is expected
+#define MAPLE_RESPONSE_TIMEOUT_US 500
+
 // Maximum amount of time to spend trying to read on the maple bus
-// TODO: Add a shorter timeout if read hasn't seen start sequence in X ns
-#define MAPLE_READ_TIMEOUT_US 3000
+// 4000 accommodates the maximum number of words (256)
+#define MAPLE_READ_TIMEOUT_US 4000
 
 #endif // __CONFIGURATION_H__

@@ -214,9 +214,11 @@ jmp y-- b_toggle_low_loop ; toggle detected; decrement do another wait until 0
 ; wait for B to go low (warning: "A" state changes ignored in this time)
 wait 0 pin 1
 ; ensure A is still high
-jmp pin data_loop
+jmp pin data_start
 jmp wait_start
-
+data_start:
+; The first IRQ tells application that start sequence detected
+irq set 0 rel
 
 
 .wrap_target

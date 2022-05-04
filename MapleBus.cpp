@@ -120,9 +120,17 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
 
 inline void MapleBus::readIsr()
 {
-    mSmIn.stop();
-    mReadInProgress = false;
-    mReadUpdated = true;
+    if (!mRxDetected)
+    {
+        mRxDetected = true;
+        mProcKillTime = time_us_64() + MAPLE_READ_TIMEOUT_US;
+    }
+    else
+    {
+        mSmIn.stop();
+        mReadInProgress = false;
+        mReadUpdated = true;
+    }
 }
 
 inline void MapleBus::writeIsr()
@@ -131,7 +139,7 @@ inline void MapleBus::writeIsr()
     if (mExpectingResponse)
     {
         mSmIn.start();
-        mProcKillTime = time_us_64() + MAPLE_READ_TIMEOUT_US;
+        mProcKillTime = time_us_64() + MAPLE_RESPONSE_TIMEOUT_US;
         mReadInProgress = true;
     }
     mWriteInProgress = false;
@@ -178,6 +186,8 @@ bool MapleBus::write(uint32_t frameWord, const uint32_t* payload, uint8_t len, b
         }
         // Last byte left shifted out is the CRC
         mWriteBuffer[len + 2] = crc << 24;
+
+        mRxDetected = false;
 
         if (writeInit())
         {
