@@ -36,10 +36,14 @@ start_b_toggle_loop:
 nop side 0 [FULL_TICKS - 1]
 nop side MASK_B [FULL_TICKS - 2]
 jmp y-- start_b_toggle_loop
-; Bring A back HIGH
-nop side MASK_AB [HALF_TICKS]
-; Then bring B LOW, decrement x, and start reading data
-jmp x--, clock_a_data_b side MASK_A [HALF_TICKS - 1]
+; Bring A back HIGH and decrement x in preparation of the first bit
+jmp x--, first_clock_a_data_b side MASK_AB
+
+; Don't want to bring B low unless the first bit is 0, so this is a special check
+first_clock_a_data_b:
+out y, 1 side MASK_AB
+jmp !y, clock_a_data_b_zero side MASK_AB
+jmp first_clock_a_data_b_one side MASK_AB
 
 
 
@@ -53,6 +57,7 @@ jmp !y clock_a_data_b_zero
 
 clock_a_data_b_one:
 nop side MASK_AB [HALF_TICKS - 1]
+first_clock_a_data_b_one:
 jmp x-- clock_b_data_a side MASK_B [HALF_TICKS - 1]
 ; jmp end_sequence ; should never reach here anyway (saves an instruction)
 
