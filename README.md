@@ -25,7 +25,7 @@ Some sources claim that B transitioning LOW is part of the start sequence. Howev
 
 ### Generating Data Bits
 
-For each bit, one line of the maple bus acts as a clock while the other is the data to be sampled. The two lines trade their function for each bit. The first bit has **A** acting as clock and **B** acting as data. The next bit has **B** acting as clock and **A** acting as data. Line **A** acts as clock again the bit after that. The pattern repeats until all data is transmitted. A data bit is clocked when the designated clock line transitions from HIGH to LOW.
+For each bit, one line of the maple bus acts as a clock while the other is the data to be sampled. A data bit is clocked when the designated clock line transitions from HIGH to LOW. The two lines trade their function after each bit. Line **A** acts as clock and **B** acts as data for the first bit. Line **B** acts as clock and **A** acts as data for the next bit. Line **A** acts as clock again for the bit after that. The pattern repeats until all data is transmitted.
 
 Each state transition can be broken down into 3 phases:
 - Phase 1 - Clock Conditioning: Bring clock HIGH and keep data at the state it was previously
@@ -38,7 +38,7 @@ There are a total of 6 types of state transitions, depending on what the previou
 
 ![Maple_Bus_State_Truth_Table](images/Maple_Bus_State_Truth_Table.png?raw=true)
 
-This allows for each line, A & B to transition in a staggard pattern. On the Dreamcast, each "phase" lasts about 160 nanoseconds which means each bit can be transmitted in about 480 nanoseconds. Because of the staggard pattern, the minimum time between one edge and the next on each line is the sum of the time of 2 phases which is about 320 nanoseconds on the Dreamcast.
+Notice that each line, A & B transitions states in a staggard pattern. On the Dreamcast, each "phase" lasts about 160 nanoseconds which means each bit can be transmitted in about 480 nanoseconds. Because of the staggard pattern, the minimum time between one edge and the next on each line is the sum of the time of 2 phases which is about 320 nanoseconds on the Dreamcast.
 
 For reference, Dreamcast controllers usually transmit a little slower with each phase lasting about 250 nanoseconds with about 110 microsecond delays between each 3 word chunk. Timing is not so critical since each host/device on the bus controls its own clocking sequence. Still, it was a goal of this project to mimic the Dreamcast timing sequence as close as possible.
 
