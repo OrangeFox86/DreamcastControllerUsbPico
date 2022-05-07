@@ -66,8 +66,6 @@ void maple_read_isr1(void)
 }
 }
 
-uint MapleBus::kDmaCount = 0;
-
 void MapleBus::initIsrs()
 {
     uint outIdx = pio_get_index(MAPLE_OUT_PIO);
@@ -100,8 +98,8 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     mSenderAddr(senderAddr),
     mSmOut(CPU_FREQ_KHZ, MAPLE_NS_PER_BIT, mPinA),
     mSmIn(mPinA),
-    mDmaWriteChannel(kDmaCount++),
-    mDmaReadChannel(kDmaCount++),
+    mDmaWriteChannel(dma_claim_unused_channel(true)),
+    mDmaReadChannel(dma_claim_unused_channel(true)),
     mWriteBuffer(),
     mReadBuffer(),
     mLastValidRead(),
@@ -118,6 +116,30 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     mapleWriteIsr[mSmOut.mSmIdx] = this;
     mapleReadIsr[mSmIn.mSmIdx] = this;
     initIsrs();
+
+    // Setup DMA to automaticlly put data on the FIFO
+    dma_channel_config c = dma_channel_get_default_config(mDmaWriteChannel);
+    channel_config_set_read_increment(&c, true);
+    channel_config_set_write_increment(&c, false);
+    channel_config_set_dreq(&c, pio_get_dreq(mSmOut.mProgram.mPio, mSmOut.mSmIdx, true));
+    dma_channel_configure(mDmaWriteChannel,
+                            &c,
+                            &mSmOut.mProgram.mPio->txf[mSmOut.mSmIdx],
+                            mWriteBuffer,
+                            sizeof(mWriteBuffer) / sizeof(mWriteBuffer[0]),
+                            false);
+
+    // Setup DMA to automaticlly read data from the FIFO
+    c = dma_channel_get_default_config(mDmaReadChannel);
+    channel_config_set_read_increment(&c, false);
+    channel_config_set_write_increment(&c, true);
+    channel_config_set_dreq(&c, pio_get_dreq(mSmIn.mProgram.mPio, mSmIn.mSmIdx, false));
+    dma_channel_configure(mDmaReadChannel,
+                            &c,
+                            mReadBuffer,
+                            &mSmIn.mProgram.mPio->rxf[mSmIn.mSmIdx],
+                            (sizeof(mReadBuffer) / sizeof(mReadBuffer[0])),
+                            false);
 }
 
 inline void MapleBus::readIsr()
@@ -178,6 +200,10 @@ bool MapleBus::write(uint32_t frameWord,
 
     if (!mWriteInProgress && !mReadInProgress)
     {
+        // Make sure previous DMA instances are killed
+        dma_channel_abort(mDmaWriteChannel);
+        dma_channel_abort(mDmaReadChannel);
+
         mRxDetected = false;
         mReadTimeoutUs = readTimeoutUs;
 
@@ -198,39 +224,21 @@ bool MapleBus::write(uint32_t frameWord,
 
         if (writeInit())
         {
-            // Make sure previous DMA  instance is killed
-            dma_channel_abort(mDmaWriteChannel);
-            // Setup DMA to automaticlly put data on the FIFO
-            dma_channel_config c = dma_channel_get_default_config(mDmaWriteChannel);
-            channel_config_set_read_increment(&c, true);
-            channel_config_set_write_increment(&c, false);
-            channel_config_set_dreq(&c, pio_get_dreq(mSmOut.mProgram.mPio, mSmOut.mSmIdx, true));
-            dma_channel_configure(mDmaWriteChannel,
-                                  &c,
-                                  &mSmOut.mProgram.mPio->txf[mSmOut.mSmIdx],
-                                  mWriteBuffer,
-                                  len + 3,
-                                  true);
+            // Start writing
+            dma_channel_transfer_from_buffer_now(mDmaWriteChannel, mWriteBuffer, len + 3);
 
             if (expectResponse)
             {
                 // Flush the read buffer
                 updateLastValidReadBuffer();
                 // Clear out the read buffer for good measure
-                memset(mReadBuffer, 0, sizeof(mReadBuffer));
-                // Make sure previous DMA  instance is killed
-                dma_channel_abort(mDmaReadChannel);
-                // Setup DMA to automaticlly read data from the FIFO
-                dma_channel_config c = dma_channel_get_default_config(mDmaReadChannel);
-                channel_config_set_read_increment(&c, false);
-                channel_config_set_write_increment(&c, true);
-                channel_config_set_dreq(&c, pio_get_dreq(mSmIn.mProgram.mPio, mSmIn.mSmIdx, false));
-                dma_channel_configure(mDmaReadChannel,
-                                      &c,
-                                      mReadBuffer,
-                                      &mSmIn.mProgram.mPio->rxf[mSmIn.mSmIdx],
-                                      (sizeof(mReadBuffer) / sizeof(mReadBuffer[0])),
-                                      true);
+                for (uint32_t i = 0; i < sizeof(mReadBuffer) / sizeof(mReadBuffer[0]); ++i)
+                {
+                    mReadBuffer[i] = 0;
+                }
+                // Start reading
+                dma_channel_transfer_to_buffer_now(
+                    mDmaReadChannel, mReadBuffer, sizeof(mReadBuffer) / sizeof(mReadBuffer[0]));
             }
 
             uint32_t totalWriteTimeNs = numBits * MAPLE_NS_PER_BIT;

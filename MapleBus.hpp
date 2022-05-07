@@ -111,10 +111,10 @@ class MapleBus
         void updateLastValidReadBuffer();
 
         //! Swaps the endianness of a 32 bit word from the given source to the given destination.
-        static inline void swapByteOrder(uint32_t& dest, uint32_t source, uint8_t& crc)
+        static inline void swapByteOrder(volatile uint32_t& dest, uint32_t source, uint8_t& crc)
         {
             const uint8_t* src = reinterpret_cast<uint8_t*>(&source);
-            uint8_t* dst = reinterpret_cast<uint8_t*>(&dest) + 3;
+            volatile uint8_t* dst = reinterpret_cast<volatile uint8_t*>(&dest) + 3;
             for (uint j = 0; j < 4; ++j, ++src, --dst)
             {
                 *dst = *src;
@@ -126,9 +126,6 @@ class MapleBus
         static void initIsrs();
 
     private:
-        //! Total number of DMAs used by Maple Busses (2 used by each instance)
-        static uint kDmaCount;
-
         //! Pin A GPIO index for this bus
         const uint32_t mPinA;
         //! Pin B GPIO index for this bus
@@ -146,14 +143,14 @@ class MapleBus
         //! The PIO state machine index used for input by this bus
         const MapleInStateMachine mSmIn;
         //! The DMA channel used for writing by this bus
-        const uint mDmaWriteChannel;
+        const int mDmaWriteChannel;
         //! The DMA channel used for reading by this bus
-        const uint mDmaReadChannel;
+        const int mDmaReadChannel;
 
         //! The output word buffer - 256 + 2 extra words for bit count and CRC
-        uint32_t mWriteBuffer[258];
+        volatile uint32_t mWriteBuffer[258];
         //! The input word buffer - 256 + 1 extra word for CRC
-        uint32_t mReadBuffer[257];
+        volatile uint32_t mReadBuffer[257];
         //! Holds the last know valid read buffer (no CRC - that was validated)
         uint32_t mLastValidRead[256];
         //! Number of words stored in mLastValidRead, including the frame word
