@@ -123,6 +123,8 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     dma_channel_config c = dma_channel_get_default_config(mDmaWriteChannel);
     channel_config_set_read_increment(&c, true);
     channel_config_set_write_increment(&c, false);
+    // Bytes are instead manually swapped since CRC needs to be computed anyway
+    // channel_config_set_bswap(&c, true);
     channel_config_set_dreq(&c, pio_get_dreq(mSmOut.mProgram.mPio, mSmOut.mSmIdx, true));
     dma_channel_configure(mDmaWriteChannel,
                             &c,
@@ -135,6 +137,8 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     c = dma_channel_get_default_config(mDmaReadChannel);
     channel_config_set_read_increment(&c, false);
     channel_config_set_write_increment(&c, true);
+    // Bytes are instead manually swapped since CRC needs to be computed anyway
+    // channel_config_set_bswap(&c, true);
     channel_config_set_dreq(&c, pio_get_dreq(mSmIn.mProgram.mPio, mSmIn.mSmIdx, false));
     dma_channel_configure(mDmaReadChannel,
                             &c,

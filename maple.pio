@@ -145,7 +145,7 @@ class MapleOutStateMachine
             sm_config_set_out_shift(&c, false, true, 32);
 
             sm_config_set_clkdiv(
-                &c, (sys_freq_khz * (ns_per_bit / 3 * 2)) / maple_out_FULL_TICKS / 1000000.0);
+                &c, (sys_freq_khz * (ns_per_bit / 3 * 2)) / maple_out_DOUBLE_PHASE_TICKS / 1000000.0);
 
             // Load our configuration, and jump to the start of the program
             pio_sm_init(mProgram.mPio, mSmIdx, mProgram.mProgramOffset, &c);
@@ -205,20 +205,25 @@ b_toggle_low_loop:
 jmp pin wait_start ; A should not be high yet
 ; `mov x, pins` wouldn't work because I just want the first 2 pins
 mov osr, pins ; copy pin values into output shift register
-out x 2 ; put A and B into register x (should either be 0b10 or 0b00)
+out x 2 ; put A and B into register x (should either be 0b01 or 0b00)
 jmp x-- b_toggle_low_loop ; keep waiting if B is high
 ; else: fall through
 
 b_toggle_high_loop:
 jmp pin wait_start ; A should not be high yet
 mov osr, pins ; copy pin values into output shift register
-out x 2 ; put A and B into register x (should either be 0b10 or 0b00)
+out x 2 ; put A and B into register x (should either be 0b01 or 0b00)
 jmp !x b_toggle_high_loop ; keep waiting if b is low
 jmp y-- b_toggle_low_loop ; toggle detected; decrement do another wait until 0
 ; else: fall through
 
 ; Wait for A to go back high
-wait 1 pin 0
+wait_for_a_high:
+jmp pin data_start ; once A goes HIGH, start data sequence
+mov osr, pins ; copy pin values into output shift register
+out x 2 ; put A and B into register x (should either be 0b01 or 0b11)
+jmp !x wait_start ; if both A and B go low before A goes HIGH, then this is not a standard start sequence
+jmp wait_for_a_high ; keep sampling
 
 data_start:
 ; The first IRQ tells application that start sequence detected
@@ -231,31 +236,27 @@ wait 0 pin 0
 .wrap_target
 data_loop:
 
-; wait for B to be high or A go low
+; wait for B to toggle HIGH then LOW or for A go LOW
+set y, 1
+end_detect_b_toggle:
+mov osr, pins ; copy pin values into output shift register
+out x 1
+jmp !x sample_b_from_osr ; if A went low before B went high, then sample B now
+out x 1
+jmp !y end_detect_b_to_low ; if y is 0 then we are waiting for B to be low
 end_detect_b_to_high:
-mov osr, pins ; copy pin values into output shift register
-out x 1
-jmp !x sample_b_from_osr ; if A went low before B went high, then sample B now
-out x 1
-jmp !x end_detect_b_to_high ; if B went is still low, try again
-; otherwise, fall through to next end detect phase
-
-; Wait for B to go back low or A to go low
+jmp !x end_detect_b_toggle ; if B is still LOW, try again
+jmp y-- end_detect_b_toggle ; B just went HIGH, so decrement y and sample again
 end_detect_b_to_low:
-mov osr, pins ; copy pin values into output shift register
-out x 1
-jmp !x sample_b_from_osr ; if A went low before B went high, then sample B now
-out x 1
-jmp x-- end_detect_b_to_low ; if B went is still high, try again
+jmp x-- end_detect_b_toggle ; if B is still HIGH, try again
 ; otherwise, fall through to next end detect phase
 
 ; Warning: the full end sequence is not sampled for simplicity
 ; Either end is actually there or there was a glitch (rely on len and CRC of packet data in that case)
 end_detected:
-push ; make sure the crc is pushed out
-; Wait for IRQ to be handled before continuing
+;push ; make sure the crc is pushed out (this is done externally by the stop() function)
+; Wait for IRQ to be handled before continuing (application should kill the state machine soon after this)
 irq wait 0 rel
-jmp wait_start
 
 
 sample_b_from_osr:
@@ -332,6 +333,10 @@ class MapleInStateMachine
         inline void stop() const
         {
             pio_sm_set_enabled(mProgram.mPio, mSmIdx, false);
+
+            // Push out the CRC (0x8020 = push block)
+            pio_sm_exec_wait_blocking(mProgram.mPio, mSmIdx, 0x8020);
+
             // Reset the pins' function to standard I/O with pullups
             gpio_set_function(mPinA, GPIO_FUNC_SIO);
             gpio_set_function(mPinB, GPIO_FUNC_SIO);
