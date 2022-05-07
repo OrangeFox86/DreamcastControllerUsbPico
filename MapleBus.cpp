@@ -307,9 +307,13 @@ void MapleBus::processEvents()
 
 void MapleBus::updateLastValidReadBuffer()
 {
-    // Note: potential for race condition if somehow DMA got stalled, but I feel chances are remote
     if (mReadUpdated)
     {
+        // Wait up to 1 ms for the RX FIFO to become empty (automatically drained by the read DMA)
+        uint64_t timeoutTime = time_us_64() + 1000;
+        while (!pio_sm_is_rx_fifo_empty(mSmIn.mProgram.mPio, mSmIn.mSmIdx)
+               && time_us_64() < timeoutTime);
+
         mReadUpdated = false;
         uint32_t buffer[256];
         // The frame word always contains how many proceeding words there are [0,255]

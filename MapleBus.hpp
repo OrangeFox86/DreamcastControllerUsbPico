@@ -12,6 +12,8 @@
 //! Handles communication over Maple Bus. This class is currently only setup to handle communication
 //! from a "primary" device which initiates communication. This can easily be modified to handle
 //! communication for a "secondary" device, but that is not a use-case of this project.
+//!
+//! @warning this class is not "thread safe" - it should only be used by 1 core.
 class MapleBus
 {
     public:
