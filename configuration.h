@@ -4,8 +4,8 @@
 // Adjust the CPU clock frequency here
 #define CPU_FREQ_KHZ 133000
 
-// Adjust the minimum time between each edge here
-// 480 ns achieves just over 2 mbps, just as the dreamcast does
+// Adjust the minimum time between each edge here (value should be divisible by 3)
+// 480 ns achieves just over 2 mbps, just as the Dreamcast does
 #define MAPLE_NS_PER_BIT 480
 
 // The minimum amount of time we check for an open line before taking control of it
