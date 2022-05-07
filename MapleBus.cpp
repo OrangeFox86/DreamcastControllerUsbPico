@@ -115,6 +115,8 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
 {
     mapleWriteIsr[mSmOut.mSmIdx] = this;
     mapleReadIsr[mSmIn.mSmIdx] = this;
+
+    // This only needs to be called once but no issue calling it for each
     initIsrs();
 
     // Setup DMA to automaticlly put data on the FIFO
@@ -217,15 +219,16 @@ bool MapleBus::write(uint32_t frameWord,
         swapByteOrder(mWriteBuffer[1], frameWord, crc);
         for (uint32_t i = 0; i < len; ++i)
         {
-            swapByteOrder(mWriteBuffer[i + 2], payload[i], crc);
+            swapByteOrder(mWriteBuffer[i + 2], *payload++, crc);
         }
         // Last byte left shifted out is the CRC
         mWriteBuffer[len + 2] = crc << 24;
 
         if (writeInit())
         {
-            // Start writing
-            dma_channel_transfer_from_buffer_now(mDmaWriteChannel, mWriteBuffer, len + 3);
+            // Update flags before beginning to write
+            mExpectingResponse = expectResponse;
+            mWriteInProgress = true;
 
             if (expectResponse)
             {
@@ -241,6 +244,9 @@ bool MapleBus::write(uint32_t frameWord,
                     mDmaReadChannel, mReadBuffer, sizeof(mReadBuffer) / sizeof(mReadBuffer[0]));
             }
 
+            // Start writing
+            dma_channel_transfer_from_buffer_now(mDmaWriteChannel, mWriteBuffer, len + 3);
+
             uint32_t totalWriteTimeNs = numBits * MAPLE_NS_PER_BIT;
             // Start and stop sequence takes less than 14 bit periods
             totalWriteTimeNs += 14 * MAPLE_NS_PER_BIT;
@@ -248,9 +254,6 @@ bool MapleBus::write(uint32_t frameWord,
             totalWriteTimeNs *= (1 + (MAPLE_WRITE_TIMEOUT_EXTRA_PERCENT / 100.0));
             // And then compute the time which the write process should complete
             mProcKillTime = time_us_64() + (totalWriteTimeNs / 1000.0 + 0.5) + 1;
-
-            mExpectingResponse = expectResponse;
-            mWriteInProgress = true;
 
             rv = true;
         }

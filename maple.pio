@@ -216,20 +216,19 @@ jmp !x b_toggle_high_loop ; keep waiting if b is low
 jmp y-- b_toggle_low_loop ; toggle detected; decrement do another wait until 0
 ; else: fall through
 
-; wait for B to go low (warning: "A" state changes ignored in this time)
-wait 0 pin 1
-; ensure A is still high
-jmp pin data_start
-jmp wait_start
+; Wait for A to go back high
+wait 1 pin 0
+
 data_start:
 ; The first IRQ tells application that start sequence detected
 irq set 0 rel
 
+; Wait for A to go low then fall through to first end detect phase (which should cause sample of B)
+wait 0 pin 0
+
 
 .wrap_target
 data_loop:
-; wait for A to be high
-wait 1 pin 0
 
 ; wait for B to be high or A go low
 end_detect_b_to_high:
@@ -268,6 +267,9 @@ wait 1 pin 1
 wait 0 pin 1
 ; shift in A value
 in pins 1
+
+; wait for A to be high
+wait 1 pin 0
 
 .wrap
 
