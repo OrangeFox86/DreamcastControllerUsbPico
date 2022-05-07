@@ -19,11 +19,13 @@ Every packet begins with a start sequence and is completed with an end sequence.
 
 ![Maple_Bus_Start_and_End_Sequences](images/Maple_Bus_Start_and_End_Sequences.png)
 
+#### Side Note on Start Sequence
+
+Some sources claim that B transitioning LOW is part of the start sequence. However, the patent for Maple Bus shows that the start sequence ends when both A and B are HIGH. I will need to verify this by forcing some actual hardware to transmit 128 words of data which would make the first bit HIGH. The question is then: does the B line transition LOW then back HIGH before getting clocked or will it remain HIGH? According to the patent, I assume B should remain HIGH.
+
 ### Generating Data Bits
 
-There are a total of 6 types of state transitions, depending on what the previous phase was. A depiction of state transitions can be seen in the image below.
-
-![Maple_Bus_State_Truth_Table](images/Maple_Bus_State_Truth_Table.png?raw=true)
+For each bit, one line of the maple bus acts as a clock while the other is the data to be sampled. The two lines trade their function for each bit. The first bit has A acting as clock and B acting as data. The next bit has B acting as clock and A acting as data. The one after that has A acting as clock again. The pattern repeats until all data is transmitted. A data bit is clocked when the designated clock line transitions from HIGH to LOW.
 
 Each state transition can be broken down into 3 phases:
 - Phase 1 - Clock Conditioning: Bring clock HIGH and keep data at the state it was previously
@@ -32,6 +34,17 @@ Each state transition can be broken down into 3 phases:
 
 ![Maple_Bus_Clocking_Phases](images/Maple_Bus_Clocking_Phases.png?raw=true)
 
+There are a total of 6 types of state transitions, depending on what the previous phase was. A depiction of state transitions can be seen in the image below.
+
+![Maple_Bus_State_Truth_Table](images/Maple_Bus_State_Truth_Table.png?raw=true)
+
 This allows for each line, A & B to transition in a staggard pattern. On the Dreamcast, each "phase" lasts about 160 nanoseconds which means each bit can be transmitted in about 480 nanoseconds. Because of the staggard pattern, the time between one edge and the next on each line is the sum of the time of 2 phases which is about 320 nanoseconds on the Dreamcast.
 
 For reference, Dreamcast controllers usually transmit a little slower with each phase lasting about 250 nanoseconds with about 110 microsecond delays between each 3 word chunk. Timing is not so critical since each host/device on the bus controls its own clocking sequence. Still, it was a goal of this project to mimic the Dreamcast timing sequence as close as possible.
+
+### Packet Data Format
+
+(TODO)
+- Each word is 32 bits in length transmitted as little endian with most significant bit transmitted first (i.e. the most significant bit of the least significant byte transmits first)
+- Frame word consists of number of following words in packet (LSB) (8 bits), sender address (8 bits), recipient address (8 bits), and command (MSB) (8 bits)
+- CRC byte transmits last and is the value after taking 0 and applying XOR to each byte in the packet
