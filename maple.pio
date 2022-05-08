@@ -92,13 +92,12 @@ nop side MASK_A [DOUBLE_PHASE_TICKS - 1]
 nop side 0 [DOUBLE_PHASE_TICKS - 1]
 nop side MASK_A [DOUBLE_PHASE_TICKS - 1]
 nop side 0 [DOUBLE_PHASE_TICKS - 1]
-nop side MASK_A [DOUBLE_PHASE_TICKS - 1]
+
+; Wait for IRQ to be handled before continuing
+irq wait 0 rel side MASK_A
 
 ; Allow the application to transition AB back HIGH when it's ready to "submit" the data.
 ; See MapleOutStateMachine::stop()
-
-; Wait for IRQ to be handled before continuing
-irq wait 0 rel
 
 .wrap
 
