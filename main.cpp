@@ -10,6 +10,7 @@
 #include "hardware/pio.h"
 
 #include "MapleBus.hpp"
+#include "DreamcastNode.hpp"
 
 #define BUTTON_PIN 2
 
@@ -61,36 +62,12 @@ int main()
     gpio_init(13);
     gpio_set_dir_out_masked(1<<13);
 
-    MapleBus p1(14, 0x00);
+    DreamcastNode p1(14, 0);
 
     while(true)
     {
-        waitButtonPress();
-        if (p1.write(MapleBus::COMMAND_DEVICE_INFO_REQUEST, 0x20, NULL, 0, true))
-        {
-            for (uint i = 0; i < 5; ++i)
-            {
-                sleep_ms(100);
-                gpio_xor_mask(1<<PICO_DEFAULT_LED_PIN);
-            }
-            gpio_put(PICO_DEFAULT_LED_PIN, false);
-        }
-        else
-        {
-            gpio_put(PICO_DEFAULT_LED_PIN, true);
-            sleep_ms(2000);
-            gpio_put(PICO_DEFAULT_LED_PIN, false);
-        }
-
-        uint32_t len;
-        bool newData = false;
-        const uint32_t* dat = p1.getReadData(len, newData);
-        if (newData)
-        {
-            (void)dat; // do something with the data
-            gpio_put(PICO_DEFAULT_LED_PIN, true);
-            sleep_ms(2000);
-        }
+        p1.task(time_us_64());
+        gpio_put(PICO_DEFAULT_LED_PIN, p1.isAPressed());
     }
 }
 

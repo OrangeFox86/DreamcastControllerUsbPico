@@ -4,6 +4,8 @@
 This is a work in progress.
 - There is no USB interface yet
 - Read and Write communication with maple bus is complete!
+- Started to create the dreamcast node which should handle all connected devices to a bus
+  - Began by assuming controller device and parsing buttons
 
 ## Why the RP2040 is a Game Changer
 

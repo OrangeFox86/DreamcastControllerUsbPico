@@ -10,8 +10,12 @@
 #include "hardware/pio.h"
 
 //! Handles communication over Maple Bus. This class is currently only setup to handle communication
-//! from a "primary" device which initiates communication. This can easily be modified to handle
-//! communication for a "secondary" device, but that is not a use-case of this project.
+//! from a host which initiates communication. This can easily be modified to handle communication
+//! for a device, but that is not a use-case of this project.
+//!
+//! If this is ever modified to be a device, keep in mind that the maple_in state machine doesn't
+//! sample the full end sequence. The application side should wait a sufficient amount of time
+//! after bus goes neutral before responding in that case.
 //!
 //! @warning this class is not "thread safe" - it should only be used by 1 core.
 class MapleBus
@@ -102,12 +106,13 @@ class MapleBus
         //!          the data in the underlying buffer which is returned.
         const uint32_t* getReadData(uint32_t& len, bool& newData);
 
+        //! Processes timing events for the current time.
+        //! @param[in] currentTimeUs  The current time to process for (0 to internally get time)
+        void processEvents(uint64_t currentTimeUs=0);
+
     private:
         //! Ensures that the bus is open and starts the write PIO state machine.
         bool writeInit();
-
-        //! Processes timing events for the current time.
-        void processEvents();
 
         //! If new data is available and is valid, updates mLastValidRead.
         void updateLastValidReadBuffer();

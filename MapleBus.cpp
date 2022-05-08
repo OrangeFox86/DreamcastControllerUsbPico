@@ -285,11 +285,17 @@ bool MapleBus::write(uint8_t command,
     return write(frameWord, payload, len, expectResponse, readTimeoutUs);
 }
 
-void MapleBus::processEvents()
+void MapleBus::processEvents(uint64_t currentTimeUs)
 {
     if (mWriteInProgress || mReadInProgress)
     {
-        if (time_us_64() > mProcKillTime)
+        // If currentTimeUs wasn't set, get the current time
+        if (currentTimeUs == 0)
+        {
+            currentTimeUs = time_us_64();
+        }
+
+        if (currentTimeUs > mProcKillTime)
         {
             if (mWriteInProgress)
             {
