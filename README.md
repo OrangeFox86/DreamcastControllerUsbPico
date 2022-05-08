@@ -48,7 +48,7 @@ There are a total of 6 types of state transitions, depending on what the previou
 
 Notice that each line, A & B transitions states in a staggard pattern. On the Dreamcast, each "phase" lasts about 160 nanoseconds which means each bit can be transmitted in about 480 nanoseconds. Because of the staggard pattern, the minimum time between one edge and the next on each line is the sum of the time of 2 phases which is about 320 nanoseconds on the Dreamcast.
 
-For reference, Dreamcast controllers usually transmit a little slower with each phase lasting about 250 nanoseconds with about 110 microsecond delays between each 3 word chunk. Timing is not so critical since each host/device on the bus controls its own clocking sequence. Still, it was a goal of this project to mimic the Dreamcast timing sequence as close as possible.
+For reference, Dreamcast controllers usually transmit a little slower with each phase lasting about 250 nanoseconds with about 110 microsecond delays between each 3 word chunk after the first frame word.
 
 ### Packet Data Format
 
@@ -63,7 +63,7 @@ Some conscessions had to be made in order to handle all input operations within 
 
 ### Sampling the Start Sequence
 
-The input PIO state machine will wait until **A** transitions LOW and then **B** toggles LOW then HIGH four times. The very next state transition must be **A** transitioning HIGH while **B** stays HIGH or the state machine will continue to wait for a start sequence. Once the start sequence is detected, the state machine triggers a non-blocking IRQ to signal to the application that the state machine is now reading data.
+The input PIO state machine will wait until **A** transitions LOW and then count how many times **B** toggles LOW then HIGH while making sure **A** doesn't transition HIGH until after **B** transitions HIGH. If the toggle count isn't 4, then the state machine keeps waiting. Otherwise, the state machine triggers a non-blocking IRQ to signal to the application that the state machine is now reading data.
 
 ### Sampling Data Bits
 
@@ -71,4 +71,4 @@ For each bit, the state machine waits for the designated clock to be HIGH then t
 
 ### Sampling the End Sequence
 
-Whenever **A** is designated as the clock, the input PIO state machine will detect when **B** toggles HIGH then LOW while **A** remains HIGH. It is assumed that this is the beginning of the end sequence. The state machine will then block on an IRQ so that the application can handle the received data. The application side will make sure the CRC is pushed out before handling the data.
+Whenever **A** is designated as the clock, the input PIO state machine will detect when **B** toggles HIGH then LOW while **A** remains HIGH. It is assumed that this is the beginning of the end sequence. The state machine will then block on an IRQ so that the application can handle the received data. The application must then stop the input state machine.
