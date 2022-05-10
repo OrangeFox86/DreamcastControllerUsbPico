@@ -231,6 +231,7 @@ void UsbGamepad::getReport(uint8_t *buffer, uint16_t reqlen)
   report.rx = currentRightAnalog[0];
   report.ry = currentRightAnalog[1];
   report.rz = currentRightAnalog[2];
+  report.hat = getHatValue();
   report.buttons = currentButtons;
   // Copy report into buffer
   uint16_t setLen = (sizeof(report) <= reqlen) ? sizeof(report) : reqlen;

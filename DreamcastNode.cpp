@@ -46,10 +46,15 @@ void DreamcastNode::task(uint64_t currentTimeUs)
             mGamepad.setButton(4, 0 == mControllerCondition.y);
             mGamepad.setButton(11, 0 == mControllerCondition.start);
 
-            mGamepad.setButton(12, 0 == mControllerCondition.up);
-            mGamepad.setButton(13, 0 == mControllerCondition.down);
-            mGamepad.setButton(14, 0 == mControllerCondition.left);
-            mGamepad.setButton(15, 0 == mControllerCondition.right);
+            // mGamepad.setButton(12, 0 == mControllerCondition.up);
+            // mGamepad.setButton(13, 0 == mControllerCondition.down);
+            // mGamepad.setButton(14, 0 == mControllerCondition.left);
+            // mGamepad.setButton(15, 0 == mControllerCondition.right);
+
+            mGamepad.setDigitalPad(UsbGamepad::DPAD_UP, 0 == mControllerCondition.up);
+            mGamepad.setDigitalPad(UsbGamepad::DPAD_DOWN, 0 == mControllerCondition.down);
+            mGamepad.setDigitalPad(UsbGamepad::DPAD_LEFT, 0 == mControllerCondition.left);
+            mGamepad.setDigitalPad(UsbGamepad::DPAD_RIGHT, 0 == mControllerCondition.right);
 
             mGamepad.setAnalogTrigger(true, mControllerCondition.l);
             mGamepad.setAnalogTrigger(false, mControllerCondition.r);

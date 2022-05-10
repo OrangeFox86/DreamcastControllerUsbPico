@@ -9,6 +9,7 @@ class DreamcastNode
     public:
         struct ControllerCondition
         {
+            // Yes, I know I'm using a union in a non-recommended way
             union
             {
                 uint32_t words[2];

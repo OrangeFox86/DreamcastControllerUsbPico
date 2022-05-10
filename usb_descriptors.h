@@ -26,13 +26,23 @@
     HID_REPORT_COUNT ( 6                                      ) ,\
     HID_REPORT_SIZE  ( 8                                      ) ,\
     HID_INPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
-    /* 16 bit Button Map */ \
+    /* 4 bit DPad/Hat Button Map  */ \
+    HID_USAGE_PAGE   ( HID_USAGE_PAGE_DESKTOP                 ) ,\
+    HID_USAGE        ( HID_USAGE_DESKTOP_HAT_SWITCH           ) ,\
+    HID_LOGICAL_MIN  ( 1                                      ) ,\
+    HID_LOGICAL_MAX  ( 8                                      ) ,\
+    HID_PHYSICAL_MIN ( 0                                      ) ,\
+    HID_PHYSICAL_MAX_N ( 315, 2                               ) ,\
+    HID_REPORT_COUNT ( 1                                      ) ,\
+    HID_REPORT_SIZE  ( 4                                      ) ,\
+    HID_INPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
+    /* 12 bit Button Map */ \
     HID_USAGE_PAGE   ( HID_USAGE_PAGE_BUTTON                  ) ,\
     HID_USAGE_MIN    ( 1                                      ) ,\
-    HID_USAGE_MAX    ( 16                                     ) ,\
+    HID_USAGE_MAX    ( 12                                     ) ,\
     HID_LOGICAL_MIN  ( 0                                      ) ,\
     HID_LOGICAL_MAX  ( 1                                      ) ,\
-    HID_REPORT_COUNT ( 16                                     ) ,\
+    HID_REPORT_COUNT ( 12                                     ) ,\
     HID_REPORT_SIZE  ( 1                                      ) ,\
     HID_INPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
   HID_COLLECTION_END
@@ -46,7 +56,8 @@ typedef struct
   uint8_t  rz;        ///< Delta Rz movement of right analog-joystick
   uint8_t  rx;        ///< Delta Rx movement of analog left trigger
   uint8_t  ry;        ///< Delta Ry movement of analog right trigger
-  uint16_t buttons;  ///< Buttons mask for currently pressed buttons
+  unsigned hat:4;     ///< 4 bit HAT (d-pad) value
+  unsigned buttons:12; ///< Buttons mask for currently pressed buttons
 }dreamcast_hid_gamepad_report_t;
 
 #ifdef __cplusplus
