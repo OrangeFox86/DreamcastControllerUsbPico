@@ -2,7 +2,7 @@
  Dreamcast to USB Gamepad Converter for Raspberry Pi Pico
 
 This is a work in progress.
-- There is no USB interface yet
+- The USB interface is there, but it is a very, very rough implementation
 - Read and Write communication with maple bus is complete!
 - Started to create the dreamcast node which should handle all connected devices to a bus
   - Began by assuming controller device and parsing buttons

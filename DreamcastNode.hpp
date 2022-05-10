@@ -2,6 +2,7 @@
 #define __DREAMCAST_NODE_H__
 
 #include "MapleBus.hpp"
+#include "UsbGamepad.h"
 
 class DreamcastNode
 {
@@ -56,7 +57,7 @@ class DreamcastNode
             }
         };
     public:
-        DreamcastNode(uint32_t mapleBusPinA, uint32_t playerIndex);
+        DreamcastNode(uint32_t mapleBusPinA, uint32_t playerIndex, UsbGamepad& gamepad);
 
         void task(uint64_t currentTimeUs);
 
@@ -71,6 +72,7 @@ class DreamcastNode
         static const uint32_t NO_DATA_DISCONNECT_COUNT = 5;
         MapleBus mBus;
         const uint32_t mPlayerIndex;
+        UsbGamepad& mGamepad;
         bool mControllerDetected;
         uint64_t mNextCheckTime;
         bool mWaitingForData;

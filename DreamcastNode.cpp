@@ -1,9 +1,10 @@
 #include "DreamcastNode.hpp"
 #include <string.h>
 
-DreamcastNode::DreamcastNode(uint32_t mapleBusPinA, uint32_t playerIndex) :
+DreamcastNode::DreamcastNode(uint32_t mapleBusPinA, uint32_t playerIndex, UsbGamepad& gamepad) :
     mBus(mapleBusPinA, 0x00),
     mPlayerIndex(playerIndex),
+    mGamepad(gamepad),
     mControllerDetected(false),
     mNextCheckTime(0),
     mWaitingForData(false),
@@ -37,6 +38,28 @@ void DreamcastNode::task(uint64_t currentTimeUs)
         {
             // Handle condition data
             memcpy(mControllerCondition.words, &dat[2], 8);
+
+            // TODO: Move magic numbers to enum
+            mGamepad.setButton(0, 0 == mControllerCondition.a);
+            mGamepad.setButton(1, 0 == mControllerCondition.b);
+            mGamepad.setButton(3, 0 == mControllerCondition.x);
+            mGamepad.setButton(4, 0 == mControllerCondition.y);
+            mGamepad.setButton(11, 0 == mControllerCondition.start);
+
+            mGamepad.setButton(12, 0 == mControllerCondition.up);
+            mGamepad.setButton(13, 0 == mControllerCondition.down);
+            mGamepad.setButton(14, 0 == mControllerCondition.left);
+            mGamepad.setButton(15, 0 == mControllerCondition.right);
+
+            mGamepad.setAnalogTrigger(true, mControllerCondition.l);
+            mGamepad.setAnalogTrigger(false, mControllerCondition.r);
+
+            mGamepad.setAnalogThumbX(true, mControllerCondition.lAnalogLR);
+            mGamepad.setAnalogThumbY(true, mControllerCondition.lAnalogUD);
+            mGamepad.setAnalogThumbX(false, mControllerCondition.rAnalogLR);
+            mGamepad.setAnalogThumbY(false, mControllerCondition.rAnalogUD);
+
+            mGamepad.send();
         }
     }
 
