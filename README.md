@@ -4,25 +4,42 @@
 This is a work in progress.
 - The USB interface is there, but it is a very, very rough implementation
 - Read and Write communication with maple bus is complete!
-- Started to create the dreamcast node which should handle all connected devices to a bus
+- Started to create the Dreamcast node which should handle all connected devices to a bus
   - Began by assuming controller device and parsing buttons
 
 ## Why the RP2040 is a Game Changer
 
 To emulate a bespoke bus such as the Maple Bus on an MCU, one would usually either need to add extra hardware or bit bang the interface. This is not true with the RP2040 and its PIO. Think of it as several extra small processors on the side using a special machine language purpose-built for handling I/O. This means I can offload communication to the PIO and only check on them after an interrupt is activated or a timeout has elapsed. Check out [maple.pio](maple.pio) to see the PIO code.
 
-Luckily, the RP2040 comes with 2 PIO blocks each with 4 separate state machines. This means that the RP2040 can easily emulate 4 separate controller interfaces! This project uses one PIO block for writing and one for reading. This is necessary because each PIO block can only hold up to 32 instructions. The write state machine is compeltely stopped before starting the read state machine for the targeted bus. This wouldn't be necessary if read was done on separate pins from write as each PIO needs to take ownership of the pins. More simplistic wiring is desired if possible though. Switching state machines is fast enough that there shouldn't be a problem, especially since the "write" state machine intentially doesn't bring the bus back to neutral before it notifies the application. Then the application side kills the "write" state machine and brings the bus to neutral just before switching to "read". The application-side write completion process should happen within a microsecond. A device on the Maple Bus usually starts responding after 50 microseconds from the point of the bus going neutral at the end of an end sequence. This ensures that a response is always captured.
+Luckily, the RP2040 comes with 2 PIO blocks each with 4 separate state machines. This means that the RP2040 can easily emulate 4 separate controller interfaces! This project uses one PIO block for writing and one for reading. This is necessary because each PIO block can only hold up to 32 instructions. The write state machine is completely stopped before starting the read state machine for the targeted bus. This wouldn't be necessary if read was done on separate pins from write as each PIO needs to take ownership of the pins. More simplistic wiring is desired if possible though. Switching state machines is fast enough that there shouldn't be a problem, especially since the "write" state machine intentionally doesn't bring the bus back to neutral before it notifies the application. Then the application side kills the "write" state machine and brings the bus to neutral just before switching to "read". The application-side write completion process should happen within a microsecond. A device on the Maple Bus usually starts responding after 50 microseconds from the point of the bus going neutral at the end of an end sequence. This ensures that a response is always captured.
 
-# Maple Bus Protocol
+# Maple Bus
+
+## Hardware Overview
+
+A Maple Bus consists of 2 signal/clock lines that are labeled SDCKA and SDCKB. Hardware on the Maple Bus consists of one host, zero or one main peripheral, and zero to five sub-peripherals. The only difference between a main peripheral and a sub-peripheral is that a main peripheral communicates to the host what sub-peripherals are attached during normal communication. The main peripheral is something like a Dreamcast controller, and the sub-peripherals are things like a VMU, rumble pack, and microphone. The host and all connected peripheral devices communicate on the same 2-line Maple Bus.
+
+<p align="center">
+  <img src="images/Maple_Bus_Electronics_Block_Diagram.png?raw=true" alt="Maple Bus Electronics Block Diagram"/>
+</p>
+
+- Only one connected component on the bus may communicate at a time
+- When the bus is neutral, all components should set all I/O as input
+- Before a component starts communicating, it must verify the bus is neutral for a sufficient amount of time
+- During communication, a device should not drive both lines HIGH for very long
+
+<p align="center">
+  <img src="images/Maple_Bus_Hardware_Communication.png?raw=true" alt="Maple Bus Hardware Communication"/>
+</p>
 
 ## Generating Maple Bus Output
 
-### Generating the Start and End Sequences
+### Start Sequence
 
-Every packet begins with a start sequence and is completed with an end sequence. Note that there are different start sequences which determine how the following bit sequence should be handled, but this project mainly focuses on the standard start sequence used to communicate with a standard Dreamcast controller and VMU.
+Every packet begins with a start sequence. Note that there are different start sequences which determine how the following bit sequence should be handled, but this project mainly focuses on the standard start sequence used to communicate with a standard Dreamcast controller and its sub-peripherals.
 
 <p align="center">
-  <img src="images/Maple_Bus_Start_and_End_Sequences.png?raw=true" alt="Maple Bus Start and End Sequences"/>
+  <img src="images/Maple_Bus_Start_Sequence.png?raw=true" alt="Maple Bus Start Sequence"/>
 </p>
 
 #### Side Note on Start Sequence
@@ -52,6 +69,14 @@ Notice that each line, A & B transitions states in a staggard pattern. On the Dr
 
 For reference, Dreamcast controllers usually transmit a little slower with each phase lasting about 250 nanoseconds with about 110 microsecond delays between each 3 word chunk after the first frame word.
 
+### End Sequence
+
+Every packet is completed with an end sequence to commit the data to the target component.
+
+<p align="center">
+  <img src="images/Maple_Bus_End_Sequence.png?raw=true" alt="Maple Bus End Sequence"/>
+</p>
+
 ### Packet Data Format
 
 (TODO)
@@ -61,7 +86,7 @@ For reference, Dreamcast controllers usually transmit a little slower with each 
 
 ## Sampling Maple Bus Input
 
-Some conscessions had to be made in order to handle all input operations within the 32 instruction set limit of the input PIO block.
+Some concessions had to be made in order to handle all input operations within the 32 instruction set limit of the input PIO block.
 
 ### Sampling the Start Sequence
 
@@ -69,7 +94,7 @@ The input PIO state machine will wait until **A** transitions LOW and then count
 
 ### Sampling Data Bits
 
-For each bit, the state machine waits for the designated clock to be HIGH then transition LOW before sampling the state of the designated data line. State transitions of the designated data line is ignored except for the case of sensing the end sequense as described in the next section.
+For each bit, the state machine waits for the designated clock to be HIGH then transition LOW before sampling the state of the designated data line. State transitions of the designated data line is ignored except for the case of sensing the end sequence as described in the next section.
 
 ### Sampling the End Sequence
 
