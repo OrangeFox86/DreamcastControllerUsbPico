@@ -46,6 +46,14 @@ Every packet begins with a start sequence. Note that there are different start s
 
 Some sources claim that B transitioning LOW is part of the start sequence. However, the patent for Maple Bus shows that the start sequence ends when both A and B are HIGH. I will need to verify this by forcing some actual hardware to transmit 128 words of data which would make the first bit HIGH. The question is then: does the B line transition LOW then back HIGH before getting clocked or will it remain HIGH? According to the patent, I assume B should remain HIGH.
 
+### End Sequence
+
+Every packet is completed with an end sequence to commit the data to the target component.
+
+<p align="center">
+  <img src="images/Maple_Bus_End_Sequence.png?raw=true" alt="Maple Bus End Sequence"/>
+</p>
+
 ### Generating Data Bits
 
 For each bit, one line of the maple bus acts as a clock while the other is the data to be sampled. A data bit is clocked when the designated clock line transitions from HIGH to LOW. The two lines trade their function after each bit. Line **A** acts as clock and **B** acts as data for the first bit. Line **B** acts as clock and **A** acts as data for the next bit. Line **A** acts as clock again for the bit after that. The pattern repeats until all data is transmitted.
@@ -68,14 +76,6 @@ There are a total of 6 types of state transitions, depending on what the previou
 Notice that each line, A & B transitions states in a staggard pattern. On the Dreamcast, each "phase" lasts about 160 nanoseconds which means each bit can be transmitted in about 480 nanoseconds. Because of the staggard pattern, the minimum time between one edge and the next on each line is the sum of the time of 2 phases which is about 320 nanoseconds on the Dreamcast.
 
 For reference, Dreamcast controllers usually transmit a little slower with each phase lasting about 250 nanoseconds with about 110 microsecond delays between each 3 word chunk after the first frame word.
-
-### End Sequence
-
-Every packet is completed with an end sequence to commit the data to the target component.
-
-<p align="center">
-  <img src="images/Maple_Bus_End_Sequence.png?raw=true" alt="Maple Bus End Sequence"/>
-</p>
 
 ### Packet Data Format
 
