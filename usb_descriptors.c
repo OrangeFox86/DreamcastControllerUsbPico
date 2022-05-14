@@ -65,7 +65,7 @@ uint8_t const *tud_descriptor_device_cb(void) {
 
 uint8_t const desc_hid_report1[] =
 {
-    TUD_HID_REPORT_DESC_DREAMCAST_GAMEPAD()
+    TUD_HID_REPORT_DESC_GAMEPAD()
 };
 
 // Invoked when received GET HID REPORT DESCRIPTOR
@@ -91,7 +91,7 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
 #define EPNUM_HID1   (ITF_NUM_HID1 + 1)
 
 // Just make the report size the max of the two supported types
-#define REPORT_SIZE (sizeof(hid_keyboard_report_t) > sizeof(dreamcast_hid_gamepad_report_t) ? sizeof(hid_keyboard_report_t) : sizeof(dreamcast_hid_gamepad_report_t))
+#define REPORT_SIZE (sizeof(hid_keyboard_report_t) > sizeof(hid_gamepad_report_t) ? sizeof(hid_keyboard_report_t) : sizeof(hid_gamepad_report_t))
 
 uint8_t const desc_configuration[] =
 {

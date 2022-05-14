@@ -218,19 +218,19 @@ bool UsbGamepad::send(bool force)
 
 uint8_t UsbGamepad::getReportSize()
 {
-  return sizeof(dreamcast_hid_gamepad_report_t);
+  return sizeof(hid_gamepad_report_t);
 }
 
 void UsbGamepad::getReport(uint8_t *buffer, uint16_t reqlen)
 {
   // Build the report
-  dreamcast_hid_gamepad_report_t report;
-  report.x = currentLeftAnalog[0];
-  report.y = currentLeftAnalog[1];
-  report.z = currentLeftAnalog[2];
-  report.rx = currentRightAnalog[0];
-  report.ry = currentRightAnalog[1];
-  report.rz = currentRightAnalog[2];
+  hid_gamepad_report_t report;
+  report.x = static_cast<int32_t>(currentLeftAnalog[0]) - 128;
+  report.y = static_cast<int32_t>(currentLeftAnalog[1]) - 128;
+  report.z = static_cast<int32_t>(currentLeftAnalog[2]) - 128;
+  report.rx = static_cast<int32_t>(currentRightAnalog[0]) - 128;
+  report.ry = static_cast<int32_t>(currentRightAnalog[1]) - 128;
+  report.rz = static_cast<int32_t>(currentRightAnalog[2]) - 128;
   report.hat = getHatValue();
   report.buttons = currentButtons;
   // Copy report into buffer

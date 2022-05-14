@@ -13,7 +13,9 @@ To emulate a bespoke bus such as the Maple Bus on an MCU, one would usually eith
 
 Luckily, the RP2040 comes with 2 PIO blocks each with 4 separate state machines. This means that the RP2040 can easily emulate 4 separate controller interfaces! This project uses one PIO block for writing and one for reading. This is necessary because each PIO block can only hold up to 32 instructions. The write state machine is completely stopped before starting the read state machine for the targeted bus. This wouldn't be necessary if read was done on separate pins from write as each PIO needs to take ownership of the pins. More simplistic wiring is desired if possible though. Switching state machines is fast enough that there shouldn't be a problem, especially since the "write" state machine intentionally doesn't bring the bus back to neutral before it notifies the application. Then the application side kills the "write" state machine and brings the bus to neutral just before switching to "read". The application-side write completion process should happen within a microsecond. A device on the Maple Bus usually starts responding after 50 microseconds from the point of the bus going neutral at the end of an end sequence. This ensures that a response is always captured.
 
-# Maple Bus
+# Maple Bus Implementation
+
+Maple Bus is the name of the bus used for the controller interface on the Dreamcast.
 
 ## Hardware Overview
 
@@ -32,6 +34,8 @@ A Maple Bus consists of 2 signal/clock lines that are labeled SDCKA and SDCKB. H
 </p>
 
 ## Generating Maple Bus Output
+
+The maple_out PIO state machine handles Maple Bus output.
 
 ### Start Sequence
 
@@ -78,7 +82,7 @@ For reference, Dreamcast controllers usually transmit a little slower with each 
 
 ## Sampling Maple Bus Input
 
-Some concessions had to be made in order to handle all input operations within the 32 instruction set limit of the input PIO block.
+The maple_in PIO state machine handles Maple Bus input. Some concessions had to be made in order to handle all input operations within the 32 instruction set limit of the input PIO block.
 
 ### Sampling the Start Sequence
 
@@ -105,6 +109,8 @@ A packet consists of the following data.
 Each word is 32 bits in length, transmitted in little-endian order. The most significant bit of each byte transmits first. This means that the most significant bit of the least significant byte of each word transmits first.
 
 ### Frame Word
+
+The following is an example of a frame word.
 
 <p align="center">
   <img src="images/Frame_Word.png?raw=true" alt="Frame Word"/>

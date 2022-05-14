@@ -15,7 +15,7 @@
 //!
 //! If this is ever modified to be a device, keep in mind that the maple_in state machine doesn't
 //! sample the full end sequence. The application side should wait a sufficient amount of time
-//! after bus goes neutral before responding in that case.
+//! after bus goes neutral before responding in that case. Waiting for neutral bus is enough anyway.
 //!
 //! @warning this class is not "thread safe" - it should only be used by 1 core.
 class MapleBus
@@ -117,7 +117,11 @@ class MapleBus
         //! If new data is available and is valid, updates mLastValidRead.
         void updateLastValidReadBuffer();
 
-        //! Swaps the endianness of a 32 bit word from the given source to the given destination.
+        //! Swaps the endianness of a 32 bit word from the given source to the given destination
+        //! while also computing a crc over the 4 bytes.
+        //! @param[out] dest  destination word to write to
+        //! @param[in] source  source word to read from
+        //! @param[in,out] crc  crc word to start from and write to
         static inline void swapByteOrder(volatile uint32_t& dest, uint32_t source, uint8_t& crc)
         {
             const uint8_t* src = reinterpret_cast<uint8_t*>(&source);
