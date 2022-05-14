@@ -24,9 +24,8 @@ A Maple Bus consists of 2 signal/clock lines that are labeled SDCKA and SDCKB. H
 </p>
 
 - Only one connected component on the bus may communicate at a time
-- When the bus is neutral, all components should set all I/O as input
+- During communication, a device should not drive both lines HIGH for very long to prevent a downstream device from thinking the bus is free
 - Before a component starts communicating, it must verify the bus is neutral for a sufficient amount of time
-- During communication, a device should not drive both lines HIGH for very long
 
 <p align="center">
   <img src="images/Maple_Bus_Hardware_Communication.png?raw=true" alt="Maple Bus Hardware Communication"/>
@@ -77,13 +76,6 @@ Notice that each line, A & B transitions states in a staggard pattern. On the Dr
 
 For reference, Dreamcast controllers usually transmit a little slower with each phase lasting about 250 nanoseconds with about 110 microsecond delays between each 3 word chunk after the first frame word.
 
-### Packet Data Format
-
-(TODO)
-- Each word is 32 bits in length transmitted as little endian with most significant bit transmitted first (i.e. the most significant bit of the least significant byte transmits first)
-- Frame word consists of number of following words in packet (LSB) (8 bits), sender address (8 bits), recipient address (8 bits), and command (MSB) (8 bits)
-- CRC byte transmits last and is the value after taking 0 and applying XOR to each byte in the packet
-
 ## Sampling Maple Bus Input
 
 Some concessions had to be made in order to handle all input operations within the 32 instruction set limit of the input PIO block.
@@ -99,3 +91,25 @@ For each bit, the state machine waits for the designated clock to be HIGH then t
 ### Sampling the End Sequence
 
 Whenever **A** is designated as the clock, the input PIO state machine will detect when **B** toggles HIGH then LOW while **A** remains HIGH. It is assumed that this is the beginning of the end sequence. The state machine will then block on an IRQ so that the application can handle the received data. The application must then stop the input state machine.
+
+## Packet Data Format
+
+A packet consists of the following data.
+
+| Frame | Payload | CRC |
+| :---: | :---: | :---: |
+| 1 32-Bit Word  | 0 to 255 32-Bit Words | 1 Byte |
+
+### Word Format
+
+Each word is 32 bits in length, transmitted in little-endian order. The most significant bit of each byte transmits first. This means that the most significant bit of the least significant byte of each word transmits first.
+
+### Frame Word
+
+<p align="center">
+  <img src="images/Frame_Word.png?raw=true" alt="Frame Word"/>
+</p>
+
+### CRC
+
+CRC byte transmits last, just before the end sequence is transmitted. It is the value after taking 0 and applying XOR to each other byte in the packet.
