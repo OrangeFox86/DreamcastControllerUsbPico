@@ -9,7 +9,7 @@ class DreamcastNode
     public:
         struct ControllerCondition
         {
-            // Yes, I know I'm using a union in a non-recommended way
+            // Yes, I know I'm using a union in a way that isn't officially supported
             union
             {
                 uint32_t words[2];
@@ -22,10 +22,10 @@ class DreamcastNode
 
                     uint8_t r; // 255: fully pressed
 
-                    unsigned none2:1;
+                    unsigned none1:1;
                     unsigned y:1;
                     unsigned x:1;
-                    unsigned none1:5;
+                    unsigned none2:5;
 
                     unsigned none3:1;
                     unsigned b:1;

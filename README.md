@@ -15,6 +15,8 @@ Luckily, the RP2040 comes with 2 PIO blocks each with 4 separate state machines.
 
 # Maple Bus Implementation
 
+**Disclaimer:** I'm still working through this interface, so information here is not guaranteed to be 100% accurate.
+
 Maple Bus is the name of the bus used for the controller interface on the Dreamcast.
 
 ## Hardware Overview
@@ -25,9 +27,11 @@ A Maple Bus consists of 2 signal/clock lines that are labeled SDCKA and SDCKB. H
   <img src="images/Maple_Bus_Electronics_Block_Diagram.png?raw=true" alt="Maple Bus Electronics Block Diagram"/>
 </p>
 
+- Both lines on the Bus are pulled HIGH through weak pullup resistors
 - Only one connected component on the bus may communicate at a time
 - During communication, a device should not drive both lines HIGH for very long to prevent a downstream device from thinking the bus is free
 - Before a component starts communicating, it must verify the bus is neutral for a sufficient amount of time
+- A peripheral device will only communicate 1 packet of data in response to a request from the host
 
 <p align="center">
   <img src="images/Maple_Bus_Hardware_Communication.png?raw=true" alt="Maple Bus Hardware Communication"/>
@@ -110,12 +114,55 @@ Each word is 32 bits in length, transmitted in little-endian order. The most sig
 
 ### Frame Word
 
-The following is an example of a frame word.
+The following is how a frame word is broken down into its 4 parts.
+
+| Byte 0 (LSB) | Byte 1 | Byte 2 | Byte 3 (MSB) |
+| :---: | :---: | :---: | :---: |
+| Number of Words<br>in Payload | Sender<br>Address | Recipient<br>Address | Command |
+
+example:
 
 <p align="center">
   <img src="images/Frame_Word.png?raw=true" alt="Frame Word"/>
 </p>
 
+#### Addressing
+
+The following addresses are used for all components on the bus.
+
+| Host | Main Peripheral | Sub-Peripheral 1 | Sub-Peripheral 2 | Sub-Peripheral 3 | Sub-Peripheral 4 | Sub-Peripheral 5 |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 0x00 | 0x20* | 0x01 | 0x02 | 0x04 | 0x08 | 0x10 |
+
+*When the main peripheral sets its sender address, it also sets the bits corresponding to which sub-peripherals are attached. For example, if sub-peripherals 1 and 2 are attached, the main peripheral's sender address will be 0x23. This informs the host what else is attached.
+
+#### Commands
+
+| Command Value | Description |
+| :---: | :---: |
+| 0x01* | Device Info Request |
+| 0x02 | Extended Device Info Request |
+| 0x03 | Reset |
+| 0x04 | Shutdown |
+| 0x05 | Device Info |
+| 0x06 | Extended Device Info |
+| 0x07 | Acknowledge |
+| 0x08 | Data Transfer |
+| 0x09 | Get Condition |
+| 0x0A | Get Memory Information |
+| 0x0B | Block Read |
+| 0x0C | Block Write |
+| 0x0E | Set Condition |
+| 0xFB | File Error |
+| 0xFC | Request Resend |
+| 0xFD | Unknown Command |
+| 0xFE | Function Code Not Supported |
+| 0xFF | None |
+
+*Most peripheral devices won't respond to any other command until device info is requested for the device.
+
+**TODO:** Add more info here
+
 ### CRC
 
-CRC byte transmits last, just before the end sequence is transmitted. It is the value after taking 0 and applying XOR to each other byte in the packet.
+CRC byte transmits last, just before the end sequence is transmitted. It is the value after starting with 0 and applying XOR to each other byte in the packet.
