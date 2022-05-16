@@ -1,0 +1,81 @@
+#pragma once
+
+#include "DreamcastMainPeripheral.hpp"
+#include "MapleBus.hpp"
+#include "UsbGamepad.h"
+
+class DreamcastController : public DreamcastMainPeripheral
+{
+    public:
+        struct ControllerCondition
+        {
+            // Yes, I know I'm using a union in a way that isn't officially supported
+            union
+            {
+                uint32_t words[2];
+                // For digital bits:
+                // 0: pressed
+                // 1: released
+                struct
+                {
+                    uint8_t l; // 255: fully pressed
+
+                    uint8_t r; // 255: fully pressed
+
+                    unsigned none1:1;
+                    unsigned y:1;
+                    unsigned x:1;
+                    unsigned none2:5;
+
+                    unsigned none3:1;
+                    unsigned b:1;
+                    unsigned a:1;
+                    unsigned start:1;
+                    unsigned up:1;
+                    unsigned down:1;
+                    unsigned left:1;
+                    unsigned right:1;
+
+                    uint8_t rAnalogUD; // Always 128
+
+                    uint8_t rAnalogLR; // Always 128
+
+                    uint8_t lAnalogUD; // 0: up; 128: neutral; 255: down
+
+                    uint8_t lAnalogLR; // 0: left; 128: neutral; 255: right
+                };
+            };
+
+            ControllerCondition()
+            {
+                reset();
+            }
+
+            void reset()
+            {
+                words[0] = 0xFFFF0000;
+                words[1] = 0x80808080;
+            }
+        };
+
+    public:
+        //! Constructor
+        //! @param[in] bus  The bus this controller is connected to
+        DreamcastController(MapleBus& bus, uint32_t playerIndex, UsbGamepad& gamepad);
+
+        virtual ~DreamcastController();
+
+        //! Inherited from DreamcastMainPeripheral
+        virtual bool task(uint64_t currentTimeUs) final;
+
+    private:
+        static const uint32_t NO_DATA_DISCONNECT_COUNT = 5;
+        static const uint32_t US_PER_CHECK = 16000;
+        MapleBus& mBus;
+        uint32_t mPlayerIndex;
+        UsbGamepad& mGamepad;
+        uint64_t mNextCheckTime;
+        bool mWaitingForData;
+        uint32_t mNoDataCount;
+        ControllerCondition mControllerCondition;
+};

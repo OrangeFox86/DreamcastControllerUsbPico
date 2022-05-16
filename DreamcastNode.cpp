@@ -1,15 +1,26 @@
 #include "DreamcastNode.hpp"
+#include "DreamcastController.hpp"
 #include <string.h>
+
+// Device functions
+#define DEVICE_FN_CONTROLLER    0x00000001
+#define DEVICE_FN_STORAGE       0x00000002
+#define DEVICE_FN_LCD           0x00000004
+#define DEVICE_FN_TIMER         0x00000008
+#define DEVICE_FN_AUDIO_INPUT   0x00000010
+#define DEVICE_FN_AR_GUN        0x00000020
+#define DEVICE_FN_KEYBOARD      0x00000040
+#define DEVICE_FN_GUN           0x00000080
+#define DEVICE_FN_VIBRATION     0x00000100
+#define DEVICE_FN_MOUSE         0x00000200
+#define DEVICE_FN_EXMEDIA       0x00000400
+#define DEVICE_FN_CAMERA        0x00000800
 
 DreamcastNode::DreamcastNode(uint32_t mapleBusPinA, uint32_t playerIndex, UsbGamepad& gamepad) :
     mBus(mapleBusPinA, 0x00),
     mPlayerIndex(playerIndex),
     mGamepad(gamepad),
-    mControllerDetected(false),
-    mNextCheckTime(0),
-    mWaitingForData(false),
-    mNoDataCount(0),
-    mControllerCondition()
+    mNextCheckTime(0)
 {
 
 }
@@ -18,86 +29,38 @@ void DreamcastNode::task(uint64_t currentTimeUs)
 {
     mBus.processEvents(currentTimeUs);
 
-    uint32_t len;
-    bool newData = false;
-    const uint32_t* dat = mBus.getReadData(len, newData);
-    if (newData)
+    if (mMainPeripheral)
     {
-        // Process data
-        mWaitingForData = false;
-        mNoDataCount = 0;
-        uint8_t cmd = *dat >> 24;
-        if (!mControllerDetected)
+        if (!mMainPeripheral->task(currentTimeUs))
         {
-            // TODO: should check if actual controller device responded
-            (void)dat;
-            mControllerDetected = true;
-            mControllerCondition.reset();
-        }
-        else if (cmd == MapleBus::COMMAND_RESPONSE_DATA_XFER && len >= 4 && dat[1] == 1)
-        {
-            // Handle condition data
-            memcpy(mControllerCondition.words, &dat[2], 8);
-
-            // TODO: Move magic numbers to enum
-            mGamepad.setButton(0, 0 == mControllerCondition.a);
-            mGamepad.setButton(1, 0 == mControllerCondition.b);
-            mGamepad.setButton(3, 0 == mControllerCondition.x);
-            mGamepad.setButton(4, 0 == mControllerCondition.y);
-            mGamepad.setButton(11, 0 == mControllerCondition.start);
-
-            // mGamepad.setButton(12, 0 == mControllerCondition.up);
-            // mGamepad.setButton(13, 0 == mControllerCondition.down);
-            // mGamepad.setButton(14, 0 == mControllerCondition.left);
-            // mGamepad.setButton(15, 0 == mControllerCondition.right);
-
-            mGamepad.setDigitalPad(UsbGamepad::DPAD_UP, 0 == mControllerCondition.up);
-            mGamepad.setDigitalPad(UsbGamepad::DPAD_DOWN, 0 == mControllerCondition.down);
-            mGamepad.setDigitalPad(UsbGamepad::DPAD_LEFT, 0 == mControllerCondition.left);
-            mGamepad.setDigitalPad(UsbGamepad::DPAD_RIGHT, 0 == mControllerCondition.right);
-
-            mGamepad.setAnalogTrigger(true, mControllerCondition.l);
-            mGamepad.setAnalogTrigger(false, mControllerCondition.r);
-
-            mGamepad.setAnalogThumbX(true, mControllerCondition.lAnalogLR);
-            mGamepad.setAnalogThumbY(true, mControllerCondition.lAnalogUD);
-            mGamepad.setAnalogThumbX(false, mControllerCondition.rAnalogLR);
-            mGamepad.setAnalogThumbY(false, mControllerCondition.rAnalogUD);
-
-            mGamepad.send();
+            mMainPeripheral.reset();
         }
     }
-
-    if (currentTimeUs > mNextCheckTime)
+    else
     {
-        // See if we need to update connection status to disconnected
-        if (mWaitingForData && mControllerDetected)
+        uint32_t len;
+        bool newData = false;
+        const uint32_t* dat = mBus.getReadData(len, newData);
+
+        if (newData)
         {
-            if (++mNoDataCount >= NO_DATA_DISCONNECT_COUNT)
+            uint8_t cmd = *dat >> 24;
+            if (cmd == MapleBus::COMMAND_RESPONSE_DEVICE_INFO)
             {
-                mControllerDetected = false;
-                mNoDataCount = 0;
-                mControllerCondition.reset();
+                if (dat[1] & DEVICE_FN_CONTROLLER)
+                {
+                    mMainPeripheral = std::make_unique<DreamcastController>(
+                        mBus, mPlayerIndex, mGamepad);
+                }
             }
         }
 
-        bool writeStatus = false;
-        if (!mControllerDetected)
+        if (currentTimeUs > mNextCheckTime)
         {
-            // Most devices wait for an info request before responding to any other command
-            writeStatus = mBus.write(MapleBus::COMMAND_DEVICE_INFO_REQUEST, 0x20, NULL, 0, true);
-        }
-        else
-        {
-            // Get controller status
-            uint32_t data = 1;
-            writeStatus = mBus.write(MapleBus::COMMAND_GET_CONDITION, 0x20, &data, 1, true);
-        }
-
-        if (writeStatus)
-        {
-            mWaitingForData = true;
-            mNextCheckTime = currentTimeUs + US_PER_CHECK;
+            if (mBus.write(MapleBus::COMMAND_DEVICE_INFO_REQUEST, 0x20, NULL, 0, true))
+            {
+                mNextCheckTime = currentTimeUs + US_PER_CHECK;
+            }
         }
     }
 }

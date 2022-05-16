@@ -141,11 +141,11 @@ void UsbGamepad::updateAllReleased()
 {
   if (isButtonPressed())
   {
-    currentLeftAnalog[0] = 0;
-    currentLeftAnalog[1] = 0;
+    currentLeftAnalog[0] = 0x80;
+    currentLeftAnalog[1] = 0x80;
     currentLeftAnalog[2] = 0;
-    currentRightAnalog[0] = 0;
-    currentRightAnalog[1] = 0;
+    currentRightAnalog[0] = 0x80;
+    currentRightAnalog[1] = 0x80;
     currentRightAnalog[2] = 0;
     currentDpad[DPAD_UP] = false;
     currentDpad[DPAD_DOWN] = false;
