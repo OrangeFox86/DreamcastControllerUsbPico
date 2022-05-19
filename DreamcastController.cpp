@@ -8,8 +8,7 @@ DreamcastController::DreamcastController(MapleBus& bus, uint32_t playerIndex, Us
     mGamepad(gamepad),
     mNextCheckTime(0),
     mWaitingForData(false),
-    mNoDataCount(0),
-    mControllerCondition()
+    mNoDataCount(0)
 {
     mGamepad.updateControllerConnected(true);
 }
@@ -34,32 +33,28 @@ bool DreamcastController::task(uint64_t currentTimeUs)
         if (cmd == MapleBus::COMMAND_RESPONSE_DATA_XFER && len >= 4 && dat[1] == 1)
         {
             // Handle condition data
-            memcpy(mControllerCondition.words, &dat[2], 8);
+            ControllerCondition controllerCondition;
+            memcpy(&controllerCondition, &dat[2], 8);
 
             // TODO: Move magic numbers to enum
-            mGamepad.setButton(0, 0 == mControllerCondition.a);
-            mGamepad.setButton(1, 0 == mControllerCondition.b);
-            mGamepad.setButton(3, 0 == mControllerCondition.x);
-            mGamepad.setButton(4, 0 == mControllerCondition.y);
-            mGamepad.setButton(11, 0 == mControllerCondition.start);
+            mGamepad.setButton(0, 0 == controllerCondition.a);
+            mGamepad.setButton(1, 0 == controllerCondition.b);
+            mGamepad.setButton(3, 0 == controllerCondition.x);
+            mGamepad.setButton(4, 0 == controllerCondition.y);
+            mGamepad.setButton(11, 0 == controllerCondition.start);
 
-            // mGamepad.setButton(12, 0 == mControllerCondition.up);
-            // mGamepad.setButton(13, 0 == mControllerCondition.down);
-            // mGamepad.setButton(14, 0 == mControllerCondition.left);
-            // mGamepad.setButton(15, 0 == mControllerCondition.right);
+            mGamepad.setDigitalPad(UsbGamepad::DPAD_UP, 0 == controllerCondition.up);
+            mGamepad.setDigitalPad(UsbGamepad::DPAD_DOWN, 0 == controllerCondition.down);
+            mGamepad.setDigitalPad(UsbGamepad::DPAD_LEFT, 0 == controllerCondition.left);
+            mGamepad.setDigitalPad(UsbGamepad::DPAD_RIGHT, 0 == controllerCondition.right);
 
-            mGamepad.setDigitalPad(UsbGamepad::DPAD_UP, 0 == mControllerCondition.up);
-            mGamepad.setDigitalPad(UsbGamepad::DPAD_DOWN, 0 == mControllerCondition.down);
-            mGamepad.setDigitalPad(UsbGamepad::DPAD_LEFT, 0 == mControllerCondition.left);
-            mGamepad.setDigitalPad(UsbGamepad::DPAD_RIGHT, 0 == mControllerCondition.right);
+            mGamepad.setAnalogTrigger(true, static_cast<int32_t>(controllerCondition.l) - 128);
+            mGamepad.setAnalogTrigger(false, static_cast<int32_t>(controllerCondition.r) - 128);
 
-            mGamepad.setAnalogTrigger(true, static_cast<int32_t>(mControllerCondition.l) - 128);
-            mGamepad.setAnalogTrigger(false, static_cast<int32_t>(mControllerCondition.r) - 128);
-
-            mGamepad.setAnalogThumbX(true, static_cast<int32_t>(mControllerCondition.lAnalogLR) - 128);
-            mGamepad.setAnalogThumbY(true, static_cast<int32_t>(mControllerCondition.lAnalogUD) - 128);
-            mGamepad.setAnalogThumbX(false, static_cast<int32_t>(mControllerCondition.rAnalogLR) - 128);
-            mGamepad.setAnalogThumbY(false, static_cast<int32_t>(mControllerCondition.rAnalogUD) - 128);
+            mGamepad.setAnalogThumbX(true, static_cast<int32_t>(controllerCondition.lAnalogLR) - 128);
+            mGamepad.setAnalogThumbY(true, static_cast<int32_t>(controllerCondition.lAnalogUD) - 128);
+            mGamepad.setAnalogThumbX(false, static_cast<int32_t>(controllerCondition.rAnalogLR) - 128);
+            mGamepad.setAnalogThumbY(false, static_cast<int32_t>(controllerCondition.rAnalogUD) - 128);
 
             mGamepad.send();
         }
@@ -74,7 +69,6 @@ bool DreamcastController::task(uint64_t currentTimeUs)
             if (++mNoDataCount >= NO_DATA_DISCONNECT_COUNT)
             {
                 mNoDataCount = 0;
-                mControllerCondition.reset();
                 rv = false;
             }
         }
