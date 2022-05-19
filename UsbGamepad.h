@@ -25,25 +25,25 @@ class UsbGamepad : public UsbControllerDevice
     bool isButtonPressed() final;
     //! Sets the analog stick for the X direction
     //! @param[in] isLeft true for left, false for right
-    //! @param[in] x Value between 0 and 255
-    void setAnalogThumbX(bool isLeft, uint8_t x);
+    //! @param[in] x Value between -128 and 127
+    void setAnalogThumbX(bool isLeft, int8_t x);
     //! Sets the analog stick for the Y direction
     //! @param[in] isLeft true for left, false for right
-    //! @param[in] y Value between 0 and 255
-    void setAnalogThumbY(bool isLeft, uint8_t y);
+    //! @param[in] y Value between -128 and 127
+    void setAnalogThumbY(bool isLeft, int8_t y);
     //! Sets the analog trigger value (Z)
     //! @param[in] isLeft true for left, false for right
-    //! @param[in] z Value between 0 and 255
-    void setAnalogTrigger(bool isLeft, uint8_t z);
+    //! @param[in] z Value between -128 and 127
+    void setAnalogTrigger(bool isLeft, int8_t z);
     //! @param[in] isLeft true for left, false for right
     //! @returns the current analog stick X value
-    uint8_t getAnalogThumbX(bool isLeft);
+    int8_t getAnalogThumbX(bool isLeft);
     //! @param[in] isLeft true for left, false for right
     //! @returns the current analog stick Y value
-    uint8_t getAnalogThumbY(bool isLeft);
+    int8_t getAnalogThumbY(bool isLeft);
     //! @param[in] isLeft true for left, false for right
     //! @returns the current analog trigger value (Z)
-    uint8_t getAnalogTrigger(bool isLeft);
+    int8_t getAnalogTrigger(bool isLeft);
     //! Sets the state of a digital pad button
     //! @param[in] button The button to set
     //! @param[in] isPressed The state of @p button
@@ -79,9 +79,9 @@ class UsbGamepad : public UsbControllerDevice
     //! The report ID to use when sending keys to host
     const uint8_t reportId;
     //! Current left analog states (x,y,z)
-    uint8_t currentLeftAnalog[3];
+    int8_t currentLeftAnalog[3];
     //! Current right analog states (x,y,z)
-    uint8_t currentRightAnalog[3];
+    int8_t currentRightAnalog[3];
     //! Current d-pad buttons
     bool currentDpad[DPAD_COUNT];
     //! Current button states
@@ -90,4 +90,4 @@ class UsbGamepad : public UsbControllerDevice
     bool buttonsUpdated;
 };
 
-#endif // __USB_GAMEPAD_H__
+#endif // __USB_CONTROLLER_H__

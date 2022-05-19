@@ -53,13 +53,13 @@ bool DreamcastController::task(uint64_t currentTimeUs)
             mGamepad.setDigitalPad(UsbGamepad::DPAD_LEFT, 0 == mControllerCondition.left);
             mGamepad.setDigitalPad(UsbGamepad::DPAD_RIGHT, 0 == mControllerCondition.right);
 
-            mGamepad.setAnalogTrigger(true, mControllerCondition.l);
-            mGamepad.setAnalogTrigger(false, mControllerCondition.r);
+            mGamepad.setAnalogTrigger(true, static_cast<int32_t>(mControllerCondition.l) - 128);
+            mGamepad.setAnalogTrigger(false, static_cast<int32_t>(mControllerCondition.r) - 128);
 
-            mGamepad.setAnalogThumbX(true, mControllerCondition.lAnalogLR);
-            mGamepad.setAnalogThumbY(true, mControllerCondition.lAnalogUD);
-            mGamepad.setAnalogThumbX(false, mControllerCondition.rAnalogLR);
-            mGamepad.setAnalogThumbY(false, mControllerCondition.rAnalogUD);
+            mGamepad.setAnalogThumbX(true, static_cast<int32_t>(mControllerCondition.lAnalogLR) - 128);
+            mGamepad.setAnalogThumbY(true, static_cast<int32_t>(mControllerCondition.lAnalogUD) - 128);
+            mGamepad.setAnalogThumbX(false, static_cast<int32_t>(mControllerCondition.rAnalogLR) - 128);
+            mGamepad.setAnalogThumbY(false, static_cast<int32_t>(mControllerCondition.rAnalogUD) - 128);
 
             mGamepad.send();
         }

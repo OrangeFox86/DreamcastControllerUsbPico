@@ -6,28 +6,29 @@
 #include "bsp/board.h"
 #include "tusb.h"
 #include "usb_descriptors.h"
-#include "class/hid/hid.h"
 
 UsbGamepad::UsbGamepad(uint8_t interfaceId, uint8_t reportId) :
   interfaceId(interfaceId),
   reportId(reportId),
   currentDpad(),
   currentButtons(0),
-  buttonsUpdated(false)
-{}
+  buttonsUpdated(true)
+{
+  updateAllReleased();
+}
 
 bool UsbGamepad::isButtonPressed()
 {
   return (currentDpad[DPAD_UP] || currentDpad[DPAD_DOWN] || currentDpad[DPAD_LEFT]
     || currentDpad[DPAD_RIGHT] || currentButtons != 0
-    || currentLeftAnalog[0] != 0x80 || currentLeftAnalog[1] != 0x80 || currentLeftAnalog[2] != 0
-    || currentRightAnalog[0] != 0x80 || currentRightAnalog[1] != 0x80 || currentRightAnalog[2] != 0);
+    || currentLeftAnalog[0] != 0 || currentLeftAnalog[1] != 0 || currentLeftAnalog[2] != -128
+    || currentRightAnalog[0] != 0 || currentRightAnalog[1] != 0 || currentRightAnalog[2] != -128);
 }
 
 //--------------------------------------------------------------------+
 // EXTERNAL API
 //--------------------------------------------------------------------+
-void UsbGamepad::setAnalogThumbX(bool isLeft, uint8_t x)
+void UsbGamepad::setAnalogThumbX(bool isLeft, int8_t x)
 {
   int8_t lastX = 0;
   if (isLeft)
@@ -43,7 +44,7 @@ void UsbGamepad::setAnalogThumbX(bool isLeft, uint8_t x)
   buttonsUpdated = buttonsUpdated || (x != lastX);
 }
 
-void UsbGamepad::setAnalogThumbY(bool isLeft, uint8_t y)
+void UsbGamepad::setAnalogThumbY(bool isLeft, int8_t y)
 {
   int8_t lastY = 0;
   if (isLeft)
@@ -59,7 +60,7 @@ void UsbGamepad::setAnalogThumbY(bool isLeft, uint8_t y)
   buttonsUpdated = buttonsUpdated || (y != lastY);
 }
 
-void UsbGamepad::setAnalogTrigger(bool isLeft, uint8_t z)
+void UsbGamepad::setAnalogTrigger(bool isLeft, int8_t z)
 {
   int8_t lastZ = 0;
   if (isLeft)
@@ -75,7 +76,7 @@ void UsbGamepad::setAnalogTrigger(bool isLeft, uint8_t z)
   buttonsUpdated = buttonsUpdated || (z != lastZ);
 }
 
-uint8_t UsbGamepad::getAnalogThumbX(bool isLeft)
+int8_t UsbGamepad::getAnalogThumbX(bool isLeft)
 {
   if (isLeft)
   {
@@ -87,7 +88,7 @@ uint8_t UsbGamepad::getAnalogThumbX(bool isLeft)
   }
 }
 
-uint8_t UsbGamepad::getAnalogThumbY(bool isLeft)
+int8_t UsbGamepad::getAnalogThumbY(bool isLeft)
 {
   if (isLeft)
   {
@@ -99,7 +100,7 @@ uint8_t UsbGamepad::getAnalogThumbY(bool isLeft)
   }
 }
 
-uint8_t UsbGamepad::getAnalogTrigger(bool isLeft)
+int8_t UsbGamepad::getAnalogTrigger(bool isLeft)
 {
   if (isLeft)
   {
@@ -141,12 +142,12 @@ void UsbGamepad::updateAllReleased()
 {
   if (isButtonPressed())
   {
-    currentLeftAnalog[0] = 0x80;
-    currentLeftAnalog[1] = 0x80;
-    currentLeftAnalog[2] = 0;
-    currentRightAnalog[0] = 0x80;
-    currentRightAnalog[1] = 0x80;
-    currentRightAnalog[2] = 0;
+    currentLeftAnalog[0] = 0;
+    currentLeftAnalog[1] = 0;
+    currentLeftAnalog[2] = -128;
+    currentRightAnalog[0] = 0;
+    currentRightAnalog[1] = 0;
+    currentRightAnalog[2] = -128;
     currentDpad[DPAD_UP] = false;
     currentDpad[DPAD_DOWN] = false;
     currentDpad[DPAD_LEFT] = false;
@@ -196,7 +197,10 @@ uint8_t UsbGamepad::getHatValue()
   {
     return GAMEPAD_HAT_RIGHT;
   }
-  return GAMEPAD_HAT_CENTERED;
+  else
+  {
+    return GAMEPAD_HAT_CENTERED;
+  }
 }
 
 bool UsbGamepad::send(bool force)
@@ -225,12 +229,12 @@ void UsbGamepad::getReport(uint8_t *buffer, uint16_t reqlen)
 {
   // Build the report
   hid_gamepad_report_t report;
-  report.x = static_cast<int32_t>(currentLeftAnalog[0]) - 128;
-  report.y = static_cast<int32_t>(currentLeftAnalog[1]) - 128;
-  report.z = static_cast<int32_t>(currentLeftAnalog[2]) - 128;
-  report.rx = static_cast<int32_t>(currentRightAnalog[0]) - 128;
-  report.ry = static_cast<int32_t>(currentRightAnalog[1]) - 128;
-  report.rz = static_cast<int32_t>(currentRightAnalog[2]) - 128;
+  report.x = currentLeftAnalog[0];
+  report.y = currentLeftAnalog[1];
+  report.z = currentLeftAnalog[2];
+  report.rz = currentRightAnalog[2];
+  report.rx = currentRightAnalog[0];
+  report.ry = currentRightAnalog[1];
   report.hat = getHatValue();
   report.buttons = currentButtons;
   // Copy report into buffer
