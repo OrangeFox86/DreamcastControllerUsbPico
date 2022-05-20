@@ -8,12 +8,17 @@ class DreamcastPeripheral
     public:
         //! Constructor
         //! @param[in] bus  The bus that this peripheral is connected to
+        //! @param[in] addr  This peripheral's address (mask bit)
         DreamcastPeripheral(MapleBus& bus, uint8_t addr) : mBus(bus), mAddr(addr) {}
 
         //! Virtual destructor
         virtual ~DreamcastPeripheral() {}
 
         //! Handles incoming data destined for this device
+        //! @param[in] len  Number of words in payload
+        //! @param[in] cmd  The received command
+        //! @param[in] payload  Payload data associated with the command
+        //! @returns true iff the data was handled
         virtual bool handleData(uint8_t len,
                                 uint8_t cmd,
                                 const uint32_t *payload) = 0;

@@ -33,6 +33,7 @@ bool DreamcastController::handleData(uint8_t len,
                                      const uint32_t *payload)
 {
     mWaitingForData = false;
+    mNoDataCount = 0;
 
     if (cmd == MapleBus::COMMAND_RESPONSE_DATA_XFER && len >= 3 && payload[0] == 1)
     {

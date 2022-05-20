@@ -8,6 +8,7 @@ class DreamcastSubPeripheral : public DreamcastPeripheral
     public:
         //! Constructor
         //! @param[in] bus  The bus that this sub-peripheral is connected to
+        //! @param[in] addr  This peripheral's address (mask bit)
         DreamcastSubPeripheral(MapleBus& bus, uint8_t addr) : DreamcastPeripheral(bus, addr) {}
 
         //! Virtual destructor

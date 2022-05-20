@@ -18,17 +18,27 @@ class DreamcastMainPeripheral : public DreamcastPeripheral
         //! Virtual destructor
         virtual ~DreamcastMainPeripheral() {}
 
+        //! Called when the given sub peripheral is about to be removed
+        //! @param[in] idx  The index of the sub peripheral being removed
         virtual void removingSubPeripheral(uint8_t idx)
         {}
 
+        //! Called when a new sub peripheral is detected - the child must request device info and
+        //! eventually add this sub peripheral
+        //! @param[in] idx  The index of the detected sub peripheral
         virtual void newSubPeripheralDetected(uint8_t idx) = 0;
 
-        //! Handles incoming data destined for this device
+        //! Inherited from DreamcastPeripheral
         virtual bool handleData(uint8_t len,
                                 uint8_t cmd,
                                 const uint32_t *payload) = 0;
 
-        //! Called by the upstream device to handle incoming data
+        //! Called by DreamcastNode to handle incoming data
+        //! @param[in] len  Number of words in payload
+        //! @param[in] senderAddress  Address of the peripheral that sent this data
+        //! @param[in] cmd  The received command
+        //! @param[in] payload  Payload data associated with the command
+        //! @returns true iff the data was handled
         virtual bool handleData(uint8_t len,
                                 uint8_t senderAddr,
                                 uint8_t cmd,
