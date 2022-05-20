@@ -61,6 +61,7 @@ bool DreamcastController::handleData(uint8_t len,
 bool DreamcastController::task(uint64_t currentTimeUs)
 {
     bool rv = true;
+
     if (currentTimeUs > mNextCheckTime)
     {
         // See if we need to update connection status to disconnected
@@ -82,6 +83,10 @@ bool DreamcastController::task(uint64_t currentTimeUs)
                 mNextCheckTime = currentTimeUs + US_PER_CHECK;
             }
         }
+    }
+    else
+    {
+        yieldTask(currentTimeUs, mNextCheckTime - currentTimeUs);
     }
 
     return rv;
