@@ -18,6 +18,11 @@ class DreamcastMainPeripheral : public DreamcastPeripheral
         //! Virtual destructor
         virtual ~DreamcastMainPeripheral() {}
 
+        virtual void removingSubPeripheral(uint8_t idx)
+        {}
+
+        virtual void newSubPeripheralDetected(uint8_t idx) = 0;
+
         //! Handles incoming data destined for this device
         virtual bool handleData(uint8_t len,
                                 uint8_t cmd,
@@ -31,6 +36,22 @@ class DreamcastMainPeripheral : public DreamcastPeripheral
         {
             if (senderAddr & mAddr)
             {
+                // Use the sender address to determine if a sub-peripheral was added or removed
+                uint8_t mask = SUB_PERIPHERAL_ADDR_START_MASK;
+                for (int32_t i = 0; i < MAX_SUB_PERIPHERALS; ++i, mask<<=1)
+                {
+                    if (!mSubPeripherals[i] && ((senderAddr & mask) > 0))
+                    {
+                        newSubPeripheralDetected(i);
+                    }
+                    else if (mSubPeripherals[i] && ((senderAddr & mask) == 0))
+                    {
+                        removingSubPeripheral(i);
+                        mSubPeripherals[i].reset();
+                    }
+                }
+
+                // Have the device handle the data
                 return handleData(len, cmd, payload);
             }
             else

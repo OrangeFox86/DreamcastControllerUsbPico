@@ -18,6 +18,16 @@ DreamcastController::~DreamcastController()
     mGamepad.updateControllerConnected(false);
 }
 
+void DreamcastController::removingSubPeripheral(uint8_t idx)
+{
+    // TODO
+}
+
+void DreamcastController::newSubPeripheralDetected(uint8_t idx)
+{
+    // TODO
+}
+
 bool DreamcastController::handleData(uint8_t len,
                                      uint8_t cmd,
                                      const uint32_t *payload)
@@ -77,7 +87,7 @@ bool DreamcastController::task(uint64_t currentTimeUs)
         {
             // Get controller status
             uint32_t data = 1;
-            if (mBus.write(MapleBus::COMMAND_GET_CONDITION, 0x20, &data, 1, true))
+            if (mBus.write(MapleBus::COMMAND_GET_CONDITION, mAddr, &data, 1, true))
             {
                 mWaitingForData = true;
                 mNextCheckTime = currentTimeUs + US_PER_CHECK;

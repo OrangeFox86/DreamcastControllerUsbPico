@@ -46,6 +46,10 @@ class DreamcastController : public DreamcastMainPeripheral
 
         virtual ~DreamcastController();
 
+        virtual void removingSubPeripheral(uint8_t idx) final;
+
+        virtual void newSubPeripheralDetected(uint8_t idx) final;
+
         //! Handles incoming data destined for this device
         virtual bool handleData(uint8_t len,
                                 uint8_t cmd,
