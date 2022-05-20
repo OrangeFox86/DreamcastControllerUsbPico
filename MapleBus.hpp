@@ -112,6 +112,9 @@ class MapleBus
         //! @param[in] currentTimeUs  The current time to process for (0 to internally get time)
         void processEvents(uint64_t currentTimeUs=0);
 
+        //! @returns true iff the bus is currently busy reading or writing.
+        inline bool isBusy() { return mWriteInProgress || mReadInProgress; }
+
     private:
         //! Ensures that the bus is open and starts the write PIO state machine.
         bool writeInit();

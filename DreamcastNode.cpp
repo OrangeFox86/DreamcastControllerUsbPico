@@ -1,5 +1,6 @@
 #include "DreamcastNode.hpp"
 #include "DreamcastController.hpp"
+#include "DreamcastPeripheral.hpp"
 #include <string.h>
 
 // Device functions
@@ -29,38 +30,62 @@ void DreamcastNode::task(uint64_t currentTimeUs)
 {
     mBus.processEvents(currentTimeUs);
 
-    if (mMainPeripheral)
+    // See if there is anything to receive
+    uint32_t len;
+    bool newData = false;
+    const uint32_t* dat = mBus.getReadData(len, newData);
+    if (newData)
     {
-        if (!mMainPeripheral->task(currentTimeUs))
-        {
-            mMainPeripheral.reset();
-        }
-    }
-    else
-    {
-        uint32_t len;
-        bool newData = false;
-        const uint32_t* dat = mBus.getReadData(len, newData);
+        uint8_t sendAddr = *dat >> 8 & 0xFF;
+        uint8_t recAddr = *dat >> 16 & 0xFF;
+        uint8_t cmd = *dat >> 24;
+        const uint32_t* payload = dat + 1;
+        --len;
 
-        if (newData)
+        if (recAddr == 0x00)
         {
-            uint8_t cmd = *dat >> 24;
-            if (cmd == MapleBus::COMMAND_RESPONSE_DEVICE_INFO)
+            // This packet was meant for me
+
+            if (mMainPeripheral)
             {
-                if (dat[1] & DEVICE_FN_CONTROLLER)
+                // Handle data and ignore result
+                (void)mMainPeripheral->handleData(len, sendAddr, cmd, payload);
+            }
+            else
+            {
+                // Handle device info from main peripheral
+                if (cmd == MapleBus::COMMAND_RESPONSE_DEVICE_INFO)
                 {
-                    mMainPeripheral = std::make_unique<DreamcastController>(
-                        mBus, mPlayerIndex, mGamepad);
+                    if (payload[0] & DEVICE_FN_CONTROLLER)
+                    {
+                        mMainPeripheral = std::make_unique<DreamcastController>(
+                            mBus, mPlayerIndex, mGamepad);
+                    }
                 }
             }
         }
+    }
 
-        if (currentTimeUs > mNextCheckTime)
+    // See if there is something that needs to write
+    if (mMainPeripheral)
+    {
+        // Have the connected main peripheral handle write
+        if (!mMainPeripheral->task(currentTimeUs))
         {
-            if (mBus.write(MapleBus::COMMAND_DEVICE_INFO_REQUEST, 0x20, NULL, 0, true))
-            {
-                mNextCheckTime = currentTimeUs + US_PER_CHECK;
-            }
+            // Main peripheral disconnected
+            mMainPeripheral.reset();
+        }
+    }
+    // Otherwise, keep looking for info from a main peripheral
+    else if (currentTimeUs > mNextCheckTime)
+    {
+        if (mBus.write(MapleBus::COMMAND_DEVICE_INFO_REQUEST,
+                       DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK,
+                       NULL,
+                       0,
+                       true))
+        {
+            mNextCheckTime = currentTimeUs + US_PER_CHECK;
         }
     }
 }

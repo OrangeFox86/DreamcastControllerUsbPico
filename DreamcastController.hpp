@@ -13,6 +13,9 @@ class DreamcastController : public DreamcastMainPeripheral
 
             uint8_t r; // 255: fully pressed
 
+            // Digital bits:
+            // 0: pressed
+            // 1: released
             unsigned none1:1;
             unsigned y:1;
             unsigned x:1;
@@ -43,13 +46,17 @@ class DreamcastController : public DreamcastMainPeripheral
 
         virtual ~DreamcastController();
 
+        //! Handles incoming data destined for this device
+        virtual bool handleData(uint8_t len,
+                                uint8_t cmd,
+                                const uint32_t *payload) final;
+
         //! Inherited from DreamcastMainPeripheral
         virtual bool task(uint64_t currentTimeUs) final;
 
     private:
         static const uint32_t NO_DATA_DISCONNECT_COUNT = 5;
         static const uint32_t US_PER_CHECK = 16000;
-        MapleBus& mBus;
         uint32_t mPlayerIndex;
         UsbGamepad& mGamepad;
         uint64_t mNextCheckTime;

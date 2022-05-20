@@ -204,7 +204,7 @@ bool MapleBus::write(uint32_t frameWord,
 
     processEvents();
 
-    if (!mWriteInProgress && !mReadInProgress)
+    if (!isBusy())
     {
         // Make sure previous DMA instances are killed
         dma_channel_abort(mDmaWriteChannel);
@@ -287,7 +287,7 @@ bool MapleBus::write(uint8_t command,
 
 void MapleBus::processEvents(uint64_t currentTimeUs)
 {
-    if (mWriteInProgress || mReadInProgress)
+    if (isBusy())
     {
         // If currentTimeUs wasn't set, get the current time
         if (currentTimeUs == 0)
