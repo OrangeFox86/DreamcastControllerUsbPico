@@ -71,7 +71,7 @@ bool DreamcastController::handleData(uint8_t len,
 
 bool DreamcastController::task(uint64_t currentTimeUs)
 {
-    bool rv = true;
+    bool isConnected = true;
 
     if (currentTimeUs > mNextCheckTime)
     {
@@ -81,10 +81,12 @@ bool DreamcastController::task(uint64_t currentTimeUs)
             if (++mNoDataCount >= NO_DATA_DISCONNECT_COUNT)
             {
                 mNoDataCount = 0;
-                rv = false;
+                isConnected = false;
             }
+            mWaitingForData = false;
         }
-        else
+
+        if (isConnected)
         {
             // Get controller status
             uint32_t data = 1;
@@ -100,5 +102,5 @@ bool DreamcastController::task(uint64_t currentTimeUs)
         yieldTask(currentTimeUs, mNextCheckTime - currentTimeUs);
     }
 
-    return rv;
+    return isConnected;
 }
