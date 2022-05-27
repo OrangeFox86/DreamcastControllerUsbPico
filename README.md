@@ -1,11 +1,24 @@
 # DreamcastControllerUsbPico
  Dreamcast to USB Gamepad Converter for Raspberry Pi Pico
+ 
+Goals for this project:
+- Detect and interact with the following:
+  - Controller
+  - VMU (or just MU)
+  - Rumble Pack
+- Setup USB HID Gamepad that supports rumble
+- Setup some other USB device for VMU/MU access
+- Create whatever Linux/Windows drivers are necessary to communicate with all devices
+- Create Linux/Windows software to upload/download data to/from memory unit
+- Interface with emulator such as Redream for controller, rumble pack, and VMU
+ 
+*Please reach out to me if you want to help out with development or have any tips. The PC side of things intimidates me slightly. I think modifying the open source version of Redream is my only immediate option to actually get an emulator interface to work with this (to display VMU screens and possibly access VMU data). My voice gets lost in the Redream Discord server, so I don't think I'll get attention from that community until I can prove something works.*
 
-This is a work in progress.
-- The USB interface is there, but it is a very, very rough implementation
+This is a work in progress. Current progress:
 - Read and Write communication with maple bus is complete!
-- Started to create the Dreamcast node which should handle all connected devices to a bus
-  - Began by assuming controller device and parsing buttons
+- The USB interface is there, but it is a very, very rough implementation (code was sloppily copied from my Genesis controller project)
+- Started to create the Dreamcast node which should handle all connected devices to a bus, but only currently supports a controller
+- Current design doesn't scale properly for multiple devices, so I am planning on moving things around soon
 
 ## Why the RP2040 is a Game Changer
 
