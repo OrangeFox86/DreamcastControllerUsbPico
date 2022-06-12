@@ -1,28 +1,48 @@
-#ifndef __DREAMCAST_NODE_H__
-#define __DREAMCAST_NODE_H__
+#pragma once
 
-#include "MapleBus.hpp"
-#include "UsbGamepad.h"
-#include "DreamcastMainPeripheral.hpp"
+#include "DreamcastPeripheral.hpp"
 
+#include <stdint.h>
+#include <vector>
 #include <memory>
 
+//! Base class for an addressable node on a Maple Bus
 class DreamcastNode
 {
     public:
-    public:
-        DreamcastNode(uint32_t mapleBusPinA, uint32_t playerIndex, UsbGamepad& gamepad);
+        //! Virtual destructor
+        virtual ~DreamcastNode() {}
 
-        void task(uint64_t currentTimeUs);
+        //! Handles incoming data destined for this node
+        //! @param[in] len  Number of words in payload
+        //! @param[in] cmd  The received command
+        //! @param[in] payload  Payload data associated with the command
+        //! @returns true iff the data was handled
+        virtual bool handleData(uint8_t len,
+                                uint8_t cmd,
+                                const uint32_t *payload) = 0;
+
+        virtual void task(uint64_t currentTimeUs) = 0;
+
+        //! @returns this node's address
+        inline uint8_t getAddr() { return mAddr; }
+
+    protected:
+        //! Main constructor
+        DreamcastNode(uint8_t addr) : mAddr(addr) {}
+        //! Copy constructor
+        DreamcastNode(const DreamcastNode& rhs) : mAddr(rhs.mAddr)
+        {}
 
     private:
-        static const uint32_t MAX_NUM_PLAYERS = 4;
-        static const uint32_t US_PER_CHECK = 16000;
-        MapleBus mBus;
-        const uint32_t mPlayerIndex;
-        UsbGamepad& mGamepad;
-        uint64_t mNextCheckTime;
-        std::unique_ptr<DreamcastMainPeripheral> mMainPeripheral;
-};
+        //! Default constructor - not implemented
+        DreamcastNode();
 
-#endif // __DREAMCAST_NODE_H__
+    protected:
+        //! Maximum number of players
+        static const uint32_t MAX_NUM_PLAYERS = 4;
+        //! Address of this node
+        const uint8_t mAddr;
+        //! The connected peripherals addressed to this node (usually 0 to 2 items)
+        std::vector<std::unique_ptr<DreamcastPeripheral>> mPeripherals;
+};

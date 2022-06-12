@@ -1,10 +1,10 @@
 #pragma once
 
-#include "DreamcastMainPeripheral.hpp"
+#include "DreamcastPeripheral.hpp"
 #include "MapleBus.hpp"
 #include "UsbGamepad.h"
 
-class DreamcastController : public DreamcastMainPeripheral
+class DreamcastController : public DreamcastPeripheral
 {
     public:
         struct ControllerCondition
@@ -44,24 +44,21 @@ class DreamcastController : public DreamcastMainPeripheral
         //! @param[in] bus  The bus this controller is connected to
         //! @param[in] playerIndex  Player index of this controller [0,3]
         //! @param[in] gamepad  The gamepad to write button presses to
-        DreamcastController(MapleBus& bus, uint32_t playerIndex, UsbGamepad& gamepad);
+        DreamcastController(uint8_t addr, MapleBus& bus, uint32_t playerIndex, UsbGamepad& gamepad);
 
         //! Virtual destructor
         virtual ~DreamcastController();
 
-        //! Inherited from DreamcastMainPeripheral
-        virtual void removingSubPeripheral(uint8_t idx) final;
-
-        //! Inherited from DreamcastMainPeripheral
-        virtual void newSubPeripheralDetected(uint8_t idx) final;
-
-        //! Inherited from DreamcastMainPeripheral
+        //! Inherited from DreamcastPeripheral
         virtual bool handleData(uint8_t len,
                                 uint8_t cmd,
                                 const uint32_t *payload) final;
 
-        //! Inherited from DreamcastMainPeripheral
-        virtual bool task(uint64_t currentTimeUs) final;
+        //! Inherited from DreamcastPeripheral
+        virtual uint32_t processEvents(uint64_t currentTimeUs) final;
+
+        //! Inherited from DreamcastPeripheral
+        virtual void task(uint64_t currentTimeUs) final;
 
     private:
         //! Number of times failed communication occurs before determining that the controller is
@@ -69,8 +66,6 @@ class DreamcastController : public DreamcastMainPeripheral
         static const uint32_t NO_DATA_DISCONNECT_COUNT = 5;
         //! Time between each controller state poll (in microseconds)
         static const uint32_t US_PER_CHECK = 16000;
-        //! Player index of this controller [0,3]
-        uint32_t mPlayerIndex;
         //! The gamepad to write button presses to
         UsbGamepad& mGamepad;
         //! Time which the next controller state poll will occur

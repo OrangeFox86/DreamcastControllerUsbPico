@@ -1,10 +1,10 @@
 #include "DreamcastController.hpp"
+#include "dreamcast_constants.h"
 #include <string.h>
 
 
-DreamcastController::DreamcastController(MapleBus& bus, uint32_t playerIndex, UsbGamepad& gamepad) :
-    DreamcastMainPeripheral(bus),
-    mPlayerIndex(playerIndex),
+DreamcastController::DreamcastController(uint8_t addr, MapleBus& bus, uint32_t playerIndex, UsbGamepad& gamepad) :
+    DreamcastPeripheral(addr, bus, playerIndex),
     mGamepad(gamepad),
     mNextCheckTime(0),
     mWaitingForData(false),
@@ -18,16 +18,6 @@ DreamcastController::~DreamcastController()
     mGamepad.updateControllerConnected(false);
 }
 
-void DreamcastController::removingSubPeripheral(uint8_t idx)
-{
-    // TODO
-}
-
-void DreamcastController::newSubPeripheralDetected(uint8_t idx)
-{
-    // TODO
-}
-
 bool DreamcastController::handleData(uint8_t len,
                                      uint8_t cmd,
                                      const uint32_t *payload)
@@ -35,7 +25,7 @@ bool DreamcastController::handleData(uint8_t len,
     mWaitingForData = false;
     mNoDataCount = 0;
 
-    if (cmd == MapleBus::COMMAND_RESPONSE_DATA_XFER && len >= 3 && payload[0] == 1)
+    if (cmd == COMMAND_RESPONSE_DATA_XFER && len >= 3 && payload[0] == 1)
     {
         // Handle condition data
         ControllerCondition controllerCondition;
@@ -69,38 +59,31 @@ bool DreamcastController::handleData(uint8_t len,
     return false;
 }
 
-bool DreamcastController::task(uint64_t currentTimeUs)
+uint32_t DreamcastController::processEvents(uint64_t currentTimeUs)
 {
-    bool isConnected = true;
-
     if (currentTimeUs > mNextCheckTime)
     {
-        // See if we need to update connection status to disconnected
+        // Increment count if we are still waiting for response from the last communication attempt
         if (mWaitingForData)
         {
-            if (++mNoDataCount >= NO_DATA_DISCONNECT_COUNT)
-            {
-                mNoDataCount = 0;
-                isConnected = false;
-            }
+            ++mNoDataCount;
             mWaitingForData = false;
         }
+    }
 
-        if (isConnected)
+    return mNoDataCount;
+}
+
+void DreamcastController::task(uint64_t currentTimeUs)
+{
+    if (currentTimeUs > mNextCheckTime)
+    {
+        // Get controller status
+        uint32_t data = 1; // TODO: move magic number: 1 gets button & analog stick states
+        if (mBus.write(COMMAND_GET_CONDITION, getRecipientAddress(), &data, 1, true))
         {
-            // Get controller status
-            uint32_t data = 1;
-            if (mBus.write(MapleBus::COMMAND_GET_CONDITION, mAddr, &data, 1, true))
-            {
-                mWaitingForData = true;
-                mNextCheckTime = currentTimeUs + US_PER_CHECK;
-            }
+            mWaitingForData = true;
+            mNextCheckTime = currentTimeUs + US_PER_CHECK;
         }
     }
-    else
-    {
-        yieldTask(currentTimeUs, mNextCheckTime - currentTimeUs);
-    }
-
-    return isConnected;
 }

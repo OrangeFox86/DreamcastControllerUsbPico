@@ -21,32 +21,6 @@
 class MapleBus
 {
     public:
-        //! Enumerates all of the valid commands for Dreamcast devices
-        enum Command
-        {
-            COMMAND_DEVICE_INFO_REQUEST = 0x01,
-            COMMAND_EXT_DEVICE_INFO_REQUEST = 0x02,
-            COMMAND_RESET = 0x03,
-            COMMAND_SHUTDOWN = 0x04,
-            COMMAND_RESPONSE_DEVICE_INFO = 0x05,
-            COMMAND_RESPONSE_EXT_DEVICE_INFO = 0x06,
-            COMMAND_RESPONSE_ACK = 0x07,
-            COMMAND_RESPONSE_DATA_XFER = 0x08,
-            COMMAND_GET_CONDITION = 0x09,
-            COMMAND_GET_MEMORY_INFORMATION = 0x0A,
-            COMMAND_BLOCK_READ = 0x0B,
-            COMMAND_BLOCK_WRITE = 0x0C,
-            COMMAND_SET_CONDITION = 0x0E,
-            COMMAND_RESPONSE_NONE = 0xFF,
-            COMMAND_RESPONSE_FUNCTION_CODE_NOT_SUPPORTED = 0xFE,
-            COMMAND_RESPONSE_UNKNOWN_COMMAND = 0xFD,
-            COMMAND_RESPONSE_REQUEST_RESEND = 0xFC,
-            COMMAND_RESPONSE_FILE_ERROR = 0xFB,
-            COMMAND_RESPONSE_LCD_ERROR = 0xFA,
-            COMMAND_RESPONSE_AR_ERROR = 0xF9
-        };
-
-    public:
         //! Maple Bus constructor
         //! @param[in] pinA  GPIO index for pin A. The very next GPIO will be designated as pin B.
         //! @param[in] senderAddr  The address of this device

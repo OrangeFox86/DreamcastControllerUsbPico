@@ -7,9 +7,12 @@ class DreamcastPeripheral
 {
     public:
         //! Constructor
-        //! @param[in] bus  The bus that this peripheral is connected to
         //! @param[in] addr  This peripheral's address (mask bit)
-        DreamcastPeripheral(MapleBus& bus, uint8_t addr) : mBus(bus), mAddr(addr) {}
+        //! @param[in] bus  The bus that this peripheral is connected to
+        //! @param[in] playerIndex  Player index of this peripheral [0,3]
+        DreamcastPeripheral(uint8_t addr, MapleBus& bus, uint32_t playerIndex) :
+            mBus(bus), mPlayerIndex(playerIndex), mAddr(addr)
+        {}
 
         //! Virtual destructor
         virtual ~DreamcastPeripheral() {}
@@ -25,14 +28,14 @@ class DreamcastPeripheral
 
         //! @param[in] subPeripheralIndex  Sub peripheral index [0,4]
         //! @returns the sub peripheral mask for the given sub peripheral index
-        inline uint8_t subPeripheralMask(int32_t subPeripheralIndex)
+        static inline uint8_t subPeripheralMask(int32_t subPeripheralIndex)
         {
             return SUB_PERIPHERAL_ADDR_START_MASK << subPeripheralIndex;
         }
 
         //! @param[in] subPeripheralMask  Sub peripheral mask
         //! @returns the index of the first sub peripheral mask that was matched
-        inline int32_t subPeripheralIndex(uint8_t subPeripheralMask)
+        static inline int32_t subPeripheralIndex(uint8_t subPeripheralMask)
         {
             uint8_t mask = SUB_PERIPHERAL_ADDR_START_MASK;
             for (int32_t i = 0; i < MAX_SUB_PERIPHERALS; ++i, mask<<=1)
@@ -45,6 +48,27 @@ class DreamcastPeripheral
             return -1;
         }
 
+        //! Get recipient address for a peripheral with given player index and address
+        //! @param[in] playerIndex  Player index of peripheral [0,3]
+        //! @param[in] addr  Peripheral's address (mask bit)
+        //! @returns recipient address
+        static inline uint8_t getRecipientAddress(uint32_t playerIndex, uint8_t addr)
+        {
+            return (playerIndex << 6) | addr;
+        }
+
+        //! @returns recipient address for this peripheral
+        inline uint8_t getRecipientAddress() { return getRecipientAddress(mPlayerIndex, mAddr); }
+
+        //! Child should process events for the current time without taking action
+        //! @param[in] currentTimeUs  The current time in microseconds
+        //! @returns number of failed consecutive communication cycles up to this time
+        virtual uint32_t processEvents(uint64_t currentTimeUs) = 0;
+
+        //! The task that DreamcastNode yields control to after this peripheral is detected
+        //! @param[in] currentTimeUs  The current time in microseconds
+        virtual void task(uint64_t currentTimeUs) = 0;
+
     public:
         //! The maximum number of sub peripherals that a main peripheral can handle
         static const int32_t MAX_SUB_PERIPHERALS = 5;
@@ -56,6 +80,8 @@ class DreamcastPeripheral
     protected:
         //! The bus that this peripheral is connected to
         MapleBus& mBus;
+        //! Player index of this peripheral [0,3]
+        const uint32_t mPlayerIndex;
         //! Address of this device
-        uint8_t mAddr;
+        const uint8_t mAddr;
 };

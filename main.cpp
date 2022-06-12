@@ -13,6 +13,7 @@
 
 #include "MapleBus.hpp"
 #include "DreamcastNode.hpp"
+#include "DreamcastMainNode.hpp"
 
 #include "UsbGamepad.h"
 #include "usb_descriptors.h"
@@ -30,7 +31,7 @@ void core1()
     // Wait for steady state
     sleep_ms(100);
 
-    DreamcastNode p1(14, 0, player1UsbDevice);
+    DreamcastMainNode p1(14, 0, player1UsbDevice);
 
     while(true)
     {
