@@ -50,6 +50,12 @@ A Maple Bus consists of 2 signal/clock lines that are labeled SDCKA and SDCKB. H
   <img src="images/Maple_Bus_Hardware_Communication.png?raw=true" alt="Maple Bus Hardware Communication"/>
 </p>
 
+### Connecting the Hardware
+
+The Dreamcast uses a 36 ohm resistor and a small fuse in series between the chip I/O and the controller ports. In my tests, I have hard wired the I/O of the pico to the controller port without running into issues (yet). However, I plan on using a 33 ohm resistor and 1/16 amp littelfuse once I actually build things out. These components would be there just in case a faulty device was plugged in. On a fault, the 33 ohm resistor will limit the current draw to 100 mA at 3.3 V for each I/O. This is still twice the rated max I/O current of the RP2040. That's where the fuse will come in - it should blow within a few milliseconds (on average) after a fault occurs. I don't know how much abuse the RP2040 can take, but I assume it should be able to survive that. You'd then just be left with a dead port instead of a dead chip.
+
+I played around with higher resistance on these lines, but any more than around 100 ohms limits the charge/discharge speed and causes communication errors. I feel like low value resistors and quick blowing fuses provide the best tradeoff while still keeping cost and complexity low. It also matches Sega's design.
+
 ## Generating Maple Bus Output
 
 The maple_out PIO state machine handles Maple Bus output.

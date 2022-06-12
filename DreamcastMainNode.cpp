@@ -33,6 +33,7 @@ bool DreamcastMainNode::handleData(uint8_t len,
             mPeripherals.clear();
             mPeripherals.push_back(std::unique_ptr<DreamcastController>(new DreamcastController(mAddr, mBus, mPlayerIndex, mGamepad)));
         }
+        // TODO: Handle other peripherals here
 
         return (mPeripherals.size() > 0);
     }
