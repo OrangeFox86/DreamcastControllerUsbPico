@@ -18,6 +18,7 @@ This is a work in progress. Current progress:
 - Read and Write communication with maple bus is complete!
 - The USB interface is there, but it is a very, very rough implementation (code was sloppily copied from my Genesis controller project)
 - Started to create the Dreamcast node which should handle all connected devices to a bus, but only currently supports a controller
+  - I have successfully played Steam games on my Windows PC using a Dreamcast controller with this
 - Design has been updated to scale a bit better - it's still very rough though
 
 ## Why the RP2040 is a Game Changer
@@ -176,7 +177,6 @@ The following addresses are used for all components on the bus.
 | 0xFC | Request Resend |
 | 0xFD | Unknown Command |
 | 0xFE | Function Code Not Supported |
-| 0xFF | None |
 
 *Most peripheral devices won't respond to any other command until device info is requested for the device.
 
