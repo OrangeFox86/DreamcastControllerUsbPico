@@ -120,10 +120,12 @@ char const *string_desc_arr[] =
 {
     (const char[]) {0x09, 0x04}, // 0: is supported language is English (0x0409)
     "DIY"  ,                     // 1: Manufacturer
-    "Dreamcast Controller USB",    // 2: Product
+    "Dreamcast Controller USB",  // 2: Product
     NULL,                        // 3: Serial (special case; get pico serial)
     "Player 1",                  // 4: Device 1
-    "Player 2"                   // 5: Device 2
+    "Player 2",                  // 5: Device 2
+    "Player 3",                  // 6: Device 3
+    "Player 4"                   // 7: Device 4
 };
 
 static uint16_t _desc_str[32];

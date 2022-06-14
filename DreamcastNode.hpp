@@ -34,6 +34,50 @@ class DreamcastNode
         DreamcastNode(const DreamcastNode& rhs) : mAddr(rhs.mAddr)
         {}
 
+        //! Run all peripheral tasks
+        //! @param[in] currentTimeUs  The current time in microseconds
+        //! @return true if all peripherals connected; false if all have disconnected
+        bool handlePeripherals(uint64_t currentTimeUs)
+        {
+            bool connected = true;
+            for (std::vector<std::unique_ptr<DreamcastPeripheral>>::iterator iter = mPeripherals.begin();
+                 iter != mPeripherals.end() && connected;
+                 ++iter)
+            {
+                if (!(*iter)->task(currentTimeUs))
+                {
+                    connected = false;
+                }
+            }
+
+            if (!connected)
+            {
+                // One peripheral is no longer responding, so remove all
+                mPeripherals.clear();
+            }
+
+            return connected;
+        }
+
+        //! Try to get peripherals to handle the given data
+        //! @param[in] len  Number of words in payload
+        //! @param[in] cmd  The received command
+        //! @param[in] payload  Payload data associated with the command
+        //! @returns true iff the data was handled
+        bool handlePeripheralData(uint8_t len,
+                                  uint8_t cmd,
+                                  const uint32_t *payload)
+        {
+            bool handled = false;
+            for (std::vector<std::unique_ptr<DreamcastPeripheral>>::iterator iter = mPeripherals.begin();
+                 iter != mPeripherals.end() && !handled;
+                 ++iter)
+            {
+                handled = (*iter)->handleData(len, cmd, payload);
+            }
+            return handled;
+        }
+
     private:
         //! Default constructor - not implemented
         DreamcastNode();

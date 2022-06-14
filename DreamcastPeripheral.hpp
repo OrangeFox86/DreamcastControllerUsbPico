@@ -60,14 +60,10 @@ class DreamcastPeripheral
         //! @returns recipient address for this peripheral
         inline uint8_t getRecipientAddress() { return getRecipientAddress(mPlayerIndex, mAddr); }
 
-        //! Child should process events for the current time without taking action
-        //! @param[in] currentTimeUs  The current time in microseconds
-        //! @returns number of failed consecutive communication cycles up to this time
-        virtual uint32_t processEvents(uint64_t currentTimeUs) = 0;
-
         //! The task that DreamcastNode yields control to after this peripheral is detected
         //! @param[in] currentTimeUs  The current time in microseconds
-        virtual void task(uint64_t currentTimeUs) = 0;
+        //! @returns true iff still connected
+        virtual bool task(uint64_t currentTimeUs) = 0;
 
     public:
         //! The maximum number of sub peripherals that a main peripheral can handle

@@ -27,7 +27,6 @@ class DreamcastMainNode : public DreamcastNode
     public:
         static const uint32_t NUM_SUB_NODES = 5;
         static const uint32_t US_PER_CHECK = 16000;
-        static const uint32_t NUM_FAIL_COM_DISCONNECT = 5;
     private:
         MapleBus mBus;
         const uint32_t mPlayerIndex;

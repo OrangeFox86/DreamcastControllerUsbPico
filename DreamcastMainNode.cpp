@@ -38,12 +38,7 @@ bool DreamcastMainNode::handleData(uint8_t len,
         return (mPeripherals.size() > 0);
     }
 
-    if (mPeripherals.size() > 0)
-    {
-        return mPeripherals[0]->handleData(len, cmd, payload);
-    }
-
-    return false;
+    return handlePeripheralData(len, cmd, payload);
 }
 
 void DreamcastMainNode::task(uint64_t currentTimeUs)
@@ -93,24 +88,21 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
     if (mPeripherals.size() > 0)
     {
         // Have the connected main peripheral handle write
-        bool disconnected = (mPeripherals[0]->processEvents(currentTimeUs) >= NUM_FAIL_COM_DISCONNECT);
-        if (disconnected)
+        if (handlePeripherals(currentTimeUs))
+        {
+            for (uint32_t i = 0; i < NUM_SUB_NODES; ++i)
+            {
+                mSubNodes[i].task(currentTimeUs);
+            }
+        }
+        else
         {
             // Main peripheral disconnected
-            mPeripherals.clear();
             for (uint32_t i = 0; i < NUM_SUB_NODES; ++i)
             {
                 mSubNodes[i].mainPeripheralDisconnected();
             }
             mNextCheckTime = currentTimeUs;
-        }
-        else
-        {
-            mPeripherals[0]->task(currentTimeUs);
-            for (uint32_t i = 0; i < NUM_SUB_NODES; ++i)
-            {
-                mSubNodes[i].task(currentTimeUs);
-            }
         }
     }
     // Otherwise, keep looking for info from a main peripheral

@@ -23,4 +23,12 @@ class DreamcastSubNode : public DreamcastNode
 
         void setConnected(bool connected);
 
+    private:
+        static const uint32_t US_PER_CHECK = 16000;
+        static const uint32_t NUM_FAIL_COM_DISCONNECT = 5;
+        MapleBus& mBus;
+        uint32_t mPlayerIndex;
+        uint64_t mNextCheckTime;
+        bool mConnected;
+
 };

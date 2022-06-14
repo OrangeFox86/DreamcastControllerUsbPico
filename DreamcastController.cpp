@@ -22,45 +22,49 @@ bool DreamcastController::handleData(uint8_t len,
                                      uint8_t cmd,
                                      const uint32_t *payload)
 {
-    mWaitingForData = false;
-    mNoDataCount = 0;
-
-    if (cmd == COMMAND_RESPONSE_DATA_XFER && len >= 3 && payload[0] == 1)
+    if (mWaitingForData)
     {
-        // Handle condition data
-        ControllerCondition controllerCondition;
-        memcpy(&controllerCondition, &payload[1], 8);
+        mWaitingForData = false;
+        mNoDataCount = 0;
 
-        // TODO: Move magic numbers to constants
-        mGamepad.setButton(0, 0 == controllerCondition.a);
-        mGamepad.setButton(1, 0 == controllerCondition.b);
-        mGamepad.setButton(3, 0 == controllerCondition.x);
-        mGamepad.setButton(4, 0 == controllerCondition.y);
-        mGamepad.setButton(11, 0 == controllerCondition.start);
+        if (cmd == COMMAND_RESPONSE_DATA_XFER && len >= 3 && payload[0] == 1)
+        {
+            // Handle condition data
+            ControllerCondition controllerCondition;
+            memcpy(&controllerCondition, &payload[1], 8);
 
-        mGamepad.setDigitalPad(UsbGamepad::DPAD_UP, 0 == controllerCondition.up);
-        mGamepad.setDigitalPad(UsbGamepad::DPAD_DOWN, 0 == controllerCondition.down);
-        mGamepad.setDigitalPad(UsbGamepad::DPAD_LEFT, 0 == controllerCondition.left);
-        mGamepad.setDigitalPad(UsbGamepad::DPAD_RIGHT, 0 == controllerCondition.right);
+            // TODO: Move magic numbers to constants
+            mGamepad.setButton(0, 0 == controllerCondition.a);
+            mGamepad.setButton(1, 0 == controllerCondition.b);
+            mGamepad.setButton(3, 0 == controllerCondition.x);
+            mGamepad.setButton(4, 0 == controllerCondition.y);
+            mGamepad.setButton(11, 0 == controllerCondition.start);
 
-        mGamepad.setAnalogTrigger(true, static_cast<int32_t>(controllerCondition.l) - 128);
-        mGamepad.setAnalogTrigger(false, static_cast<int32_t>(controllerCondition.r) - 128);
+            mGamepad.setDigitalPad(UsbGamepad::DPAD_UP, 0 == controllerCondition.up);
+            mGamepad.setDigitalPad(UsbGamepad::DPAD_DOWN, 0 == controllerCondition.down);
+            mGamepad.setDigitalPad(UsbGamepad::DPAD_LEFT, 0 == controllerCondition.left);
+            mGamepad.setDigitalPad(UsbGamepad::DPAD_RIGHT, 0 == controllerCondition.right);
 
-        mGamepad.setAnalogThumbX(true, static_cast<int32_t>(controllerCondition.lAnalogLR) - 128);
-        mGamepad.setAnalogThumbY(true, static_cast<int32_t>(controllerCondition.lAnalogUD) - 128);
-        mGamepad.setAnalogThumbX(false, static_cast<int32_t>(controllerCondition.rAnalogLR) - 128);
-        mGamepad.setAnalogThumbY(false, static_cast<int32_t>(controllerCondition.rAnalogUD) - 128);
+            mGamepad.setAnalogTrigger(true, static_cast<int32_t>(controllerCondition.l) - 128);
+            mGamepad.setAnalogTrigger(false, static_cast<int32_t>(controllerCondition.r) - 128);
 
-        mGamepad.send();
+            mGamepad.setAnalogThumbX(true, static_cast<int32_t>(controllerCondition.lAnalogLR) - 128);
+            mGamepad.setAnalogThumbY(true, static_cast<int32_t>(controllerCondition.lAnalogUD) - 128);
+            mGamepad.setAnalogThumbX(false, static_cast<int32_t>(controllerCondition.rAnalogLR) - 128);
+            mGamepad.setAnalogThumbY(false, static_cast<int32_t>(controllerCondition.rAnalogUD) - 128);
 
-        return true;
+            mGamepad.send();
+
+            return true;
+        }
     }
 
     return false;
 }
 
-uint32_t DreamcastController::processEvents(uint64_t currentTimeUs)
+bool DreamcastController::task(uint64_t currentTimeUs)
 {
+    bool connected = (mNoDataCount < NO_DATA_DISCONNECT_COUNT);
     if (currentTimeUs > mNextCheckTime)
     {
         // Increment count if we are still waiting for response from the last communication attempt
@@ -68,22 +72,19 @@ uint32_t DreamcastController::processEvents(uint64_t currentTimeUs)
         {
             ++mNoDataCount;
             mWaitingForData = false;
+            connected = (mNoDataCount < NO_DATA_DISCONNECT_COUNT);
         }
-    }
 
-    return mNoDataCount;
-}
-
-void DreamcastController::task(uint64_t currentTimeUs)
-{
-    if (currentTimeUs > mNextCheckTime)
-    {
-        // Get controller status
-        uint32_t data = 1; // TODO: move magic number: 1 gets button & analog stick states
-        if (mBus.write(COMMAND_GET_CONDITION, getRecipientAddress(), &data, 1, true))
+        if (connected)
         {
-            mWaitingForData = true;
-            mNextCheckTime = currentTimeUs + US_PER_CHECK;
+            // Get controller status
+            uint32_t data = 1; // TODO: move magic number: 1 gets button & analog stick states
+            if (mBus.write(COMMAND_GET_CONDITION, getRecipientAddress(), &data, 1, true))
+            {
+                mWaitingForData = true;
+                mNextCheckTime = currentTimeUs + US_PER_CHECK;
+            }
         }
     }
+    return connected;
 }

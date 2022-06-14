@@ -55,10 +55,7 @@ class DreamcastController : public DreamcastPeripheral
                                 const uint32_t *payload) final;
 
         //! Inherited from DreamcastPeripheral
-        virtual uint32_t processEvents(uint64_t currentTimeUs) final;
-
-        //! Inherited from DreamcastPeripheral
-        virtual void task(uint64_t currentTimeUs) final;
+        virtual bool task(uint64_t currentTimeUs) final;
 
     private:
         //! Number of times failed communication occurs before determining that the controller is
