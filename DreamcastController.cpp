@@ -33,12 +33,11 @@ bool DreamcastController::handleData(uint8_t len,
             ControllerCondition controllerCondition;
             memcpy(&controllerCondition, &payload[1], 8);
 
-            // TODO: Move magic numbers to constants
-            mGamepad.setButton(0, 0 == controllerCondition.a);
-            mGamepad.setButton(1, 0 == controllerCondition.b);
-            mGamepad.setButton(3, 0 == controllerCondition.x);
-            mGamepad.setButton(4, 0 == controllerCondition.y);
-            mGamepad.setButton(11, 0 == controllerCondition.start);
+            mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_A, 0 == controllerCondition.a);
+            mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_B, 0 == controllerCondition.b);
+            mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_X, 0 == controllerCondition.x);
+            mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_Y, 0 == controllerCondition.y);
+            mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_START, 0 == controllerCondition.start);
 
             mGamepad.setDigitalPad(UsbGamepad::DPAD_UP, 0 == controllerCondition.up);
             mGamepad.setDigitalPad(UsbGamepad::DPAD_DOWN, 0 == controllerCondition.down);
@@ -78,7 +77,7 @@ bool DreamcastController::task(uint64_t currentTimeUs)
         if (connected)
         {
             // Get controller status
-            uint32_t data = 1; // TODO: move magic number: 1 gets button & analog stick states
+            uint32_t data = DEVICE_FN_CONTROLLER;
             if (mBus.write(COMMAND_GET_CONDITION, getRecipientAddress(), &data, 1, true))
             {
                 mWaitingForData = true;

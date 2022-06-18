@@ -8,14 +8,33 @@
 class UsbGamepad : public UsbControllerDevice
 {
   public:
-  enum DpadButtons
-  {
-    DPAD_UP = 0,
-    DPAD_DOWN,
-    DPAD_LEFT,
-    DPAD_RIGHT,
-    DPAD_COUNT
-  };
+    enum DpadButtons
+    {
+      DPAD_UP = 0,
+      DPAD_DOWN,
+      DPAD_LEFT,
+      DPAD_RIGHT,
+      DPAD_COUNT
+    };
+
+    enum GamepadButton : uint8_t
+    {
+      GAMEPAD_BUTTON_A = 0,
+      GAMEPAD_BUTTON_B = 1,
+      GAMEPAD_BUTTON_C = 2,
+      GAMEPAD_BUTTON_X = 3,
+      GAMEPAD_BUTTON_Y = 4,
+      GAMEPAD_BUTTON_Z = 5,
+      GAMEPAD_BUTTON_TL = 6,
+      GAMEPAD_BUTTON_TR = 7,
+      GAMEPAD_BUTTON_TL2 = 8,
+      GAMEPAD_BUTTON_TR2 = 9,
+      GAMEPAD_BUTTON_SELECT = 10,
+      GAMEPAD_BUTTON_START = 11,
+      GAMEPAD_BUTTON_MODE = 12,
+      GAMEPAD_BUTTON_THUMBL = 13,
+      GAMEPAD_BUTTON_THUMBR = 14,
+    };
 
   public:
     //! UsbKeyboard constructor
