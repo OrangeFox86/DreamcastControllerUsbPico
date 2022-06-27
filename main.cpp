@@ -14,6 +14,7 @@
 #include "MapleBus.hpp"
 #include "DreamcastNode.hpp"
 #include "DreamcastMainNode.hpp"
+#include "PlayerData.hpp"
 
 #include "UsbGamepad.h"
 #include "usb_descriptors.h"
@@ -23,6 +24,7 @@
 
 UsbGamepad player1UsbDevice(ITF_NUM_HID1, 0);
 UsbControllerDevice* devices[] = {&player1UsbDevice};
+ScreenData player1ScreenData;
 
 void core1()
 {
@@ -31,7 +33,8 @@ void core1()
     // Wait for steady state
     sleep_ms(100);
 
-    DreamcastMainNode p1(14, 0, player1UsbDevice);
+    PlayerData playerData = {0, player1UsbDevice, player1ScreenData};
+    DreamcastMainNode p1(14, playerData);
 
     while(true)
     {

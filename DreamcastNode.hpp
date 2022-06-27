@@ -2,6 +2,8 @@
 
 #include "DreamcastPeripheral.hpp"
 
+#include "PlayerData.hpp"
+
 #include <stdint.h>
 #include <vector>
 #include <memory>
@@ -29,9 +31,9 @@ class DreamcastNode
 
     protected:
         //! Main constructor
-        DreamcastNode(uint8_t addr) : mAddr(addr) {}
+        DreamcastNode(uint8_t addr, PlayerData playerData) : mAddr(addr), mPlayerData(playerData) {}
         //! Copy constructor
-        DreamcastNode(const DreamcastNode& rhs) : mAddr(rhs.mAddr)
+        DreamcastNode(const DreamcastNode& rhs) : mAddr(rhs.mAddr), mPlayerData(rhs.mPlayerData)
         {}
 
         //! Run all peripheral tasks
@@ -87,6 +89,8 @@ class DreamcastNode
         static const uint32_t MAX_NUM_PLAYERS = 4;
         //! Address of this node
         const uint8_t mAddr;
+        //! Player data on this node
+        PlayerData mPlayerData;
         //! The connected peripherals addressed to this node (usually 0 to 2 items)
         std::vector<std::unique_ptr<DreamcastPeripheral>> mPeripherals;
 };

@@ -3,6 +3,7 @@
 #include "DreamcastPeripheral.hpp"
 #include "MapleBus.hpp"
 #include "UsbGamepad.h"
+#include "PlayerData.hpp"
 
 class DreamcastController : public DreamcastPeripheral
 {
@@ -16,12 +17,16 @@ class DreamcastController : public DreamcastPeripheral
             // Digital bits:
             // 0: pressed
             // 1: released
-            unsigned none1:1;
+            unsigned z:1;
             unsigned y:1;
             unsigned x:1;
-            unsigned none2:5;
+            unsigned unknown5:1;
+            unsigned unknown4:1;
+            unsigned unknown3:1;
+            unsigned unknown2:1;
+            unsigned unknown1:1;
 
-            unsigned none3:1;
+            unsigned c:1;
             unsigned b:1;
             unsigned a:1;
             unsigned start:1;
@@ -41,10 +46,10 @@ class DreamcastController : public DreamcastPeripheral
 
     public:
         //! Constructor
+        //! @param[in] addr  This peripheral's address
         //! @param[in] bus  The bus this controller is connected to
-        //! @param[in] playerIndex  Player index of this controller [0,3]
-        //! @param[in] gamepad  The gamepad to write button presses to
-        DreamcastController(uint8_t addr, MapleBus& bus, uint32_t playerIndex, UsbGamepad& gamepad);
+        //! @param[in] playerData  Data tied to player which controls this controller
+        DreamcastController(uint8_t addr, MapleBus& bus, PlayerData playerData);
 
         //! Virtual destructor
         virtual ~DreamcastController();

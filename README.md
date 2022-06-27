@@ -8,7 +8,7 @@ Goals for this project:
   - Rumble Pack
 - Setup USB HID Gamepad that supports rumble
 - Setup some other USB device for VMU/MU access
-- Create whatever Linux/Windows drivers are necessary to communicate with all devices
+- Create whatever Linux/Windows drivers are necessary to communicate with all devices (probably will just use libusb)
 - Create Linux/Windows software to upload/download data to/from memory unit
 - Interface with emulator such as Redream for controller, rumble pack, and VMU
 

@@ -3,9 +3,9 @@
 #include <string.h>
 
 
-DreamcastController::DreamcastController(uint8_t addr, MapleBus& bus, uint32_t playerIndex, UsbGamepad& gamepad) :
-    DreamcastPeripheral(addr, bus, playerIndex),
-    mGamepad(gamepad),
+DreamcastController::DreamcastController(uint8_t addr, MapleBus& bus, PlayerData playerData) :
+    DreamcastPeripheral(addr, bus, playerData.playerIndex),
+    mGamepad(playerData.gamepad),
     mNextCheckTime(0),
     mWaitingForData(false),
     mNoDataCount(0)
@@ -35,9 +35,18 @@ bool DreamcastController::handleData(uint8_t len,
 
             mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_A, 0 == controllerCondition.a);
             mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_B, 0 == controllerCondition.b);
+            mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_C, 0 == controllerCondition.c);
             mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_X, 0 == controllerCondition.x);
             mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_Y, 0 == controllerCondition.y);
+            mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_Z, 0 == controllerCondition.z);
             mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_START, 0 == controllerCondition.start);
+
+            // Mapping these to random unique buttons just in case something out there uses them
+            mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_TL, 0 == controllerCondition.unknown1);
+            mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_TR, 0 == controllerCondition.unknown2);
+            mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_TL2, 0 == controllerCondition.unknown3);
+            mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_TR2, 0 == controllerCondition.unknown4);
+            mGamepad.setButton(UsbGamepad::GAMEPAD_BUTTON_SELECT, 0 == controllerCondition.unknown5);
 
             mGamepad.setDigitalPad(UsbGamepad::DPAD_UP, 0 == controllerCondition.up);
             mGamepad.setDigitalPad(UsbGamepad::DPAD_DOWN, 0 == controllerCondition.down);

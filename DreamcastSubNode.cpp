@@ -1,10 +1,10 @@
 #include "DreamcastSubNode.hpp"
 #include "dreamcast_constants.h"
 
-DreamcastSubNode::DreamcastSubNode(uint8_t addr, MapleBus& bus, uint32_t playerIndex) :
-    DreamcastNode(addr),
+
+DreamcastSubNode::DreamcastSubNode(uint8_t addr, MapleBus& bus, PlayerData playerData) :
+    DreamcastNode(addr, playerData),
     mBus(bus),
-    mPlayerIndex(playerIndex),
     mNextCheckTime(0),
     mConnected(false)
 {
@@ -13,7 +13,6 @@ DreamcastSubNode::DreamcastSubNode(uint8_t addr, MapleBus& bus, uint32_t playerI
 DreamcastSubNode::DreamcastSubNode(const DreamcastSubNode& rhs) :
     DreamcastNode(rhs),
     mBus(rhs.mBus),
-    mPlayerIndex(rhs.mPlayerIndex),
     mNextCheckTime(rhs.mNextCheckTime),
     mConnected(rhs.mConnected)
 {
@@ -26,6 +25,10 @@ bool DreamcastSubNode::handleData(uint8_t len,
     // If device info received, add the sub peripheral
     if (cmd == COMMAND_RESPONSE_DEVICE_INFO)
     {
+        // if (payload[0] & DEVICE_FN_LCD)
+        // {
+        //     mPeripherals.push_back(std::unique_ptr<DreamcastController>(new DreamcastController(mAddr, mBus, mPlayerIndex, mGamepad)));
+        // }
         // TODO: Handle peripherals here
 
         return (mPeripherals.size() > 0);
@@ -44,7 +47,8 @@ void DreamcastSubNode::task(uint64_t currentTimeUs)
         {
             if (mBus.write(COMMAND_DEVICE_INFO_REQUEST,
                         DreamcastPeripheral::getRecipientAddress(
-                            mPlayerIndex, DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK),
+                            mPlayerData.playerIndex,
+                            DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK),
                         NULL,
                         0,
                         true))

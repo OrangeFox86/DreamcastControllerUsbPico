@@ -3,17 +3,15 @@
 #include "dreamcast_constants.h"
 #include "DreamcastController.hpp"
 
-DreamcastMainNode::DreamcastMainNode(uint32_t mapleBusPinA, uint32_t playerIndex, UsbGamepad& gamepad) :
-    DreamcastNode(DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK),
+DreamcastMainNode::DreamcastMainNode(uint32_t mapleBusPinA, PlayerData playerData) :
+    DreamcastNode(DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK, playerData),
     mBus(mapleBusPinA, 0x00),
-    mPlayerIndex(playerIndex),
-    mGamepad(gamepad),
     mNextCheckTime(0),
-    mSubNodes{DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(0), mBus, playerIndex),
-              DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(1), mBus, playerIndex),
-              DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(2), mBus, playerIndex),
-              DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(3), mBus, playerIndex),
-              DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(4), mBus, playerIndex)}
+    mSubNodes{DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(0), mBus, mPlayerData),
+              DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(1), mBus, mPlayerData),
+              DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(2), mBus, mPlayerData),
+              DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(3), mBus, mPlayerData),
+              DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(4), mBus, mPlayerData)}
 {
 
 }
@@ -31,7 +29,7 @@ bool DreamcastMainNode::handleData(uint8_t len,
         if (payload[0] & DEVICE_FN_CONTROLLER)
         {
             mPeripherals.clear();
-            mPeripherals.push_back(std::unique_ptr<DreamcastController>(new DreamcastController(mAddr, mBus, mPlayerIndex, mGamepad)));
+            mPeripherals.push_back(std::unique_ptr<DreamcastController>(new DreamcastController(mAddr, mBus, mPlayerData)));
         }
         // TODO: Handle other peripherals here
 
@@ -110,7 +108,8 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
     {
         if (mBus.write(COMMAND_DEVICE_INFO_REQUEST,
                        DreamcastPeripheral::getRecipientAddress(
-                           mPlayerIndex, DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK),
+                           mPlayerData.playerIndex,
+                           DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK),
                        NULL,
                        0,
                        true))
