@@ -4,8 +4,8 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # Have pico_sdk_import.cmake use the local SDK if it was pulled down; otherwise, use path at
 # PICO_SDK_PATH environment variable as specified within pico_sdk_import.cmake
-if (EXISTS "${CMAKE_SOURCE_DIR}/lib/pico-sdk/CMakeLists.txt")
-  set(PICO_SDK_PATH "${CMAKE_SOURCE_DIR}/lib/pico-sdk/")
+if (EXISTS "${CMAKE_SOURCE_DIR}/ext/pico-sdk/CMakeLists.txt")
+  set(PICO_SDK_PATH "${CMAKE_SOURCE_DIR}/ext/pico-sdk/")
   message("Using local pico SDK at ('${PICO_SDK_PATH}')")
 endif ()
 
