@@ -15,7 +15,7 @@ file(GLOB SRC "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/*
 add_executable(DreamcastControllerUsbPicoTest
   ${SRC}
 )
-target_link_libraries(DreamcastControllerUsbPicoTest PRIVATE gtest_main pthread DreamcastControllerUsbPico)
+target_link_libraries(DreamcastControllerUsbPicoTest PRIVATE gtest_main pthread DreamcastControllerUsbPicoCore)
 target_include_directories(DreamcastControllerUsbPicoTest PRIVATE ${CMAKE_CURRENT_LIST_DIR})
 enable_testing()
 add_test(NAME all_tests COMMAND DreamcastControllerUsbPicoTest)

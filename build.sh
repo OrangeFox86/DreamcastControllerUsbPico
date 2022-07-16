@@ -1,6 +1,7 @@
 #!/bin/sh
 
 BUILD_DIR="build"
+DIST_DIR="dist"
 GCC="/usr/bin/arm-none-eabi-gcc"
 GPP="/usr/bin/arm-none-eabi-g++"
 
@@ -28,9 +29,6 @@ fi
     --target all \
     -j 10 \
 
-STATUS=$?
-if [ $STATUS -ne 0 ]; then
-    echo "CMake returned error exit code: ${STATUS}"
-    echo "Exiting"
-    exit $STATUS
-fi
+mkdir -p ${DIST_DIR}
+rm -rf ${DIST_DIR}/*
+cp ${BUILD_DIR}/src/main/*.uf2 ${DIST_DIR}

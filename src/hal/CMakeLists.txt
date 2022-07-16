@@ -26,5 +26,5 @@ target_compile_options(DreamcastControllerUsbPicoHal PRIVATE
 target_include_directories(DreamcastControllerUsbPicoHal
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
-    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/Hal>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/hal>"
     "${PROJECT_SOURCE_DIR}/inc")

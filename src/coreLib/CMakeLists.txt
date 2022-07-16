@@ -14,5 +14,5 @@ target_compile_options(DreamcastControllerUsbPicoCore PRIVATE
 target_include_directories(DreamcastControllerUsbPicoCore
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
-    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/Core>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/core>"
     "${PROJECT_SOURCE_DIR}/inc")

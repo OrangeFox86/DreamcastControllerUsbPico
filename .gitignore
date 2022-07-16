@@ -2,3 +2,4 @@ CMakeCache.txt
 CMakeFiles/*
 build/*
 build-test/*
+dist/*
