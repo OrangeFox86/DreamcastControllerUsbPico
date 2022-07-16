@@ -2,7 +2,7 @@
 #include "dreamcast_constants.h"
 
 
-DreamcastSubNode::DreamcastSubNode(uint8_t addr, MapleBus& bus, PlayerData playerData) :
+DreamcastSubNode::DreamcastSubNode(uint8_t addr, MapleBusInterface& bus, PlayerData playerData) :
     DreamcastNode(addr, playerData),
     mBus(bus),
     mNextCheckTime(0),

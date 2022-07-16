@@ -1,6 +1,5 @@
 #include "UsbControllerDevice.h"
 #include <stdint.h>
-#include "tusb.h"
 #include "class/hid/hid_device.h"
 
 UsbControllerDevice::UsbControllerDevice() : mIsUsbConnected(false), mIsControllerConnected(false) {}

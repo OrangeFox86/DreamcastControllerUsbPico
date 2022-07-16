@@ -1,12 +1,12 @@
 #pragma once
 
-#include "UsbGamepad.h"
+#include "DreamcastControllerObserver.hpp"
 #include "ScreenData.hpp"
 
 //! Contains data that is tied to a specific player
 struct PlayerData
 {
     const uint32_t playerIndex;
-    UsbGamepad& gamepad;
+    DreamcastControllerObserver& gamepad;
     ScreenData& screenData;
 };

@@ -1,3 +1,5 @@
+#ifndef DREAMCAST_CONTROLLER_USB_PICO_TEST
+
 #include "bsp/board.h"
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
@@ -8,23 +10,27 @@
 #include "hardware/structs/systick.h"
 #include "hardware/regs/m0plus.h"
 
-#include "maple.pio.h"
-#include "hardware/pio.h"
-
 #include "MapleBus.hpp"
 #include "DreamcastNode.hpp"
 #include "DreamcastMainNode.hpp"
 #include "PlayerData.hpp"
+#include "CriticalSectionMutex.hpp"
 
 #include "UsbGamepad.h"
+#include "UsbGamepadDreamcastControllerObserver.hpp"
 #include "usb_descriptors.h"
 #include "usb_execution.h"
 
 #define BUTTON_PIN 2
 
+#define MAPLE_HOST_ADDRESS 0x00
+#define P1_BUS_START_PIN 14
+
 UsbGamepad player1UsbDevice(ITF_NUM_HID1, 0);
-UsbControllerDevice* devices[] = {&player1UsbDevice};
-ScreenData player1ScreenData;
+UsbGamepadDreamcastControllerObserver player1Observer(player1UsbDevice);
+UsbControllerInterface* devices[] = {&player1UsbDevice};
+CriticalSectionMutex screenMutex;
+ScreenData player1ScreenData(screenMutex);
 
 void core1()
 {
@@ -33,34 +39,14 @@ void core1()
     // Wait for steady state
     sleep_ms(100);
 
-    PlayerData playerData = {0, player1UsbDevice, player1ScreenData};
-    DreamcastMainNode p1(14, playerData);
+    PlayerData playerData = {0, player1Observer, player1ScreenData};
+    MapleBus busP1(P1_BUS_START_PIN, MAPLE_HOST_ADDRESS);
+    DreamcastMainNode p1(busP1, playerData);
 
     while(true)
     {
         p1.task(time_us_64());
     }
-}
-
-void waitButtonPress()
-{
-    gpio_put(PICO_DEFAULT_LED_PIN, false);
-
-    // Wait for button press
-    while (gpio_get(BUTTON_PIN))
-    {
-        sleep_ms(25);
-    }
-
-    gpio_xor_mask(1<<PICO_DEFAULT_LED_PIN);
-
-    // Wait for button release
-    while (!gpio_get(BUTTON_PIN))
-    {
-        sleep_ms(25);
-    }
-
-    gpio_xor_mask(1<<PICO_DEFAULT_LED_PIN);
 }
 
 int main()
@@ -93,4 +79,4 @@ int main()
     }
 }
 
-
+#endif

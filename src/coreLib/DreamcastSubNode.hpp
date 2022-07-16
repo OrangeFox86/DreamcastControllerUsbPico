@@ -5,7 +5,7 @@
 class DreamcastSubNode : public DreamcastNode
 {
     public:
-        DreamcastSubNode(uint8_t addr, MapleBus& bus, PlayerData playerData);
+        DreamcastSubNode(uint8_t addr, MapleBusInterface& bus, PlayerData playerData);
         DreamcastSubNode(const DreamcastSubNode& rhs);
 
         //! Handles incoming data destined for this device
@@ -26,7 +26,7 @@ class DreamcastSubNode : public DreamcastNode
     private:
         static const uint32_t US_PER_CHECK = 16000;
         static const uint32_t NUM_FAIL_COM_DISCONNECT = 5;
-        MapleBus& mBus;
+        MapleBusInterface& mBus;
         uint64_t mNextCheckTime;
         bool mConnected;
 

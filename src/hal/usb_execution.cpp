@@ -1,6 +1,6 @@
 #include "usb_execution.h"
 
-#include "UsbControllerDevice.h"
+#include "UsbControllerInterface.hpp"
 #include "UsbGamepad.h"
 #include "configuration.h"
 #include <stdlib.h>
@@ -15,14 +15,14 @@
 
 bool usbEnabled = false;
 
-UsbControllerDevice** pAllUsbDevices = nullptr;
+UsbControllerInterface** pAllUsbDevices = nullptr;
 
 uint8_t numUsbDevices = 0;
 
 bool usbDisconnecting = false;
 absolute_time_t usbDisconnectTime;
 
-void set_usb_devices(UsbControllerDevice** devices, uint8_t n)
+void set_usb_devices(UsbControllerInterface** devices, uint8_t n)
 {
   pAllUsbDevices = devices;
   numUsbDevices = n;
@@ -48,7 +48,7 @@ void led_task()
   else
   {
     bool keyPressed = false;
-    UsbControllerDevice** pdevs = pAllUsbDevices;
+    UsbControllerInterface** pdevs = pAllUsbDevices;
     for (uint32_t i = numUsbDevices; i > 0; --i, ++pdevs)
     {
       if ((*pdevs)->isButtonPressed())
@@ -95,7 +95,7 @@ void usb_task()
 // Invoked when device is mounted
 void tud_mount_cb(void)
 {
-  UsbControllerDevice** pdevs = pAllUsbDevices;
+  UsbControllerInterface** pdevs = pAllUsbDevices;
   for (uint32_t i = numUsbDevices; i > 0; --i, ++pdevs)
   {
     (*pdevs)->updateUsbConnected(true);
@@ -106,7 +106,7 @@ void tud_mount_cb(void)
 // Invoked when device is unmounted
 void tud_umount_cb(void)
 {
-  UsbControllerDevice** pdevs = pAllUsbDevices;
+  UsbControllerInterface** pdevs = pAllUsbDevices;
   for (uint32_t i = numUsbDevices; i > 0; --i, ++pdevs)
   {
     (*pdevs)->updateUsbConnected(false);
@@ -120,7 +120,7 @@ void tud_umount_cb(void)
 void tud_suspend_cb(bool remote_wakeup_en)
 {
   (void) remote_wakeup_en;
-  UsbControllerDevice** pdevs = pAllUsbDevices;
+  UsbControllerInterface** pdevs = pAllUsbDevices;
   for (uint32_t i = numUsbDevices; i > 0; --i, ++pdevs)
   {
     (*pdevs)->updateUsbConnected(false);
@@ -131,7 +131,7 @@ void tud_suspend_cb(bool remote_wakeup_en)
 // Invoked when usb bus is resumed
 void tud_resume_cb(void)
 {
-  UsbControllerDevice** pdevs = pAllUsbDevices;
+  UsbControllerInterface** pdevs = pAllUsbDevices;
   for (uint32_t i = numUsbDevices; i > 0; --i, ++pdevs)
   {
     (*pdevs)->updateUsbConnected(true);

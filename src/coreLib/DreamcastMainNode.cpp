@@ -3,9 +3,9 @@
 #include "dreamcast_constants.h"
 #include "DreamcastController.hpp"
 
-DreamcastMainNode::DreamcastMainNode(uint32_t mapleBusPinA, PlayerData playerData) :
+DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus, PlayerData playerData) :
     DreamcastNode(DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK, playerData),
-    mBus(mapleBusPinA, 0x00),
+    mBus(bus),
     mNextCheckTime(0),
     mSubNodes{DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(0), mBus, mPlayerData),
               DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(1), mBus, mPlayerData),

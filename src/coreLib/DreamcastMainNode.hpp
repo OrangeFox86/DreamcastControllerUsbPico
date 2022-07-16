@@ -2,15 +2,14 @@
 
 #include "DreamcastNode.hpp"
 #include "DreamcastSubNode.hpp"
-#include "MapleBus.hpp"
-#include "UsbGamepad.h"
+#include "MapleBusInterface.hpp"
 
 #include <memory>
 
 class DreamcastMainNode : public DreamcastNode
 {
     public:
-        DreamcastMainNode(uint32_t mapleBusPinA, PlayerData playerData);
+        DreamcastMainNode(MapleBusInterface& bus, PlayerData playerData);
         virtual ~DreamcastMainNode();
 
         virtual void task(uint64_t currentTimeUs) final;
@@ -28,7 +27,7 @@ class DreamcastMainNode : public DreamcastNode
         static const uint32_t NUM_SUB_NODES = 5;
         static const uint32_t US_PER_CHECK = 16000;
     private:
-        MapleBus mBus;
+        MapleBusInterface& mBus;
         uint64_t mNextCheckTime;
         DreamcastSubNode mSubNodes[NUM_SUB_NODES];
 };

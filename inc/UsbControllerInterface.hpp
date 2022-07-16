@@ -1,14 +1,14 @@
-#ifndef __USB_CONTROLLER_DEVICE_H__
-#define __USB_CONTROLLER_DEVICE_H__
+#ifndef __USB_CONTROLLER_INTERFACE_H__
+#define __USB_CONTROLLER_INTERFACE_H__
 
 #include <stdint.h>
 
-//! Interface for defining a USB controller device
-class UsbControllerDevice
+//! Interface for a USB controller
+class UsbControllerInterface
 {
   public:
-    UsbControllerDevice();
-    virtual ~UsbControllerDevice();
+    UsbControllerInterface() {}
+    virtual ~UsbControllerInterface() {}
     //! @returns true iff there is at least 1 button pressed on the device
     virtual bool isButtonPressed() = 0;
     //! Release all currently pressed buttons
@@ -26,24 +26,14 @@ class UsbControllerDevice
     virtual void getReport(uint8_t *buffer, uint16_t reqlen) = 0;
     //! Called only from callbacks to update USB connected state
     //! @param[in] connected  true iff USB connected
-    virtual void updateUsbConnected(bool connected);
+    virtual void updateUsbConnected(bool connected) = 0;
     //! @returns the current USB connected state
-    virtual bool isUsbConnected();
+    virtual bool isUsbConnected() = 0;
     //! Called only from callbacks to update controller connected state
     //! @param[in] connected  true iff controller connected
-    virtual void updateControllerConnected(bool connected);
+    virtual void updateControllerConnected(bool connected) = 0;
     //! @returns the current controller connected state
-    virtual bool isControllerConnected();
-  protected:
-    //! Helper function which retrieves and sends report to tiny USB
-    //! @param[in] instance The USB instance number (0-based)
-    //! @param[in] report_id The USB report ID number
-    bool sendReport(uint8_t instance, uint8_t report_id);
-  protected:
-    //! True when this USB device is connected to a host
-    bool mIsUsbConnected;
-    //! True when this controller is connected
-    bool mIsControllerConnected;
+    virtual bool isControllerConnected() = 0;
 };
 
-#endif // __USB_CONTROLLER_DEVICE_H__
+#endif // __USB_CONTROLLER_INTERFACE_H__

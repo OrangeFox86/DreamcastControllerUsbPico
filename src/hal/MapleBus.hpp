@@ -1,6 +1,7 @@
 #ifndef __MAPLE_BUS_H__
 #define __MAPLE_BUS_H__
 
+#include "MapleBusInterface.hpp"
 #include "pico/stdlib.h"
 #include "hardware/structs/systick.h"
 #include "hardware/dma.h"
@@ -18,7 +19,7 @@
 //! after bus goes neutral before responding in that case. Waiting for neutral bus is enough anyway.
 //!
 //! @warning this class is not "thread safe" - it should only be used by 1 core.
-class MapleBus
+class MapleBus : public MapleBusInterface
 {
     public:
         //! Maple Bus constructor

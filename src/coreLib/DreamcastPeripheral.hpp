@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "MapleBus.hpp"
+#include "MapleBusInterface.hpp"
 
 class DreamcastPeripheral
 {
@@ -10,7 +10,7 @@ class DreamcastPeripheral
         //! @param[in] addr  This peripheral's address (mask bit)
         //! @param[in] bus  The bus that this peripheral is connected to
         //! @param[in] playerIndex  Player index of this peripheral [0,3]
-        DreamcastPeripheral(uint8_t addr, MapleBus& bus, uint32_t playerIndex) :
+        DreamcastPeripheral(uint8_t addr, MapleBusInterface& bus, uint32_t playerIndex) :
             mBus(bus), mPlayerIndex(playerIndex), mAddr(addr)
         {}
 
@@ -75,7 +75,7 @@ class DreamcastPeripheral
 
     protected:
         //! The bus that this peripheral is connected to
-        MapleBus& mBus;
+        MapleBusInterface& mBus;
         //! Player index of this peripheral [0,3]
         const uint32_t mPlayerIndex;
         //! Address of this device
