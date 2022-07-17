@@ -38,7 +38,7 @@ class DreamcastPeripheral
         static inline int32_t subPeripheralIndex(uint8_t subPeripheralMask)
         {
             uint8_t mask = SUB_PERIPHERAL_ADDR_START_MASK;
-            for (int32_t i = 0; i < MAX_SUB_PERIPHERALS; ++i, mask<<=1)
+            for (uint32_t i = 0; i < MAX_SUB_PERIPHERALS; ++i, mask<<=1)
             {
                 if (subPeripheralMask & i)
                 {
@@ -67,7 +67,7 @@ class DreamcastPeripheral
 
     public:
         //! The maximum number of sub peripherals that a main peripheral can handle
-        static const int32_t MAX_SUB_PERIPHERALS = 5;
+        static const uint32_t MAX_SUB_PERIPHERALS = 5;
         //! Main peripheral address mask
         static const uint8_t MAIN_PERIPHERAL_ADDR_MASK = 0x20;
         //! The first sub peripheral address

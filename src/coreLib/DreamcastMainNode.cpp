@@ -3,16 +3,22 @@
 #include "dreamcast_constants.h"
 #include "DreamcastController.hpp"
 
-DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus, PlayerData playerData) :
+#include <algorithm>
+
+DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus,
+                                     PlayerData playerData,
+                                     uint32_t numSubNodes) :
     DreamcastNode(DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK, bus, playerData),
     mNextCheckTime(0),
-    mSubNodes{DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(0), mBus, mPlayerData),
-              DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(1), mBus, mPlayerData),
-              DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(2), mBus, mPlayerData),
-              DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(3), mBus, mPlayerData),
-              DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(4), mBus, mPlayerData)}
+    mSubNodes()
 {
-
+    numSubNodes = std::min(numSubNodes, DreamcastPeripheral::MAX_SUB_PERIPHERALS);
+    mSubNodes.reserve(numSubNodes);
+    for (uint32_t i = 0; i < numSubNodes; ++i)
+    {
+        mSubNodes.push_back(std::make_shared<DreamcastSubNode>(
+            DreamcastPeripheral::subPeripheralMask(i), mBus, mPlayerData));
+    }
 }
 
 DreamcastMainNode::~DreamcastMainNode()
@@ -55,10 +61,12 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
             if (sendAddr & mAddr)
             {
                 // Use the sender address to determine what sub peripherals are connected
-                for (int32_t i = 0; i < DreamcastPeripheral::MAX_SUB_PERIPHERALS; ++i)
+                for (std::vector<std::shared_ptr<DreamcastSubNode>>::iterator iter = mSubNodes.begin();
+                     iter != mSubNodes.end();
+                     ++iter)
                 {
-                    uint8_t mask = mSubNodes[i].getAddr();
-                    mSubNodes[i].setConnected((sendAddr & mask) != 0);
+                    uint8_t mask = (*iter)->getAddr();
+                    (*iter)->setConnected((sendAddr & mask) != 0);
                 }
 
                 // Have the device handle the data
@@ -67,9 +75,9 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
             else
             {
                 int32_t idx = DreamcastPeripheral::subPeripheralIndex(sendAddr);
-                if (idx >= 0 && idx < DreamcastPeripheral::MAX_SUB_PERIPHERALS)
+                if (idx >= 0 && (uint32_t)idx < mSubNodes.size())
                 {
-                    mSubNodes[idx].handleData(len, cmd, payload);
+                    mSubNodes[idx]->handleData(len, cmd, payload);
                 }
             }
         }
@@ -81,17 +89,21 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
         // Have the connected main peripheral handle write
         if (handlePeripherals(currentTimeUs))
         {
-            for (uint32_t i = 0; i < NUM_SUB_NODES; ++i)
+            for (std::vector<std::shared_ptr<DreamcastSubNode>>::iterator iter = mSubNodes.begin();
+                 iter != mSubNodes.end();
+                 ++iter)
             {
-                mSubNodes[i].task(currentTimeUs);
+                (*iter)->task(currentTimeUs);
             }
         }
         else
         {
             // Main peripheral disconnected
-            for (uint32_t i = 0; i < NUM_SUB_NODES; ++i)
+            for (std::vector<std::shared_ptr<DreamcastSubNode>>::iterator iter = mSubNodes.begin();
+                 iter != mSubNodes.end();
+                 ++iter)
             {
-                mSubNodes[i].mainPeripheralDisconnected();
+                (*iter)->mainPeripheralDisconnected();
             }
             mNextCheckTime = currentTimeUs;
         }
@@ -100,9 +112,7 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
     else if (currentTimeUs >= mNextCheckTime)
     {
         if (mBus.write(COMMAND_DEVICE_INFO_REQUEST,
-                       DreamcastPeripheral::getRecipientAddress(
-                           mPlayerData.playerIndex,
-                           DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK),
+                       DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr),
                        NULL,
                        0,
                        true))

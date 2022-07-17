@@ -3,13 +3,17 @@
 #include "DreamcastNode.hpp"
 #include "DreamcastSubNode.hpp"
 #include "MapleBusInterface.hpp"
+#include "DreamcastPeripheral.hpp"
 
 #include <memory>
+#include <vector>
 
 class DreamcastMainNode : public DreamcastNode
 {
     public:
-        DreamcastMainNode(MapleBusInterface& bus, PlayerData playerData);
+        DreamcastMainNode(MapleBusInterface& bus,
+                          PlayerData playerData,
+                          uint32_t numSubNodes = DreamcastPeripheral::MAX_SUB_PERIPHERALS);
         virtual ~DreamcastMainNode();
 
         virtual void task(uint64_t currentTimeUs) final;
@@ -24,9 +28,8 @@ class DreamcastMainNode : public DreamcastNode
                                 const uint32_t *payload) final;
 
     public:
-        static const uint32_t NUM_SUB_NODES = 5;
         static const uint32_t US_PER_CHECK = 16000;
-    private:
+    protected:
         uint64_t mNextCheckTime;
-        DreamcastSubNode mSubNodes[NUM_SUB_NODES];
+        std::vector<std::shared_ptr<DreamcastSubNode>> mSubNodes;
 };

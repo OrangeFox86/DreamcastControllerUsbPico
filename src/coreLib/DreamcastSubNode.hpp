@@ -15,13 +15,13 @@ class DreamcastSubNode : public DreamcastNode
         //! @returns true iff the data was handled
         virtual bool handleData(uint8_t len,
                                 uint8_t cmd,
-                                const uint32_t *payload) final;
+                                const uint32_t *payload);
 
-        virtual void task(uint64_t currentTimeUs) final;
+        virtual void task(uint64_t currentTimeUs);
 
-        void mainPeripheralDisconnected();
+        virtual void mainPeripheralDisconnected();
 
-        void setConnected(bool connected);
+        virtual void setConnected(bool connected);
 
     private:
         static const uint32_t US_PER_CHECK = 16000;

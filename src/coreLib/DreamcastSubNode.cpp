@@ -39,9 +39,7 @@ void DreamcastSubNode::task(uint64_t currentTimeUs)
         if (mPeripherals.size() <= 0)
         {
             if (mBus.write(COMMAND_DEVICE_INFO_REQUEST,
-                        DreamcastPeripheral::getRecipientAddress(
-                            mPlayerData.playerIndex,
-                            DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK),
+                        DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr),
                         NULL,
                         0,
                         true))
