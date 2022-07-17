@@ -49,10 +49,11 @@ bool DreamcastScreen::task(uint64_t currentTimeUs)
             static const uint8_t sequenceNum = 0;  // 1 and only 1 in this sequence - always 0
             static const uint16_t blockNum = 0;    // Always 0
             static const uint32_t writeAddrWord = (partitionNum << 24) | (sequenceNum << 16) | blockNum;
-            uint32_t payload[ScreenData::NUM_SCREEN_WORDS + 2] = {DEVICE_FN_LCD, writeAddrWord, 0};
+            uint32_t numPayloadWords = ScreenData::NUM_SCREEN_WORDS + 2;
+            uint32_t payload[numPayloadWords] = {DEVICE_FN_LCD, writeAddrWord, 0};
             mScreenData.readData(&payload[2]);
 
-            if (mBus.write(COMMAND_BLOCK_WRITE, getRecipientAddress(), payload, sizeof(payload), true))
+            if (mBus.write(COMMAND_BLOCK_WRITE, getRecipientAddress(), payload, numPayloadWords, true))
             {
                 mWaitingForData = true;
                 mNextCheckTime = currentTimeUs + US_PER_CHECK;
