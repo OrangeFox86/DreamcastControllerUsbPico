@@ -26,7 +26,6 @@ class DreamcastSubNode : public DreamcastNode
     private:
         static const uint32_t US_PER_CHECK = 16000;
         static const uint32_t NUM_FAIL_COM_DISCONNECT = 5;
-        MapleBusInterface& mBus;
         uint64_t mNextCheckTime;
         bool mConnected;
 

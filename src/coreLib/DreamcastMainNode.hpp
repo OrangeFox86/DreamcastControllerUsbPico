@@ -27,7 +27,6 @@ class DreamcastMainNode : public DreamcastNode
         static const uint32_t NUM_SUB_NODES = 5;
         static const uint32_t US_PER_CHECK = 16000;
     private:
-        MapleBusInterface& mBus;
         uint64_t mNextCheckTime;
         DreamcastSubNode mSubNodes[NUM_SUB_NODES];
 };

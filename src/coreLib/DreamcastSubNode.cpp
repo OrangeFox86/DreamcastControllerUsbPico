@@ -3,8 +3,7 @@
 
 
 DreamcastSubNode::DreamcastSubNode(uint8_t addr, MapleBusInterface& bus, PlayerData playerData) :
-    DreamcastNode(addr, playerData),
-    mBus(bus),
+    DreamcastNode(addr, bus, playerData),
     mNextCheckTime(0),
     mConnected(false)
 {
@@ -12,7 +11,6 @@ DreamcastSubNode::DreamcastSubNode(uint8_t addr, MapleBusInterface& bus, PlayerD
 
 DreamcastSubNode::DreamcastSubNode(const DreamcastSubNode& rhs) :
     DreamcastNode(rhs),
-    mBus(rhs.mBus),
     mNextCheckTime(rhs.mNextCheckTime),
     mConnected(rhs.mConnected)
 {
@@ -25,12 +23,7 @@ bool DreamcastSubNode::handleData(uint8_t len,
     // If device info received, add the sub peripheral
     if (cmd == COMMAND_RESPONSE_DEVICE_INFO)
     {
-        // if (payload[0] & DEVICE_FN_LCD)
-        // {
-        //     mPeripherals.push_back(std::unique_ptr<DreamcastController>(new DreamcastController(mAddr, mBus, mPlayerIndex, mGamepad)));
-        // }
-        // TODO: Handle peripherals here
-
+        peripheralFactory(payload[0]);
         return (mPeripherals.size() > 0);
     }
 

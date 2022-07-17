@@ -15,10 +15,24 @@ file(GLOB SRC "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/*
 add_executable(DreamcastControllerUsbPicoTest
   ${SRC}
 )
-target_link_libraries(DreamcastControllerUsbPicoTest PRIVATE gtest_main pthread DreamcastControllerUsbPicoCore)
-target_include_directories(DreamcastControllerUsbPicoTest PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+target_link_libraries(DreamcastControllerUsbPicoTest
+  PRIVATE
+    gtest_main
+    gmock_main
+    pthread
+    DreamcastControllerUsbPicoCore
+)
+
+target_include_directories(DreamcastControllerUsbPicoTest
+  PRIVATE
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/test>"
+    "${PROJECT_SOURCE_DIR}/inc",
+    "${CMAKE_CURRENT_LIST_DIR}/mocks")
+
 enable_testing()
 add_test(NAME all_tests COMMAND DreamcastControllerUsbPicoTest)
-add_custom_target(test COMMAND ${CMAKE_CTEST_COMMAND}
-                  DEPENDS DreamcastControllerUsbPicoTest)
+add_custom_target(test
+  COMMAND ${CMAKE_CTEST_COMMAND} --force-new-ctest-process --verbose --output-on-failure
+  DEPENDS DreamcastControllerUsbPicoTest)
 

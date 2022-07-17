@@ -4,8 +4,7 @@
 #include "DreamcastController.hpp"
 
 DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus, PlayerData playerData) :
-    DreamcastNode(DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK, playerData),
-    mBus(bus),
+    DreamcastNode(DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK, bus, playerData),
     mNextCheckTime(0),
     mSubNodes{DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(0), mBus, mPlayerData),
               DreamcastSubNode(DreamcastPeripheral::subPeripheralMask(1), mBus, mPlayerData),
@@ -26,13 +25,7 @@ bool DreamcastMainNode::handleData(uint8_t len,
     // Handle device info from main peripheral
     if (cmd == COMMAND_RESPONSE_DEVICE_INFO)
     {
-        if (payload[0] & DEVICE_FN_CONTROLLER)
-        {
-            mPeripherals.clear();
-            mPeripherals.push_back(std::unique_ptr<DreamcastController>(new DreamcastController(mAddr, mBus, mPlayerData)));
-        }
-        // TODO: Handle other peripherals here
-
+        peripheralFactory(payload[0]);
         return (mPeripherals.size() > 0);
     }
 
