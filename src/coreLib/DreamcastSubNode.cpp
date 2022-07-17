@@ -33,11 +33,12 @@ bool DreamcastSubNode::handleData(uint8_t len,
 
 void DreamcastSubNode::task(uint64_t currentTimeUs)
 {
-    if (mConnected && currentTimeUs >= mNextCheckTime && !mBus.isBusy())
+    if (mConnected && currentTimeUs >= mNextCheckTime)
     {
         // Request device info new device was newly attached
         if (mPeripherals.size() <= 0)
         {
+            // This will return false if bus is busy
             if (mBus.write(COMMAND_DEVICE_INFO_REQUEST,
                         DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr),
                         NULL,

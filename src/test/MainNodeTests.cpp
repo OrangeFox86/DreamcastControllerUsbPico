@@ -150,15 +150,15 @@ TEST_F(MainNodeTest, unsuccessfulInfoRequest)
 
 TEST_F(MainNodeTest, peripheralConnect)
 {
+    mDreamcastMainNode.setNextCheckTime(1016000);
+    std::shared_ptr<MockedDreamcastPeripheral> mockedDreamcastPeripheral =
+        std::make_shared<MockedDreamcastPeripheral>(0x20, mMapleBus, mPlayerData.playerIndex);
+    mDreamcastMainNode.mPeripheralsToAdd.push_back(mockedDreamcastPeripheral);
     EXPECT_CALL(mMapleBus, processEvents(1000000)).Times(1);
     uint32_t data[2] = {0x05002001, 0x00000001};
     EXPECT_CALL(mMapleBus, getReadData(_, _))
         .Times(1)
         .WillOnce(DoAll(SetArgReferee<0>((uint32_t)2), SetArgReferee<1>(true), Return((const uint32_t*)data)));
-    mDreamcastMainNode.setNextCheckTime(1016000);
-    std::shared_ptr<MockedDreamcastPeripheral> mockedDreamcastPeripheral =
-        std::make_shared<MockedDreamcastPeripheral>(0x20, mMapleBus, mPlayerData.playerIndex);
-    mDreamcastMainNode.mPeripheralsToAdd.push_back(mockedDreamcastPeripheral);
     EXPECT_CALL(mDreamcastMainNode, mockMethodPeripheralFactory(0x00000001)).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], setConnected(false)).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], setConnected(false)).Times(1);
@@ -181,14 +181,14 @@ TEST_F(MainNodeTest, peripheralConnect)
 
 TEST_F(MainNodeTest, peripheralDisconnect)
 {
-    EXPECT_CALL(mMapleBus, processEvents(1000000)).Times(1);
-    EXPECT_CALL(mMapleBus, getReadData(_, _))
-        .Times(1)
-        .WillOnce(DoAll(SetArgReferee<0>((uint32_t)0), SetArgReferee<1>(false), Return((const uint32_t*)NULL)));
     mDreamcastMainNode.setNextCheckTime(1016000);
     std::shared_ptr<MockedDreamcastPeripheral> mockedDreamcastPeripheral =
         std::make_shared<MockedDreamcastPeripheral>(0x20, mMapleBus, mPlayerData.playerIndex);
     mDreamcastMainNode.getPeripherals().push_back(mockedDreamcastPeripheral);
+    EXPECT_CALL(mMapleBus, processEvents(1000000)).Times(1);
+    EXPECT_CALL(mMapleBus, getReadData(_, _))
+        .Times(1)
+        .WillOnce(DoAll(SetArgReferee<0>((uint32_t)0), SetArgReferee<1>(false), Return((const uint32_t*)NULL)));
     EXPECT_CALL(*mockedDreamcastPeripheral, task(1000000)).Times(1).WillOnce(Return(false));
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], mainPeripheralDisconnected()).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], mainPeripheralDisconnected()).Times(1);
@@ -202,4 +202,32 @@ TEST_F(MainNodeTest, peripheralDisconnect)
     EXPECT_EQ(mDreamcastMainNode.getNextCheckTime(), 1000000);
     // All peripherals removed
     EXPECT_EQ(mDreamcastMainNode.getPeripherals().size(), 0);
+}
+
+TEST_F(MainNodeTest, subPeripheralConnect)
+{
+    mDreamcastMainNode.setNextCheckTime(1016000);
+    std::shared_ptr<MockedDreamcastPeripheral> mockedDreamcastPeripheral =
+        std::make_shared<MockedDreamcastPeripheral>(0x01, mMapleBus, mPlayerData.playerIndex);
+    mDreamcastMainNode.getPeripherals().push_back(mockedDreamcastPeripheral);
+    EXPECT_CALL(mMapleBus, processEvents(1000000)).Times(1);
+    uint32_t data[2] = {0x05000101, 8675309};
+    EXPECT_CALL(mMapleBus, getReadData(_, _))
+        .Times(1)
+        .WillOnce(DoAll(SetArgReferee<0>((uint32_t)2), SetArgReferee<1>(true), Return((const uint32_t*)data)));
+    EXPECT_CALL(
+        *mDreamcastMainNode.mMockedSubNodes[0],
+        handleData((uint8_t)1, (uint8_t)5, &data[1])
+    ).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*mockedDreamcastPeripheral, task(1000000)).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], task(1000000)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], task(1000000)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[2], task(1000000)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[3], task(1000000)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[4], task(1000000)).Times(1);
+
+    mDreamcastMainNode.task(1000000);
+
+    // Next check time remains unchanged
+    EXPECT_EQ(mDreamcastMainNode.getNextCheckTime(), 1016000);
 }

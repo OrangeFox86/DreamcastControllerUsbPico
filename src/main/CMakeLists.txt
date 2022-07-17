@@ -8,8 +8,8 @@ add_executable(main ${SRC})
 pico_add_extra_outputs(main)
 target_link_libraries(main
   PRIVATE
-    DreamcastControllerUsbPicoHal
-    DreamcastControllerUsbPicoCore
+    hal
+    coreLib
 )
 target_compile_options(main PRIVATE
   -Wall

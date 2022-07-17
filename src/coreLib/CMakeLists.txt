@@ -4,14 +4,14 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 file(GLOB SRC "${CMAKE_CURRENT_SOURCE_DIR}/*.c*")
 
-add_library(DreamcastControllerUsbPicoCore STATIC ${SRC})
-target_compile_options(DreamcastControllerUsbPicoCore PRIVATE
+add_library(coreLib STATIC ${SRC})
+target_compile_options(coreLib PRIVATE
   -Wall
   -Werror
   -O3
 )
 
-target_include_directories(DreamcastControllerUsbPicoCore
+target_include_directories(coreLib
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/core>"

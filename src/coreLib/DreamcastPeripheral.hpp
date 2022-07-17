@@ -40,7 +40,7 @@ class DreamcastPeripheral
             uint8_t mask = SUB_PERIPHERAL_ADDR_START_MASK;
             for (uint32_t i = 0; i < MAX_SUB_PERIPHERALS; ++i, mask<<=1)
             {
-                if (subPeripheralMask & i)
+                if (subPeripheralMask & mask)
                 {
                     return i;
                 }
