@@ -27,6 +27,31 @@ To emulate a bespoke bus such as the Maple Bus on an MCU, one would usually eith
 
 Luckily, the RP2040 comes with 2 PIO blocks each with 4 separate state machines. This means that the RP2040 can easily emulate 4 separate controller interfaces! This project uses one PIO block for writing and one for reading. This is necessary because each PIO block can only hold up to 32 instructions. The write state machine is completely stopped before starting the read state machine for the targeted bus. This wouldn't be necessary if read was done on separate pins from write as each PIO needs to take ownership of the pins. More simplistic wiring is desired if possible though. Switching state machines is fast enough that there shouldn't be a problem, especially since the "write" state machine intentionally doesn't bring the bus back to neutral before it notifies the application. Then the application side kills the "write" state machine and brings the bus to neutral just before switching to "read". The application-side write completion process should happen within a microsecond. A device on the Maple Bus usually starts responding after 50 microseconds from the point of the bus going neutral at the end of an end sequence. This ensures that a response is always captured.
 
+# Build Instructions (for Linux and Windows)
+
+If running under Windows, install [WSL](https://docs.microsoft.com/en-us/windows/wsl/install) and your desired flavor of Linux. I recommend using Ubuntu 20.04 as that is what I have used for development. Then the steps below may be run within your WSL instance.
+
+1. Install gcc-arm-none-eabi compilers by running the following commands
+```bash
+sudo apt update
+sudo apt -y install gcc-arm-none-eabi
+```
+2. Clone this repo into your WSL instance
+```bash
+git clone https://github.com/Tails86/DreamcastControllerUsbPico.git
+```
+3. Go into the project's directory and pull down the pico SDK (this is optional if you have PICO_SDK_PATH set in your environment which points to the SDK somewhere on your system)
+```bash
+cd DreamcastControllerUsbPico
+git submodule update --recursive --init
+```
+4. Execute the build script
+```bash
+./build.sh
+```
+
+After build completes, the binary should be located at `dist/main.uf2`
+
 # Maple Bus Implementation
 
 **Disclaimer:** I'm still working through this interface, so information here is not guaranteed to be 100% accurate.

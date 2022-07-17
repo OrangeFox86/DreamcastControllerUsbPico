@@ -2,11 +2,11 @@ cmake_minimum_required(VERSION 3.12)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
+  # Specify the commit you depend on and update it regularly.
 set(GOOGLE_TEST_COMMIT_ID "4219e7254cb8c473f57f6065bd13d1520d7b708f")
 include(FetchContent)
 FetchContent_Declare(
   googletest
-  # Specify the commit you depend on and update it regularly.
   URL "https://github.com/google/googletest/archive/${GOOGLE_TEST_COMMIT_ID}.zip"
 )
 FetchContent_MakeAvailable(googletest)
