@@ -1,8 +1,9 @@
 #pragma once
 
 #include "DreamcastPeripheral.hpp"
-#include "MapleBus.hpp"
+#include "MapleBusInterface.hpp"
 #include "ScreenData.hpp"
+#include "PlayerData.hpp"
 
 class DreamcastScreen : public DreamcastPeripheral
 {
@@ -11,7 +12,7 @@ class DreamcastScreen : public DreamcastPeripheral
         //! @param[in] addr  This peripheral's address
         //! @param[in] bus  The bus this screen is connected to
         //! @param[in] playerData  Data tied to player which controls this screen
-        DreamcastScreen(uint8_t addr, MapleBus& bus, PlayerData playerData);
+        DreamcastScreen(uint8_t addr, MapleBusInterface& bus, PlayerData playerData);
 
         //! Virtual destructor
         virtual ~DreamcastScreen();
@@ -36,6 +37,8 @@ class DreamcastScreen : public DreamcastPeripheral
         bool mWaitingForData;
         //! Number of consecutive times no data was received
         uint32_t mNoDataCount;
+
+        bool mFirstWrite;
 
         ScreenData& mScreenData;
 };

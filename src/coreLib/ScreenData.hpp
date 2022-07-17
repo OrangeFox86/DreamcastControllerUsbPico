@@ -12,7 +12,7 @@ class ScreenData
 
         bool isNewDataAvailable() const;
 
-        const uint32_t* readData();
+        void readData(uint32_t* out);
 
     public:
         static const uint32_t NUM_SCREEN_WORDS = 48;
@@ -20,6 +20,5 @@ class ScreenData
     private:
         MutexInterface& mMutex;
         uint32_t mScreenData[NUM_SCREEN_WORDS];
-        uint32_t mReadStorage[NUM_SCREEN_WORDS];
         bool mNewDataAvailable;
 };

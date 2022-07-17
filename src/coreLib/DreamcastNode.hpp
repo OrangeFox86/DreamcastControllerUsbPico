@@ -5,6 +5,7 @@
 #include "dreamcast_constants.h"
 #include "PlayerData.hpp"
 #include "DreamcastController.hpp"
+#include "DreamcastScreen.hpp"
 
 #include <stdint.h>
 #include <vector>
@@ -98,6 +99,10 @@ class DreamcastNode
             if (functionCode & DEVICE_FN_CONTROLLER)
             {
                 mPeripherals.push_back(std::make_shared<DreamcastController>(mAddr, mBus, mPlayerData));
+            }
+            else if (functionCode & DEVICE_FN_LCD)
+            {
+                mPeripherals.push_back(std::make_shared<DreamcastScreen>(mAddr, mBus, mPlayerData));
             }
             // TODO: handle other peripherals here
         }
