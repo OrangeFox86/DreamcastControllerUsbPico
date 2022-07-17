@@ -5,6 +5,7 @@
 #include "DreamcastControllerObserver.hpp"
 #include "PlayerData.hpp"
 
+//! Handles communication with the Dreamcast controller peripheral
 class DreamcastController : public DreamcastPeripheral
 {
     public:

@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "MapleBusInterface.hpp"
 
+//! Base class for a connected Dreamcast peripheral
 class DreamcastPeripheral
 {
     public:

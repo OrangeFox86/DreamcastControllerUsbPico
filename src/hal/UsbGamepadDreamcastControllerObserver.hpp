@@ -5,6 +5,7 @@
 #include "UsbGamepad.h"
 
 //! Yes, I know this name is ridiculous, but at least it's descriptive!
+//! This connects the Dreamcast controller observer to a USB gamepad device
 class UsbGamepadDreamcastControllerObserver : public DreamcastControllerObserver
 {
     public:

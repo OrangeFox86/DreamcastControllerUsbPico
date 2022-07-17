@@ -3,18 +3,14 @@
 #include "dreamcast_constants.h"
 #include "DreamcastController.hpp"
 
-#include <algorithm>
-
 DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus,
-                                     PlayerData playerData,
-                                     uint32_t numSubNodes) :
+                                     PlayerData playerData) :
     DreamcastNode(DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK, bus, playerData),
     mNextCheckTime(0),
     mSubNodes()
 {
-    numSubNodes = std::min(numSubNodes, DreamcastPeripheral::MAX_SUB_PERIPHERALS);
-    mSubNodes.reserve(numSubNodes);
-    for (uint32_t i = 0; i < numSubNodes; ++i)
+    mSubNodes.reserve(DreamcastPeripheral::MAX_SUB_PERIPHERALS);
+    for (uint32_t i = 0; i < DreamcastPeripheral::MAX_SUB_PERIPHERALS; ++i)
     {
         mSubNodes.push_back(std::make_shared<DreamcastSubNode>(
             DreamcastPeripheral::subPeripheralMask(i), mBus, mPlayerData));

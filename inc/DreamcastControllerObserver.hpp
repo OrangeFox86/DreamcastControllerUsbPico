@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+//! This interface is used to decouple the USB functionality in HAL from the Dreamcast functionality
 class DreamcastControllerObserver
 {
     public:

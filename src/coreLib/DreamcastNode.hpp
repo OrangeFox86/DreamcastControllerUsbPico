@@ -27,6 +27,8 @@ class DreamcastNode
                                 uint8_t cmd,
                                 const uint32_t *payload) = 0;
 
+        //! Called periodically for this node to execute tasks for the given point in time
+        //! @param[in] currentTimeUs  The current time in microseconds
         virtual void task(uint64_t currentTimeUs) = 0;
 
         //! @returns this node's address
@@ -92,6 +94,8 @@ class DreamcastNode
             return handled;
         }
 
+        //! Factory function which generates peripheral objects for the given function code mask
+        //! @param[in] functionCode  The function code mask
         virtual void peripheralFactory(uint32_t functionCode)
         {
             mPeripherals.clear();
@@ -105,6 +109,7 @@ class DreamcastNode
                 mPeripherals.push_back(std::make_shared<DreamcastScreen>(mAddr, mBus, mPlayerData));
             }
             // TODO: handle other peripherals here
+            // TODO: add a stub peripheral if none were created
         }
 
     private:

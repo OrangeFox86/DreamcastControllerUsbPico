@@ -5,7 +5,7 @@
 #include "configuration.h"
 #include "utils.h"
 
-//! Interface class
+//! Maple Bus interface class
 class MapleBusInterface
 {
     public:

@@ -5,6 +5,7 @@
 #include "ScreenData.hpp"
 #include "PlayerData.hpp"
 
+//! Handles communication with the Dreamcast screen peripheral
 class DreamcastScreen : public DreamcastPeripheral
 {
     public:
@@ -37,8 +38,8 @@ class DreamcastScreen : public DreamcastPeripheral
         bool mWaitingForData;
         //! Number of consecutive times no data was received
         uint32_t mNoDataCount;
-
+        //! Initialized to true and set to false once the initial write is performed
         bool mFirstWrite;
-
+        //! Reference to screen data which is externally modified in internally read
         ScreenData& mScreenData;
 };
