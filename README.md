@@ -19,7 +19,8 @@ This is a work in progress. Current progress:
 - The USB interface is there, but it is a very, very rough implementation (code was sloppily copied from my Genesis controller project)
 - Started to create the Dreamcast node which should handle all connected devices to a bus, but only currently supports a controller
   - I have successfully played Steam games on my Windows PC using a Dreamcast controller with this
-- Design has been updated to scale a bit better - it's still very rough though
+- Design has been updated to scale a bit better
+- Screen interfaces are working - currently, just a default screen is sent on connection
 
 ## Why the RP2040 is a Game Changer
 
