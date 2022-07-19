@@ -15,12 +15,15 @@ Goals for this project:
 *Please reach out to me if you want to help out with development or have any tips. The PC side of things intimidates me slightly. I think modifying the open source version of Redream is my only immediate option to actually get an emulator interface to work with this (to display VMU screens and possibly access VMU data). My voice gets lost in the Redream Discord server, so I don't think I'll get attention from that community until I can prove something works.*
 
 This is a work in progress. Current progress:
-- Read and Write communication with maple bus is complete!
-- The USB interface is there, but it is a very, very rough implementation (code was sloppily copied from my Genesis controller project)
-- Started to create the Dreamcast node which should handle all connected devices to a bus, but only currently supports a controller
-  - I have successfully played Steam games on my Windows PC using a Dreamcast controller with this
-- Design has been updated to scale a bit better
-- Screen interfaces are working - currently, just a default screen is sent on connection
+- Read and Write communication with maple bus works!
+- The USB interface is there, but more work needs to be done to clean it up for multiple players
+- Dreamcast nodes dynamically handle different peripherals
+  - Controller detection works
+    - I have successfully played Steam games on my Windows PC using a Dreamcast controller with this
+    - Standard controller works
+    - C and Z buttons on arcade stick also work
+  - Screen interface is working (the "V" in "VMU")
+    - Currently just a default screen is sent on connection
 
 ## Why the RP2040 is a Game Changer
 
