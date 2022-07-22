@@ -68,6 +68,21 @@ uint8_t const desc_hid_report1[] =
     TUD_HID_REPORT_DESC_GAMEPAD()
 };
 
+uint8_t const desc_hid_report2[] =
+{
+    TUD_HID_REPORT_DESC_GAMEPAD()
+};
+
+uint8_t const desc_hid_report3[] =
+{
+    TUD_HID_REPORT_DESC_GAMEPAD()
+};
+
+uint8_t const desc_hid_report4[] =
+{
+    TUD_HID_REPORT_DESC_GAMEPAD()
+};
+
 // Invoked when received GET HID REPORT DESCRIPTOR
 // Application return pointer to descriptor
 // Descriptor contents must exist long enough for transfer to complete
@@ -77,6 +92,12 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
     {
         case ITF_NUM_HID1:
             return desc_hid_report1;
+        case ITF_NUM_HID2:
+            return desc_hid_report2;
+        case ITF_NUM_HID3:
+            return desc_hid_report3;
+        case ITF_NUM_HID4:
+            return desc_hid_report4;
         default:
             return NULL;
     }
@@ -86,9 +107,12 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
 // Configuration Descriptor
 //--------------------------------------------------------------------+
 
-#define  CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + (1 * TUD_HID_DESC_LEN))
+#define  CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + (NUMBER_OF_DEVICES * TUD_HID_DESC_LEN))
 
 #define EPNUM_HID1   (ITF_NUM_HID1 + 1)
+#define EPNUM_HID2   (ITF_NUM_HID2 + 1)
+#define EPNUM_HID3   (ITF_NUM_HID3 + 1)
+#define EPNUM_HID4   (ITF_NUM_HID4 + 1)
 
 // Just make the report size the max of the two supported types
 #define REPORT_SIZE (sizeof(hid_keyboard_report_t) > sizeof(hid_gamepad_report_t) ? sizeof(hid_keyboard_report_t) : sizeof(hid_gamepad_report_t))
@@ -96,11 +120,23 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
 uint8_t const desc_configuration[] =
 {
     // Config number, interface count, string index, total length, attribute, power in mA
-    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
+    TUD_CONFIG_DESCRIPTOR(1, NUMBER_OF_DEVICES, 0, CONFIG_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
+
+    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
+    TUD_HID_DESCRIPTOR(ITF_NUM_HID4, 7, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report4),
+                                0x80 | EPNUM_HID4, 1 + REPORT_SIZE, 1),
+
+    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
+    TUD_HID_DESCRIPTOR(ITF_NUM_HID3, 6, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report3),
+                                0x80 | EPNUM_HID3, 1 + REPORT_SIZE, 1),
+
+    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
+    TUD_HID_DESCRIPTOR(ITF_NUM_HID2, 5, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report2),
+                                0x80 | EPNUM_HID2, 1 + REPORT_SIZE, 1),
 
     // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
     TUD_HID_DESCRIPTOR(ITF_NUM_HID1, 4, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report1),
-                                0x80 | EPNUM_HID1, 1 + REPORT_SIZE, 10),
+                                0x80 | EPNUM_HID1, 1 + REPORT_SIZE, 1),
 };
 
 // Invoked when received GET CONFIGURATION DESCRIPTOR
@@ -122,10 +158,10 @@ char const *string_desc_arr[] =
     "DIY"  ,                     // 1: Manufacturer
     "Dreamcast Controller USB",  // 2: Product
     NULL,                        // 3: Serial (special case; get pico serial)
-    "Player 1",                  // 4: Device 1
-    "Player 2",                  // 5: Device 2
-    "Player 3",                  // 6: Device 3
-    "Player 4"                   // 7: Device 4
+    "P1",                        // 4: Device 1
+    "P2",                        // 5: Device 2
+    "P3",                        // 6: Device 3
+    "P4"                         // 7: Device 4
 };
 
 static uint16_t _desc_str[32];

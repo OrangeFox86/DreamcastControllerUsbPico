@@ -25,12 +25,54 @@
 
 #define MAPLE_HOST_ADDRESS 0x00
 #define P1_BUS_START_PIN 14
+#define P2_BUS_START_PIN 16
+#define P3_BUS_START_PIN 18
+#define P4_BUS_START_PIN 20
 
-UsbGamepad player1UsbDevice(ITF_NUM_HID1, 0);
-UsbGamepadDreamcastControllerObserver player1Observer(player1UsbDevice);
-UsbControllerInterface* devices[] = {&player1UsbDevice};
-CriticalSectionMutex screenMutex;
-ScreenData player1ScreenData(screenMutex);
+UsbGamepad usbGamepads[NUMBER_OF_DEVICES] = {
+    UsbGamepad(ITF_NUM_HID1),
+    UsbGamepad(ITF_NUM_HID2),
+    UsbGamepad(ITF_NUM_HID3),
+    UsbGamepad(ITF_NUM_HID4)
+};
+UsbGamepadDreamcastControllerObserver usbGamepadDreamcastControllerObservers[NUMBER_OF_DEVICES] = {
+    UsbGamepadDreamcastControllerObserver(usbGamepads[0]),
+    UsbGamepadDreamcastControllerObserver(usbGamepads[1]),
+    UsbGamepadDreamcastControllerObserver(usbGamepads[2]),
+    UsbGamepadDreamcastControllerObserver(usbGamepads[3])
+};
+CriticalSectionMutex screenMutexes[NUMBER_OF_DEVICES];
+ScreenData screenData[NUMBER_OF_DEVICES] = {
+    ScreenData(screenMutexes[0]),
+    ScreenData(screenMutexes[1]),
+    ScreenData(screenMutexes[2]),
+    ScreenData(screenMutexes[3])
+};
+PlayerData playerData[NUMBER_OF_DEVICES] = {
+    {0, usbGamepadDreamcastControllerObservers[0], screenData[0]},
+    {1, usbGamepadDreamcastControllerObservers[1], screenData[1]},
+    {2, usbGamepadDreamcastControllerObservers[2], screenData[2]},
+    {3, usbGamepadDreamcastControllerObservers[3], screenData[3]}
+};
+MapleBus busses[NUMBER_OF_DEVICES] = {
+    MapleBus(P1_BUS_START_PIN, MAPLE_HOST_ADDRESS),
+    MapleBus(P2_BUS_START_PIN, MAPLE_HOST_ADDRESS),
+    MapleBus(P3_BUS_START_PIN, MAPLE_HOST_ADDRESS),
+    MapleBus(P4_BUS_START_PIN, MAPLE_HOST_ADDRESS),
+};
+DreamcastMainNode dreamcastMainNodes[NUMBER_OF_DEVICES] = {
+    DreamcastMainNode(busses[0], playerData[0]),
+    DreamcastMainNode(busses[1], playerData[1]),
+    DreamcastMainNode(busses[2], playerData[2]),
+    DreamcastMainNode(busses[3], playerData[3])
+};
+
+UsbControllerInterface* devices[NUMBER_OF_DEVICES] = {
+    &usbGamepads[0],
+    &usbGamepads[1],
+    &usbGamepads[2],
+    &usbGamepads[3]
+};
 
 void core1()
 {
@@ -39,13 +81,15 @@ void core1()
     // Wait for steady state
     sleep_ms(100);
 
-    PlayerData playerData = {0, player1Observer, player1ScreenData};
-    MapleBus busP1(P1_BUS_START_PIN, MAPLE_HOST_ADDRESS);
-    DreamcastMainNode p1(busP1, playerData);
-
     while(true)
     {
-        p1.task(time_us_64());
+        uint64_t time = time_us_64();
+        for (DreamcastMainNode* p_node = &dreamcastMainNodes[0];
+             p_node <= &dreamcastMainNodes[NUMBER_OF_DEVICES - 1];
+             ++p_node)
+        {
+            p_node->task(time);
+        }
     }
 }
 
@@ -57,7 +101,7 @@ int main()
 
     multicore_launch_core1(core1);
 
-    set_usb_devices(devices, 1);
+    set_usb_devices(devices, sizeof(devices) / sizeof(devices[1]));
 
     usb_init();
 

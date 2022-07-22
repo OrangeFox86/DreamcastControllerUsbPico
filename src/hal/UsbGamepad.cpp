@@ -5,6 +5,8 @@
 
 #include "tusb.h"
 #include "usb_descriptors.h"
+#include "class/hid/hid.h"
+#include "class/hid/hid_device.h"
 
 UsbGamepad::UsbGamepad(uint8_t interfaceId, uint8_t reportId) :
   interfaceId(interfaceId),
