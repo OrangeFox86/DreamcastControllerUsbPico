@@ -177,8 +177,8 @@ TEST_F(MainNodeTest, unsuccessfulInfoRequest)
 TEST_F(MainNodeTest, peripheralConnect)
 {
     // --- SETUP ---
-    // The next info request is set sometime in the future
-    mDreamcastMainNode.setNextCheckTime(1016000);
+    // The next info request is set sometime in the past
+    mDreamcastMainNode.setNextCheckTime(999999);
     // The mocked factory will add a mocked peripheral
     std::shared_ptr<MockedDreamcastPeripheral> mockedDreamcastPeripheral =
         std::make_shared<MockedDreamcastPeripheral>(0x20, mMapleBus, mPlayerData.playerIndex);
@@ -216,7 +216,7 @@ TEST_F(MainNodeTest, peripheralConnect)
 
     // --- EXPECTATIONS ---
     // Next check time remains unchanged
-    EXPECT_EQ(mDreamcastMainNode.getNextCheckTime(), 1016000);
+    EXPECT_EQ(mDreamcastMainNode.getNextCheckTime(), 999999);
 }
 
 TEST_F(MainNodeTest, peripheralDisconnect)
@@ -257,8 +257,13 @@ TEST_F(MainNodeTest, peripheralDisconnect)
     EXPECT_EQ(mDreamcastMainNode.getPeripherals().size(), 0);
 }
 
-TEST_F(MainNodeTest, subPeripheralConnect)
+class MainNodeSubPeripheralConnectTest : public MainNodeTest, public ::testing::WithParamInterface<int>
+{};
+
+TEST_P(MainNodeSubPeripheralConnectTest, subPeripheralConnect)
 {
+    int idx = GetParam();
+
     // --- SETUP ---
     // The next info request is set sometime in the future
     mDreamcastMainNode.setNextCheckTime(1016000);
@@ -271,13 +276,13 @@ TEST_F(MainNodeTest, subPeripheralConnect)
     // The task should always first process events on the maple bus
     EXPECT_CALL(mMapleBus, processEvents(1000000)).Times(1);
     // The task will then read data from the bus, and a sub peripheral's info is returned
-    uint32_t data[2] = {0x05000101, 8675309};
+    uint32_t data[2] = {0x05000001U | (0x01U << (idx + 8)), 8675309};
     EXPECT_CALL(mMapleBus, getReadData(_, _))
         .Times(1)
         .WillOnce(DoAll(SetArgReferee<0>((uint32_t)2), SetArgReferee<1>(true), Return((const uint32_t*)data)));
     // The sub node that data is addressed to (0x01) should handle the info
     EXPECT_CALL(
-        *mDreamcastMainNode.mMockedSubNodes[0],
+        *mDreamcastMainNode.mMockedSubNodes[idx],
         handleData((uint8_t)1, (uint8_t)5, &data[1])
     ).Times(1).WillOnce(Return(true));
     // The peripheral's task() function will be called with the current time
@@ -296,3 +301,8 @@ TEST_F(MainNodeTest, subPeripheralConnect)
     // Next check time remains unchanged
     EXPECT_EQ(mDreamcastMainNode.getNextCheckTime(), 1016000);
 }
+
+INSTANTIATE_TEST_CASE_P(
+        MainNodeSubPeripheralConnectTests,
+        MainNodeSubPeripheralConnectTest,
+        ::testing::Values(0, 1, 2, 3, 4));
