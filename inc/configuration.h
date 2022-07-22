@@ -21,4 +21,10 @@
 // 4000 us accommodates the maximum number of words (256) at 2 mbps
 #define DEFAULT_MAPLE_READ_TIMEOUT_US 4000
 
+// The start pin of the two-pin bus for each player
+#define P1_BUS_START_PIN 10
+#define P2_BUS_START_PIN 12
+#define P3_BUS_START_PIN 18
+#define P4_BUS_START_PIN 20
+
 #endif // __CONFIGURATION_H__

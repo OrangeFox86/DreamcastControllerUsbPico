@@ -21,13 +21,7 @@
 #include "usb_descriptors.h"
 #include "usb_execution.h"
 
-#define BUTTON_PIN 2
-
 #define MAPLE_HOST_ADDRESS 0x00
-#define P1_BUS_START_PIN 14
-#define P2_BUS_START_PIN 16
-#define P3_BUS_START_PIN 18
-#define P4_BUS_START_PIN 20
 
 UsbGamepad usbGamepads[NUMBER_OF_DEVICES] = {
     UsbGamepad(ITF_NUM_HID1),
@@ -108,14 +102,6 @@ int main()
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir_out_masked(1<<PICO_DEFAULT_LED_PIN);
     gpio_xor_mask(1<<PICO_DEFAULT_LED_PIN);
-
-    gpio_init(BUTTON_PIN);
-    gpio_set_dir_in_masked(1<<BUTTON_PIN);
-    gpio_set_pulls(BUTTON_PIN, true, false);
-
-    // Used for debugging
-    gpio_init(13);
-    gpio_set_dir_out_masked(1<<13);
 
     while(true)
     {

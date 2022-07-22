@@ -16,7 +16,7 @@ Goals for this project:
 
 This is a work in progress. Current progress:
 - Read and Write communication with maple bus works!
-- The USB interface is there, but more work needs to be done to clean it up for multiple players
+- The USB interface works for 4 gamepad devices only (no vibration, VMU, or any other peripheral yet)
 - Dreamcast nodes dynamically handle different peripherals
   - Controller detection works
     - I have successfully played Steam games on my Windows PC using a Dreamcast controller with this

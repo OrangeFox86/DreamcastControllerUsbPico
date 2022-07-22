@@ -54,6 +54,7 @@ void led_task()
       if ((*pdevs)->isButtonPressed())
       {
         keyPressed = true;
+        break;
       }
     }
     if (gIsConnected)
@@ -77,6 +78,28 @@ void led_task()
   board_led_write(ledOn);
 }
 
+// Exepected to be called from main task loop - periodically refreshes the state of disconnected
+// devices so that the "null" state is enforced at the host
+void refresh_disconnected_devices_task(void)
+{
+  static uint32_t startMs = 0;
+  static const uint32_t REFRESH_TIME_MS = 50;
+  uint32_t t = board_millis() - startMs;
+  if (t >= REFRESH_TIME_MS)
+  {
+    startMs += REFRESH_TIME_MS;
+
+    UsbControllerInterface** pdevs = pAllUsbDevices;
+    for (uint32_t i = numUsbDevices; i > 0; --i, ++pdevs)
+    {
+      if (!(*pdevs)->isControllerConnected())
+      {
+        (*pdevs)->send(true);
+      }
+    }
+  }
+}
+
 void usb_init()
 {
   tusb_init();
@@ -86,6 +109,7 @@ void usb_task()
 {
   tud_task(); // tinyusb device task
   led_task();
+  refresh_disconnected_devices_task();
 }
 
 //--------------------------------------------------------------------+
