@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "bsp/board.h"
+#include "pico/stdlib.h"
 #include "tusb.h"
 #include "device/dcd.h"
 #include "usb_descriptors.h"
@@ -32,6 +33,7 @@ bool gIsConnected = false;
 
 void led_task()
 {
+#if USB_LED_PIN >= 0
   static bool ledOn = false;
   static uint32_t startMs = 0;
   if (usbDisconnecting)
@@ -75,7 +77,13 @@ void led_task()
       ledOn = ledOn && keyPressed;
     }
   }
-  board_led_write(ledOn);
+  gpio_put(USB_LED_PIN, ledOn);
+#endif
+
+#if SIMPLE_USB_LED_PIN >= 0
+  gpio_put(SIMPLE_USB_LED_PIN, gIsConnected);
+#endif
+
 }
 
 // Exepected to be called from main task loop - periodically refreshes the state of disconnected

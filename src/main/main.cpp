@@ -99,9 +99,15 @@ int main()
 
     usb_init();
 
-    gpio_init(PICO_DEFAULT_LED_PIN);
-    gpio_set_dir_out_masked(1<<PICO_DEFAULT_LED_PIN);
-    gpio_xor_mask(1<<PICO_DEFAULT_LED_PIN);
+#if USB_LED_PIN >= 0
+    gpio_init(USB_LED_PIN);
+    gpio_set_dir_out_masked(1<<USB_LED_PIN);
+#endif
+
+#if SIMPLE_USB_LED_PIN >= 0
+    gpio_init(SIMPLE_USB_LED_PIN);
+    gpio_set_dir_out_masked(1<<SIMPLE_USB_LED_PIN);
+#endif
 
     while(true)
     {
