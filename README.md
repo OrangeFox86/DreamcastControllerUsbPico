@@ -35,26 +35,32 @@ Luckily, the RP2040 comes with 2 PIO blocks each with 4 separate state machines.
 
 If running under Windows, install [WSL](https://docs.microsoft.com/en-us/windows/wsl/install) and your desired flavor of Linux. I recommend using Ubuntu 20.04 as that is what I have used for development. Then the steps below may be run within your WSL instance.
 
-1. Install git, cmake, standard gcc compilers, and gcc-arm-none-eabi compiler by running the following commands
+1. Install git, cmake, and gcc-arm-none-eabi compiler by running the following commands
 ```bash
 sudo apt update
-sudo apt -y install git cmake build-essential gcc-arm-none-eabi
+sudo apt -y install git cmake gcc-arm-none-eabi
 ```
-2. Clone this repo into your WSL instance
+2. (optional) In order to run and debug tests, install standard gcc compilers and gdb by running the following
+```bash
+sudo apt -y install build-essential gdb
+```
+3. Clone this repo into your WSL instance
 ```bash
 git clone https://github.com/Tails86/DreamcastControllerUsbPico.git
 ```
-3. Go into the project's directory and pull down the pico SDK (this is optional if you have PICO_SDK_PATH set in your environment which points to the SDK somewhere on your system)
+4. Go into the project's directory and pull down the pico SDK (this is optional if you have PICO_SDK_PATH set in your environment which points to the SDK somewhere on your system)
 ```bash
 cd DreamcastControllerUsbPico
 git submodule update --recursive --init
 ```
-4. Execute the build script
+5. Execute the build script
 ```bash
 ./build.sh
 ```
 
-After build completes, the binary should be located at `dist/main.uf2`
+After build completes, the binary should be located at `dist/main.uf2`.
+
+This project may be opened in vscode. In vscode, the default shortcut `ctrl+shift+b` will build the project. The default shortcut `F5` will run tests with gdb for local debugging. Open the terminal tab after executing tests with debugging to see the results.
 
 # Maple Bus Implementation
 
