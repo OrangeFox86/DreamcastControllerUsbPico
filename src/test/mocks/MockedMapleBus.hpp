@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MapleBusInterface.hpp"
+#include "MaplePacket.hpp"
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -12,63 +13,16 @@ class MockedMapleBus : public MapleBusInterface
             bool,
             write,
             (
-                uint8_t command,
-                uint8_t recipientAddr,
-                const uint32_t* payload,
-                uint8_t len,
+                const MaplePacket& packet,
                 bool expectResponse,
                 uint32_t readTimeoutUs
             ),
             (override)
         );
 
-        bool write(uint8_t command,
-                   uint8_t recipientAddr,
-                   const uint32_t* payload,
-                   uint8_t len,
-                   bool expectResponse)
+        bool write(const MaplePacket& packet, bool expectResponse)
         {
-            return write(command, recipientAddr, payload, len, expectResponse, DEFAULT_MAPLE_READ_TIMEOUT_US);
-        }
-
-        MOCK_METHOD(
-            bool,
-            write,
-            (
-                uint32_t frameWord,
-                const uint32_t* payload,
-                uint8_t len,
-                bool expectResponse,
-                uint32_t readTimeoutUs
-            ),
-            (override)
-        );
-
-        bool write(uint32_t frameWord,
-                   const uint32_t* payload,
-                   uint8_t len,
-                   bool expectResponse)
-        {
-            return write(frameWord, payload, len, expectResponse, DEFAULT_MAPLE_READ_TIMEOUT_US);
-        }
-
-        MOCK_METHOD(
-            bool,
-            write,
-            (
-                const uint32_t* words,
-                uint8_t len,
-                bool expectResponse,
-                uint32_t readTimeoutUs
-            ),
-            (override)
-        );
-
-        bool write(const uint32_t* words,
-                   uint8_t len,
-                   bool expectResponse)
-        {
-            return write(words, len, expectResponse, DEFAULT_MAPLE_READ_TIMEOUT_US);
+            return write(packet, expectResponse, DEFAULT_MAPLE_READ_TIMEOUT_US);
         }
 
         MOCK_METHOD(const uint32_t*, getReadData, (uint32_t& len, bool& newData), (override));

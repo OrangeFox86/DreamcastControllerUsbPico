@@ -129,10 +129,10 @@ TEST_F(MainNodeTest, successfulInfoRequest)
         .WillOnce(DoAll(SetArgReferee<0>((uint32_t)0), SetArgReferee<1>(false), Return((const uint32_t*)NULL)));
     // Since no peripherals are detected, the main node should do a info request, and it will be successful
     EXPECT_CALL(mMapleBus,
-                write((uint8_t)COMMAND_DEVICE_INFO_REQUEST,
-                      (uint8_t)0x20,
-                      (const uint32_t*)NULL,
-                      (uint8_t)0,
+                write(MaplePacket((uint8_t)COMMAND_DEVICE_INFO_REQUEST,
+                                  (uint8_t)0x20,
+                                  (const uint32_t*)NULL,
+                                  (uint8_t)0),
                       true,
                       _))
         .Times(1)
@@ -157,10 +157,10 @@ TEST_F(MainNodeTest, unsuccessfulInfoRequest)
         .WillOnce(DoAll(SetArgReferee<0>((uint32_t)0), SetArgReferee<1>(false), Return((const uint32_t*)NULL)));
     // Since no peripherals are detected, the main node should do a info request, and it will be unsuccessful
     EXPECT_CALL(mMapleBus,
-                write((uint8_t)COMMAND_DEVICE_INFO_REQUEST,
-                      (uint8_t)0x20,
-                      (const uint32_t*)NULL,
-                      (uint8_t)0,
+                write(MaplePacket((uint8_t)COMMAND_DEVICE_INFO_REQUEST,
+                                  (uint8_t)0x20,
+                                  (const uint32_t*)NULL,
+                                  (uint8_t)0),
                       true,
                       _))
         .Times(1)
@@ -209,7 +209,7 @@ TEST_F(MainNodeTest, peripheralConnect)
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[3], task(1000000)).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[4], task(1000000)).Times(1);
     // No write operation should be called but the main node
-    EXPECT_CALL(mMapleBus, write(_, _, _, _, _, _)).Times(0);
+    EXPECT_CALL(mMapleBus, write(_, _, _)).Times(0);
 
     // --- TEST EXECUTION ---
     mDreamcastMainNode.task(1000000);

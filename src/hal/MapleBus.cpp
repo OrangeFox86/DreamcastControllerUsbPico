@@ -194,9 +194,7 @@ bool MapleBus::writeInit()
     return true;
 }
 
-bool MapleBus::write(uint32_t frameWord,
-                     const uint32_t* payload,
-                     uint8_t len,
+bool MapleBus::write(const MaplePacket& packet,
                      bool expectResponse,
                      uint32_t readTimeoutUs)
 {
@@ -204,7 +202,7 @@ bool MapleBus::write(uint32_t frameWord,
 
     processEvents();
 
-    if (!isBusy())
+    if (!isBusy() && packet.isValid())
     {
         // Make sure previous DMA instances are killed
         dma_channel_abort(mDmaWriteChannel);
@@ -214,16 +212,20 @@ bool MapleBus::write(uint32_t frameWord,
         mReadTimeoutUs = readTimeoutUs;
 
         // First 32 bits sent to the state machine is how many bits to output.
+        uint8_t len = packet.payload.size();
         uint32_t numBits = (len * 4 + 5) * 8;
         mWriteBuffer[0] = numBits;
         // The PIO state machine reads from "left to right" to achieve the right bit order, but the data
         // out needs to be little endian. Therefore, the data bytes needs to be swapped. Might as well
         // Compute the CRC while we're at it.
         uint8_t crc = 0;
-        swapByteOrder(mWriteBuffer[1], frameWord, crc);
-        for (uint32_t i = 0; i < len; ++i)
+        swapByteOrder(mWriteBuffer[1], packet.getFrameWord(mSenderAddr), crc);
+        volatile uint32_t* pDest = &mWriteBuffer[2];
+        for (std::vector<uint32_t>::const_iterator iter = packet.payload.begin();
+             iter != packet.payload.end();
+             ++iter, ++pDest)
         {
-            swapByteOrder(mWriteBuffer[i + 2], *payload++, crc);
+            swapByteOrder(*pDest, *iter, crc);
         }
         // Last byte left shifted out is the CRC
         mWriteBuffer[len + 2] = crc << 24;
@@ -264,25 +266,6 @@ bool MapleBus::write(uint32_t frameWord,
     }
 
     return rv;
-}
-
-bool MapleBus::write(const uint32_t* words,
-                     uint8_t len,
-                     bool expectResponse,
-                     uint32_t readTimeoutUs)
-{
-    return write(words[0], words + 1, len - 1, expectResponse, readTimeoutUs);
-}
-
-bool MapleBus::write(uint8_t command,
-                     uint8_t recipientAddr,
-                     const uint32_t* payload,
-                     uint8_t len,
-                     bool expectResponse,
-                     uint32_t readTimeoutUs)
-{
-    uint32_t frameWord = (len) | (mSenderAddr << 8) | (recipientAddr << 16) | (command << 24);
-    return write(frameWord, payload, len, expectResponse, readTimeoutUs);
 }
 
 void MapleBus::processEvents(uint64_t currentTimeUs)

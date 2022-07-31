@@ -57,8 +57,8 @@ bool DreamcastController::task(uint64_t currentTimeUs)
         if (connected)
         {
             // Get controller status
-            uint32_t data = DEVICE_FN_CONTROLLER;
-            if (mBus.write(COMMAND_GET_CONDITION, getRecipientAddress(), &data, 1, true))
+            MaplePacket packet(COMMAND_GET_CONDITION, getRecipientAddress(), DEVICE_FN_CONTROLLER);
+            if (mBus.write(packet, true))
             {
                 mWaitingForData = true;
                 mNextCheckTime = currentTimeUs + US_PER_CHECK;

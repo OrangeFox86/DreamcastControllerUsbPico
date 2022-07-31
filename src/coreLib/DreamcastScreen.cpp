@@ -53,7 +53,8 @@ bool DreamcastScreen::task(uint64_t currentTimeUs)
             uint32_t payload[numPayloadWords] = {DEVICE_FN_LCD, writeAddrWord, 0};
             mScreenData.readData(&payload[2]);
 
-            if (mBus.write(COMMAND_BLOCK_WRITE, getRecipientAddress(), payload, numPayloadWords, true))
+            MaplePacket packet(COMMAND_BLOCK_WRITE, getRecipientAddress(), payload, numPayloadWords);
+            if (mBus.write(packet, true))
             {
                 mWaitingForData = true;
                 mNextCheckTime = currentTimeUs + US_PER_CHECK;

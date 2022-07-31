@@ -38,12 +38,12 @@ void DreamcastSubNode::task(uint64_t currentTimeUs)
         // Request device info new device was newly attached
         if (mPeripherals.size() <= 0)
         {
+            MaplePacket packet(COMMAND_DEVICE_INFO_REQUEST,
+                               DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr),
+                               NULL,
+                               0);
             // This will return false if bus is busy
-            if (mBus.write(COMMAND_DEVICE_INFO_REQUEST,
-                        DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr),
-                        NULL,
-                        0,
-                        true))
+            if (mBus.write(packet, true))
             {
                 mNextCheckTime = currentTimeUs + US_PER_CHECK;
             }

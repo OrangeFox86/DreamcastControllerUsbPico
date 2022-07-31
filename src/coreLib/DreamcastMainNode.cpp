@@ -107,12 +107,12 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
     // Otherwise, keep looking for info from a main peripheral
     else if (currentTimeUs >= mNextCheckTime)
     {
+        MaplePacket packet(COMMAND_DEVICE_INFO_REQUEST,
+                           DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr),
+                           NULL,
+                           0);
         // This will return false if bus is busy
-        if (mBus.write(COMMAND_DEVICE_INFO_REQUEST,
-                       DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr),
-                       NULL,
-                       0,
-                       true))
+        if (mBus.write(packet, true))
         {
             mNextCheckTime = currentTimeUs + US_PER_CHECK;
         }
