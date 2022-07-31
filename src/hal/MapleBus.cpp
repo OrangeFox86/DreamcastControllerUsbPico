@@ -6,6 +6,7 @@
 #include "configuration.h"
 #include "maple.pio.h"
 #include "string.h"
+#include "utils.h"
 
 MapleBus* mapleWriteIsr[4] = {};
 MapleBus* mapleReadIsr[4] = {};
@@ -213,8 +214,7 @@ bool MapleBus::write(const MaplePacket& packet,
 
         // First 32 bits sent to the state machine is how many bits to output.
         uint8_t len = packet.payload.size();
-        uint32_t numBits = (len * 4 + 5) * 8;
-        mWriteBuffer[0] = numBits;
+        mWriteBuffer[0] = packet.getNumTotalBits();
         // The PIO state machine reads from "left to right" to achieve the right bit order, but the data
         // out needs to be little endian. Therefore, the data bytes needs to be swapped. Might as well
         // Compute the CRC while we're at it.
@@ -253,13 +253,11 @@ bool MapleBus::write(const MaplePacket& packet,
             // Start writing
             dma_channel_transfer_from_buffer_now(mDmaWriteChannel, mWriteBuffer, len + 3);
 
-            uint32_t totalWriteTimeNs = numBits * MAPLE_NS_PER_BIT;
-            // Start and stop sequence takes less than 14 bit periods
-            totalWriteTimeNs += 14 * MAPLE_NS_PER_BIT;
+            uint32_t totalWriteTimeNs = packet.getTxTimeNs();
             // Multiply by the extra percentage
             totalWriteTimeNs *= (1 + (MAPLE_WRITE_TIMEOUT_EXTRA_PERCENT / 100.0));
             // And then compute the time which the write process should complete
-            mProcKillTime = time_us_64() + (totalWriteTimeNs / 1000.0 + 0.5) + 1;
+            mProcKillTime = time_us_64() + INT_DIVIDE_CEILING(totalWriteTimeNs, 1000);
 
             rv = true;
         }

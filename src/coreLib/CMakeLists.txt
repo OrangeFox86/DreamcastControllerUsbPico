@@ -5,11 +5,14 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 file(GLOB SRC "${CMAKE_CURRENT_SOURCE_DIR}/*.c*")
 
 add_library(coreLib STATIC ${SRC})
-target_compile_options(coreLib PRIVATE
-  -Wall
-  -Werror
-  -O3
-)
+
+if(NOT DREAMCAST_CONTROLLER_USB_PICO_TEST)
+  target_compile_options(coreLib PRIVATE
+    -Wall
+    -Werror
+    -O3
+  )
+endif()
 
 target_include_directories(coreLib
   PUBLIC
