@@ -35,10 +35,10 @@ Luckily, the RP2040 comes with 2 PIO blocks each with 4 separate state machines.
 
 If running under Windows, install [WSL](https://docs.microsoft.com/en-us/windows/wsl/install) and your desired flavor of Linux. I recommend using Ubuntu 20.04 as that is what I have used for development. Then the steps below may be run within your WSL instance.
 
-1. Install git, cmake, and gcc-arm-none-eabi compiler by running the following commands
+1. Install git, cmake, standard gcc compilers, and gcc-arm-none-eabi compiler by running the following commands
 ```bash
 sudo apt update
-sudo apt -y install git cmake gcc-arm-none-eabi
+sudo apt -y install git cmake build-essential gcc-arm-none-eabi
 ```
 2. Clone this repo into your WSL instance
 ```bash
