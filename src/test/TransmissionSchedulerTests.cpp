@@ -19,7 +19,7 @@ using ::testing::DoAll;
 class MockTransmittionScheduler : public TransmittionScheduler
 {
     public:
-        const std::list<std::shared_ptr<Transmission>> getSchedule()
+        std::list<std::shared_ptr<Transmission>>& getSchedule()
         {
             return mSchedule;
         }
@@ -198,4 +198,85 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary2)
     EXPECT_EQ((*iter)->packet->getFrameCommand(), 0x22);
     ++iter;
     EXPECT_EQ((*iter)->packet->getFrameCommand(), 0x33);
+}
+
+class TransmissionSchedulePopTest : public TransmissionScheduleTest
+{
+    public:
+        TransmissionSchedulePopTest() {}
+
+    protected:
+        MockTransmittionScheduler scheduler;
+
+        virtual void SetUp()
+        {
+            bool highPriority = false;
+            uint64_t txTime = 1;
+            MaplePacket packet1(0x11, 0xAA, 0x99887766);
+            bool expectResponse = true;
+            uint32_t expectedResponseNumPayloadWords = 0;
+            uint32_t autoRepeatUs = 0;
+            uint32_t readTimeoutUs = 8675309;
+            scheduler.add(highPriority,
+                          txTime,
+                          packet1,
+                          expectResponse,
+                          expectedResponseNumPayloadWords,
+                          autoRepeatUs,
+                          readTimeoutUs);
+            txTime = 2;
+            autoRepeatUs = 16000;
+            MaplePacket packet2(0x22, 0xAA, 0x99887766);
+            scheduler.add(highPriority,
+                          txTime,
+                          packet2,
+                          expectResponse,
+                          expectedResponseNumPayloadWords,
+                          autoRepeatUs,
+                          readTimeoutUs);
+            txTime = 3;
+            MaplePacket packet3(0x33, 0xAA, 0x99887766);
+            scheduler.add(highPriority,
+                          txTime,
+                          packet3,
+                          expectResponse,
+                          expectedResponseNumPayloadWords,
+                          autoRepeatUs,
+                          readTimeoutUs);
+        }
+};
+
+TEST_F(TransmissionSchedulePopTest, popTestNull)
+{
+    EXPECT_EQ(scheduler.popNext(0), nullptr);
+
+    const std::list<std::shared_ptr<TransmittionScheduler::Transmission>> schedule = scheduler.getSchedule();
+
+    ASSERT_EQ(schedule.size(), 3);
+    std::list<std::shared_ptr<TransmittionScheduler::Transmission>>::const_iterator iter = schedule.cbegin();
+    EXPECT_EQ((*iter)->packet->getFrameCommand(), 0x11);
+    ++iter;
+    EXPECT_EQ((*iter)->packet->getFrameCommand(), 0x22);
+    ++iter;
+    EXPECT_EQ((*iter)->packet->getFrameCommand(), 0x33);
+}
+
+TEST_F(TransmissionSchedulePopTest, popTest1)
+{
+    std::shared_ptr<const TransmittionScheduler::Transmission> item = scheduler.popNext(1);
+    ASSERT_NE(item, nullptr);
+    EXPECT_EQ(item->packet->getFrameCommand(), 0x11);
+    item = scheduler.popNext(2);
+    ASSERT_NE(item, nullptr);
+    EXPECT_EQ(item->packet->getFrameCommand(), 0x22);
+
+    const std::list<std::shared_ptr<TransmittionScheduler::Transmission>> schedule = scheduler.getSchedule();
+
+    ASSERT_EQ(schedule.size(), 2);
+    std::list<std::shared_ptr<TransmittionScheduler::Transmission>>::const_iterator iter = schedule.cbegin();
+    EXPECT_EQ((*iter)->packet->getFrameCommand(), 0x33);
+    ++iter;
+    // This one should auto reload
+    EXPECT_EQ((*iter)->packet->getFrameCommand(), 0x22);
+    EXPECT_EQ((*iter)->nextTxTimeUs, 16002);
 }

@@ -55,7 +55,7 @@ void TransmittionScheduler::add(bool highPriority,
     add(tx);
 }
 
-const std::shared_ptr<TransmittionScheduler::Transmission> TransmittionScheduler::popNext(uint64_t time)
+std::shared_ptr<const TransmittionScheduler::Transmission> TransmittionScheduler::popNext(uint64_t time)
 {
     std::shared_ptr<Transmission> item = nullptr;
     if (!mSchedule.empty() && time >= (*mSchedule.begin())->nextTxTimeUs)

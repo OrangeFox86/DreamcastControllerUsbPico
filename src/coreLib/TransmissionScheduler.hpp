@@ -8,6 +8,7 @@
 class TransmittionScheduler
 {
 public:
+    //! Transmission definition
     struct Transmission
     {
         const bool highPriority;
@@ -36,13 +37,20 @@ public:
     };
 
 public:
+    //! Default constructor
     TransmittionScheduler() {}
 
+    //! Virtual destructor
     virtual ~TransmittionScheduler() {}
 
-    void add(std::shared_ptr<Transmission> tx);
-
-    //! packet is moved upon calling this
+    //! Add a transmission to the schedule
+    //! @param[in] highPritority  true iff this is a high priority transmission
+    //! @param[in] txTime  Time at which this should transmit in microseconds
+    //! @param[in,out] packet  Packet data to send (internal data is moved upon calling this)
+    //! @param[in] expectResponse  true iff a response is expected after transmission
+    //! @param[in] expectedResponseNumPayloadWords  Number of payload words to expect in response
+    //! @param[in] autoRepeatUs  How often to repeat this transmission in microseconds
+    //! @param[in] readTimeoutUs  Maximum amount of time to wait for full packet to be received
     void add(bool highPriority,
              uint64_t txTime,
              MaplePacket& packet,
@@ -51,7 +59,16 @@ public:
              uint32_t autoRepeatUs=0,
              uint32_t readTimeoutUs=DEFAULT_MAPLE_READ_TIMEOUT_US);
 
-    const std::shared_ptr<Transmission> popNext(uint64_t time);
+    //! Pops the next scheduled packet, given the current time
+    //! @param[in] time  The current time
+    //! @returns nullptr if no scheduled packet is available for the given time
+    //! @returns the next sceduled packet for the given current time
+    std::shared_ptr<const Transmission> popNext(uint64_t time);
+
+protected:
+    //! Add a transmission to the schedule
+    //! @param[in] tx  The transmission to add
+    void add(std::shared_ptr<Transmission> tx);
 
 public:
     //! Estimated nanoseconds before peripheral responds
@@ -60,6 +77,8 @@ public:
     static const uint32_t RX_NS_PER_BIT = 1500;
     //! Use this for txTime if the packet needs to be sent ASAP
     static const uint64_t TX_TIME_ASAP = 0;
+
 protected:
+    //! The current schedule ordered by time and priority
     std::list<std::shared_ptr<Transmission>> mSchedule;
 };
