@@ -1,7 +1,11 @@
 #include "TransmissionScheduler.hpp"
 #include "utils.h"
 
-void TransmittionScheduler::add(std::shared_ptr<Transmission> tx)
+TransmittionScheduler::TransmittionScheduler(): mNextId(0), mSchedule() {}
+
+TransmittionScheduler::~TransmittionScheduler() {}
+
+uint32_t TransmittionScheduler::add(std::shared_ptr<Transmission> tx)
 {
     uint64_t completionTime = tx->nextTxTimeUs + tx->txDurationUs;
 
@@ -28,15 +32,16 @@ void TransmittionScheduler::add(std::shared_ptr<Transmission> tx)
         }
     }
     mSchedule.insert(iter, tx);
+    return tx->transmissionId;
 }
 
-void TransmittionScheduler::add(bool highPriority,
-                                uint64_t txTime,
-                                MaplePacket& packet,
-                                bool expectResponse,
-                                uint32_t expectedResponseNumPayloadWords,
-                                uint32_t autoRepeatUs,
-                                uint32_t readTimeoutUs)
+uint32_t TransmittionScheduler::add(bool highPriority,
+                                    uint64_t txTime,
+                                    MaplePacket& packet,
+                                    bool expectResponse,
+                                    uint32_t expectedResponseNumPayloadWords,
+                                    uint32_t autoRepeatUs,
+                                    uint32_t readTimeoutUs)
 {
     uint32_t pktDurationUs =
         INT_DIVIDE_CEILING(
@@ -45,14 +50,15 @@ void TransmittionScheduler::add(bool highPriority,
                 + MaplePacket::getTxTimeNs(expectedResponseNumPayloadWords, RX_NS_PER_BIT),
             1000);
     std::shared_ptr<Transmission> tx =
-        std::make_shared<Transmission>(highPriority,
+        std::make_shared<Transmission>(mNextId++,
+                                       highPriority,
                                        expectResponse,
                                        readTimeoutUs,
                                        autoRepeatUs,
                                        pktDurationUs,
                                        txTime,
                                        std::make_shared<MaplePacket>(std::move(packet)));
-    add(tx);
+    return add(tx);
 }
 
 std::shared_ptr<const TransmittionScheduler::Transmission> TransmittionScheduler::popNext(uint64_t time)
@@ -76,4 +82,49 @@ std::shared_ptr<const TransmittionScheduler::Transmission> TransmittionScheduler
         }
     }
     return item;
+}
+
+uint32_t TransmittionScheduler::cancelById(uint32_t transmissionId)
+{
+    uint32_t n = 0;
+    std::list<std::shared_ptr<Transmission>>::iterator iter = mSchedule.begin();
+    while (iter != mSchedule.end())
+    {
+        if ((*iter)->transmissionId == transmissionId)
+        {
+            iter = mSchedule.erase(iter);
+            ++n;
+        }
+        else
+        {
+            ++iter;
+        }
+    }
+    return n;
+}
+
+uint32_t TransmittionScheduler::cancelByRecipient(uint8_t recipientAddr)
+{
+    uint32_t n = 0;
+    std::list<std::shared_ptr<Transmission>>::iterator iter = mSchedule.begin();
+    while (iter != mSchedule.end())
+    {
+        if ((*iter)->packet->getFrameRecipientAddr() == recipientAddr)
+        {
+            iter = mSchedule.erase(iter);
+            ++n;
+        }
+        else
+        {
+            ++iter;
+        }
+    }
+    return n;
+}
+
+uint32_t TransmittionScheduler::cancelAll()
+{
+    uint32_t n = mSchedule.size();
+    mSchedule.clear();
+    return n;
 }
