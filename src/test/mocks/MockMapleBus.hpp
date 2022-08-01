@@ -6,7 +6,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-class MockedMapleBus : public MapleBusInterface
+class MockMapleBus : public MapleBusInterface
 {
     public:
         MOCK_METHOD(

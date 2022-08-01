@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-class MockedUsbController : public UsbControllerInterface
+class MockUsbController : public UsbControllerInterface
 {
     public:
         MOCK_METHOD(bool, isButtonPressed, (), (override));

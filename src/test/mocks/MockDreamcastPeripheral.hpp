@@ -5,10 +5,10 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-class MockedDreamcastPeripheral : public DreamcastPeripheral
+class MockDreamcastPeripheral : public DreamcastPeripheral
 {
     public:
-        MockedDreamcastPeripheral(uint8_t addr, MapleBusInterface& bus, uint32_t playerIndex) :
+        MockDreamcastPeripheral(uint8_t addr, MapleBusInterface& bus, uint32_t playerIndex) :
             DreamcastPeripheral(addr, bus, playerIndex)
         {}
 

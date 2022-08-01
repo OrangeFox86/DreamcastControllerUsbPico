@@ -1,8 +1,8 @@
-#include "MockedMapleBus.hpp"
-#include "MockedDreamcastControllerObserver.hpp"
-#include "MockedDreamcastPeripheral.hpp"
-#include "MockedMutex.hpp"
-#include "MockedUsbController.hpp"
+#include "MockMapleBus.hpp"
+#include "MockDreamcastControllerObserver.hpp"
+#include "MockDreamcastPeripheral.hpp"
+#include "MockMutex.hpp"
+#include "MockUsbController.hpp"
 
 #include "TransmissionScheduler.hpp"
 
@@ -16,7 +16,7 @@ using ::testing::Return;
 using ::testing::SetArgReferee;
 using ::testing::DoAll;
 
-class MockTransmittionScheduler : public TransmittionScheduler
+class TransmittionSchedulerUnitTest : public TransmittionScheduler
 {
     public:
         std::list<std::shared_ptr<Transmission>>& getSchedule()
@@ -31,7 +31,7 @@ class TransmissionScheduleTest : public ::testing::Test
         TransmissionScheduleTest() {}
 
     protected:
-        MockTransmittionScheduler scheduler;
+        TransmittionSchedulerUnitTest scheduler;
 };
 
 TEST_F(TransmissionScheduleTest, multiAdd)
@@ -216,8 +216,6 @@ class TransmissionSchedulePopTest : public TransmissionScheduleTest
         TransmissionSchedulePopTest() {}
 
     protected:
-        MockTransmittionScheduler scheduler;
-
         virtual void SetUp()
         {
             bool highPriority = false;

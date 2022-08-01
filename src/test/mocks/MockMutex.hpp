@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-class MockedMutex : public MutexInterface
+class MockMutex : public MutexInterface
 {
     public:
         MOCK_METHOD(void, lock, (), (override));

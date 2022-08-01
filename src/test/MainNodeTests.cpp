@@ -1,8 +1,8 @@
-#include "MockedMapleBus.hpp"
-#include "MockedDreamcastControllerObserver.hpp"
-#include "MockedDreamcastPeripheral.hpp"
-#include "MockedMutex.hpp"
-#include "MockedUsbController.hpp"
+#include "MockMapleBus.hpp"
+#include "MockDreamcastControllerObserver.hpp"
+#include "MockDreamcastPeripheral.hpp"
+#include "MockMutex.hpp"
+#include "MockUsbController.hpp"
 
 #include "DreamcastMainNode.hpp"
 #include "DreamcastSubNode.hpp"
@@ -104,11 +104,11 @@ class MainNodeTest : public ::testing::Test
         {}
 
     protected:
-        MockedDreamcastControllerObserver mDreamcastControllerObserver;
-        MockedMutex mMutex;
+        MockDreamcastControllerObserver mDreamcastControllerObserver;
+        MockMutex mMutex;
         ScreenData mScreenData;
         PlayerData mPlayerData;
-        MockedMapleBus mMapleBus;
+        MockMapleBus mMapleBus;
         DreamcastMainNodeOverride mDreamcastMainNode;
 
         virtual void SetUp()
@@ -180,8 +180,8 @@ TEST_F(MainNodeTest, peripheralConnect)
     // The next info request is set sometime in the past
     mDreamcastMainNode.setNextCheckTime(999999);
     // The mocked factory will add a mocked peripheral
-    std::shared_ptr<MockedDreamcastPeripheral> mockedDreamcastPeripheral =
-        std::make_shared<MockedDreamcastPeripheral>(0x20, mMapleBus, mPlayerData.playerIndex);
+    std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
+        std::make_shared<MockDreamcastPeripheral>(0x20, mMapleBus, mPlayerData.playerIndex);
     mDreamcastMainNode.mPeripheralsToAdd.push_back(mockedDreamcastPeripheral);
 
     // --- MOCKING ---
@@ -225,8 +225,8 @@ TEST_F(MainNodeTest, peripheralDisconnect)
     // The next info request is set sometime in the future
     mDreamcastMainNode.setNextCheckTime(1016000);
     // A main peripheral is currently connected
-    std::shared_ptr<MockedDreamcastPeripheral> mockedDreamcastPeripheral =
-        std::make_shared<MockedDreamcastPeripheral>(0x20, mMapleBus, mPlayerData.playerIndex);
+    std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
+        std::make_shared<MockDreamcastPeripheral>(0x20, mMapleBus, mPlayerData.playerIndex);
     mDreamcastMainNode.getPeripherals().push_back(mockedDreamcastPeripheral);
 
     // --- MOCKING ---
@@ -268,8 +268,8 @@ TEST_P(MainNodeSubPeripheralConnectTest, subPeripheralConnect)
     // The next info request is set sometime in the future
     mDreamcastMainNode.setNextCheckTime(1016000);
     // A main peripheral is currently connected
-    std::shared_ptr<MockedDreamcastPeripheral> mockedDreamcastPeripheral =
-        std::make_shared<MockedDreamcastPeripheral>(0x01, mMapleBus, mPlayerData.playerIndex);
+    std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
+        std::make_shared<MockDreamcastPeripheral>(0x01, mMapleBus, mPlayerData.playerIndex);
     mDreamcastMainNode.getPeripherals().push_back(mockedDreamcastPeripheral);
 
     // --- MOCKING ---

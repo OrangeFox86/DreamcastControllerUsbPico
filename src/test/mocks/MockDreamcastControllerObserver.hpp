@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-class MockedDreamcastControllerObserver : public DreamcastControllerObserver
+class MockDreamcastControllerObserver : public DreamcastControllerObserver
 {
     public:
         MOCK_METHOD(void, setControllerCondition, (const ControllerCondition& controllerCondition), (override));
