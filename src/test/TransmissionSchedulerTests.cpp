@@ -97,13 +97,10 @@ TEST_F(TransmissionScheduleTest, multiAdd)
 
     ASSERT_EQ(schedule.size(), 4);
     std::list<std::shared_ptr<TransmittionScheduler::Transmission>>::const_iterator iter = schedule.cbegin();
-    EXPECT_EQ((*iter)->transmissionId, 2);
-    ++iter;
-    EXPECT_EQ((*iter)->transmissionId, 3);
-    ++iter;
-    EXPECT_EQ((*iter)->transmissionId, 0);
-    ++iter;
-    EXPECT_EQ((*iter)->transmissionId, 1);
+    EXPECT_EQ((*iter++)->transmissionId, 2);
+    EXPECT_EQ((*iter++)->transmissionId, 3);
+    EXPECT_EQ((*iter++)->transmissionId, 0);
+    EXPECT_EQ((*iter++)->transmissionId, 1);
 }
 
 TEST_F(TransmissionScheduleTest, multiAddBoundary1)
@@ -151,11 +148,9 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary1)
 
     ASSERT_EQ(schedule.size(), 3);
     std::list<std::shared_ptr<TransmittionScheduler::Transmission>>::const_iterator iter = schedule.cbegin();
-    EXPECT_EQ((*iter)->transmissionId, 0);
-    ++iter;
-    EXPECT_EQ((*iter)->transmissionId, 2);
-    ++iter;
-    EXPECT_EQ((*iter)->transmissionId, 1);
+    EXPECT_EQ((*iter++)->transmissionId, 0);
+    EXPECT_EQ((*iter++)->transmissionId, 2);
+    EXPECT_EQ((*iter++)->transmissionId, 1);
 }
 
 TEST_F(TransmissionScheduleTest, multiAddBoundary2)
@@ -203,11 +198,9 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary2)
 
     ASSERT_EQ(schedule.size(), 3);
     std::list<std::shared_ptr<TransmittionScheduler::Transmission>>::const_iterator iter = schedule.cbegin();
-    EXPECT_EQ((*iter)->transmissionId, 1);
-    ++iter;
-    EXPECT_EQ((*iter)->transmissionId, 0);
-    ++iter;
-    EXPECT_EQ((*iter)->transmissionId, 2);
+    EXPECT_EQ((*iter++)->transmissionId, 1);
+    EXPECT_EQ((*iter++)->transmissionId, 0);
+    EXPECT_EQ((*iter++)->transmissionId, 2);
 }
 
 class TransmissionSchedulePopTest : public TransmissionScheduleTest
@@ -243,7 +236,7 @@ class TransmissionSchedulePopTest : public TransmissionScheduleTest
                           autoRepeatUs,
                           readTimeoutUs);
             txTime = 3;
-            MaplePacket packet3(0x33, 0x03, 0x99887766);
+            MaplePacket packet3(0x33, 0x02, 0x99887766);
             scheduler.add(highPriority,
                           txTime,
                           packet3,
@@ -262,11 +255,9 @@ TEST_F(TransmissionSchedulePopTest, popTestNull)
 
     ASSERT_EQ(schedule.size(), 3);
     std::list<std::shared_ptr<TransmittionScheduler::Transmission>>::const_iterator iter = schedule.cbegin();
-    EXPECT_EQ((*iter)->transmissionId, 0);
-    ++iter;
-    EXPECT_EQ((*iter)->transmissionId, 1);
-    ++iter;
-    EXPECT_EQ((*iter)->transmissionId, 2);
+    EXPECT_EQ((*iter++)->transmissionId, 0);
+    EXPECT_EQ((*iter++)->transmissionId, 1);
+    EXPECT_EQ((*iter++)->transmissionId, 2);
 }
 
 TEST_F(TransmissionSchedulePopTest, popTest1)
@@ -282,8 +273,7 @@ TEST_F(TransmissionSchedulePopTest, popTest1)
 
     ASSERT_EQ(schedule.size(), 2);
     std::list<std::shared_ptr<TransmittionScheduler::Transmission>>::const_iterator iter = schedule.cbegin();
-    EXPECT_EQ((*iter)->transmissionId, 2);
-    ++iter;
+    EXPECT_EQ((*iter++)->transmissionId, 2);
     // This one should auto reload
     EXPECT_EQ((*iter)->transmissionId, 1);
     EXPECT_EQ((*iter)->nextTxTimeUs, 16002);
@@ -303,11 +293,9 @@ TEST_F(TransmissionScheduleCancelTest, cancelByIdNotFound)
 
     ASSERT_EQ(schedule.size(), 3);
     std::list<std::shared_ptr<TransmittionScheduler::Transmission>>::const_iterator iter = schedule.cbegin();
-    EXPECT_EQ((*iter)->transmissionId, 0);
-    ++iter;
-    EXPECT_EQ((*iter)->transmissionId, 1);
-    ++iter;
-    EXPECT_EQ((*iter)->transmissionId, 2);
+    EXPECT_EQ((*iter++)->transmissionId, 0);
+    EXPECT_EQ((*iter++)->transmissionId, 1);
+    EXPECT_EQ((*iter++)->transmissionId, 2);
 }
 
 TEST_F(TransmissionScheduleCancelTest, cancelByIdFound)
@@ -318,9 +306,8 @@ TEST_F(TransmissionScheduleCancelTest, cancelByIdFound)
 
     ASSERT_EQ(schedule.size(), 2);
     std::list<std::shared_ptr<TransmittionScheduler::Transmission>>::const_iterator iter = schedule.cbegin();
-    EXPECT_EQ((*iter)->transmissionId, 0);
-    ++iter;
-    EXPECT_EQ((*iter)->transmissionId, 2);
+    EXPECT_EQ((*iter++)->transmissionId, 0);
+    EXPECT_EQ((*iter++)->transmissionId, 2);
 }
 
 TEST_F(TransmissionScheduleCancelTest, cancelByRecipientNotFound)
@@ -331,24 +318,20 @@ TEST_F(TransmissionScheduleCancelTest, cancelByRecipientNotFound)
 
     ASSERT_EQ(schedule.size(), 3);
     std::list<std::shared_ptr<TransmittionScheduler::Transmission>>::const_iterator iter = schedule.cbegin();
-    EXPECT_EQ((*iter)->transmissionId, 0);
-    ++iter;
-    EXPECT_EQ((*iter)->transmissionId, 1);
-    ++iter;
-    EXPECT_EQ((*iter)->transmissionId, 2);
+    EXPECT_EQ((*iter++)->transmissionId, 0);
+    EXPECT_EQ((*iter++)->transmissionId, 1);
+    EXPECT_EQ((*iter++)->transmissionId, 2);
 }
 
 TEST_F(TransmissionScheduleCancelTest, cancelByRecipientFound)
 {
-    EXPECT_EQ(scheduler.cancelByRecipient(0x03), 1);
+    EXPECT_EQ(scheduler.cancelByRecipient(0x02), 2);
 
     const std::list<std::shared_ptr<TransmittionScheduler::Transmission>> schedule = scheduler.getSchedule();
 
-    ASSERT_EQ(schedule.size(), 2);
+    ASSERT_EQ(schedule.size(), 1);
     std::list<std::shared_ptr<TransmittionScheduler::Transmission>>::const_iterator iter = schedule.cbegin();
-    EXPECT_EQ((*iter)->transmissionId, 0);
-    ++iter;
-    EXPECT_EQ((*iter)->transmissionId, 1);
+    EXPECT_EQ((*iter++)->transmissionId, 0);
 }
 
 TEST_F(TransmissionScheduleCancelTest, cancelAll)
