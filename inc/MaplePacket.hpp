@@ -9,6 +9,18 @@
 
 struct MaplePacket
 {
+private:
+    //! Frame word
+    uint32_t mFrameWord;
+    //! Following payload words
+    std::vector<uint32_t> mPayload;
+
+public:
+    //! Read-only reference to frame word
+    const uint32_t& frameWord;
+    //! Read-only reference to payload words
+    const std::vector<uint32_t>& payload;
+
     //! Byte position of the command in the frame word
     static const uint32_t COMMAND_POSITION = 24;
     //! Byte position of the recipient address in the frame word
@@ -18,70 +30,95 @@ struct MaplePacket
     //! Byte position of the payload length in the frame word
     static const uint32_t LEN_POSITION = 0;
 
-    //! Frame word
-    const uint32_t frameWord;
-    //! Following payload words
-    const std::vector<uint32_t> payload;
-
     //! Constructor 1 (frame word is built without sender address)
     //! @param[in] command  The command byte - should be a value in Command enumeration
     //! @param[in] recipientAddr  The address of the device receiving this command
-    //! @param[in] payload  The payload words to send
+    //! @param[in] payload  The payload words to set
     //! @param[in] len  Number of words in payload
     inline MaplePacket(uint8_t command,
                        uint8_t recipientAddr,
                        const uint32_t* payload,
                        uint8_t len):
-        frameWord((len << LEN_POSITION)
+        mFrameWord((len << LEN_POSITION)
                   | (recipientAddr << RECIPIENT_ADDR_POSITION)
                   | (command << COMMAND_POSITION)),
-        payload(payload, payload + len)
+        mPayload(payload, payload + len),
+        frameWord(mFrameWord),
+        payload(mPayload)
     {}
 
     //! Constructor 2 (frame word is built without sender address)
     //! @param[in] command  The command byte - should be a value in Command enumeration
     //! @param[in] recipientAddr  The address of the device receiving this command
-    //! @param[in] payload  The single payload word to send
+    //! @param[in] payload  The single payload word to set
     inline MaplePacket(uint8_t command, uint8_t recipientAddr, uint32_t payload):
-        frameWord((1 << LEN_POSITION)
+        mFrameWord((1 << LEN_POSITION)
                   | (recipientAddr << RECIPIENT_ADDR_POSITION)
                   | (command << COMMAND_POSITION)),
-        payload(&payload, &payload + 1)
+        mPayload(&payload, &payload + 1),
+        frameWord(mFrameWord),
+        payload(mPayload)
     {}
 
     //! Constructor 3
     //! @param[in] frameWord  The first word to put out on the bus
-    //! @param[in] payload  The payload words to send
+    //! @param[in] payload  The payload words to set
     //! @param[in] len  Number of words in payload
     inline MaplePacket(uint32_t frameWord, const uint32_t* payload, uint8_t len):
-        frameWord(frameWord),
-        payload(payload, payload + len)
+        mFrameWord(frameWord),
+        mPayload(payload, payload + len),
+        frameWord(mFrameWord),
+        payload(mPayload)
     {}
 
     //! Constructor 4
-    //! @param[in] words  All words to send
+    //! @param[in] words  All words to set
     //! @param[in] len  Number of words in words (must be at least 1 for frame word to be valid)
     inline MaplePacket(const uint32_t* words, uint8_t len):
-        frameWord(len > 0 ? words[0] : (COMMAND_INVALID << COMMAND_POSITION)),
-        payload(&words[1], &words[1] + (len > 1 ? (len - 1) : 0))
+        mFrameWord(len > 0 ? words[0] : (COMMAND_INVALID << COMMAND_POSITION)),
+        mPayload(&words[1], &words[1] + (len > 1 ? (len - 1) : 0)),
+        frameWord(mFrameWord),
+        payload(mPayload)
     {}
 
     //! Copy constructor
     inline MaplePacket(const MaplePacket& rhs) :
-        frameWord(rhs.frameWord),
-        payload(rhs.payload)
+        mFrameWord(rhs.mFrameWord),
+        mPayload(rhs.mPayload),
+        frameWord(mFrameWord),
+        payload(mPayload)
     {}
 
     //! Move constructor
     inline MaplePacket(MaplePacket&& rhs) :
-        frameWord(rhs.frameWord),
-        payload(std::move(rhs.payload))
+        mFrameWord(rhs.mFrameWord),
+        mPayload(std::move(rhs.mPayload)),
+        frameWord(mFrameWord),
+        payload(mPayload)
+    {}
+
+    //! Default constructor - makes an invalid packet
+    inline MaplePacket() :
+        mFrameWord(COMMAND_INVALID << COMMAND_POSITION),
+        mPayload(),
+        frameWord(mFrameWord),
+        payload(mPayload)
     {}
 
     //! == operator for this class
     inline bool operator==(const MaplePacket& rhs) const
     {
-        return frameWord == rhs.frameWord && payload == rhs.payload;
+        return mFrameWord == rhs.mFrameWord && mPayload == rhs.mPayload;
+    }
+
+    //! Sets packet contents from array
+    //! @param[in] words  All words to set
+    //! @param[in] len  Number of words in words (must be at least 1 for frame word to be valid)
+    inline void set(const uint32_t* words, uint8_t len)
+    {
+        mFrameWord = len > 0 ? words[0] : (COMMAND_INVALID << COMMAND_POSITION);
+        mPayload.clear();
+        mPayload.insert(mPayload.end(), &words[1], &words[1] + (len > 1 ? (len - 1) : 0));
     }
 
     //! @returns true iff frame word is valid
