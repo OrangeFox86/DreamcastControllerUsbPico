@@ -260,7 +260,7 @@ TEST_F(TransmissionSchedulePopTest, popTestNull)
     EXPECT_EQ((*iter++)->transmissionId, 2);
 }
 
-TEST_F(TransmissionSchedulePopTest, popTest1)
+TEST_F(TransmissionSchedulePopTest, popTestAutoReload1)
 {
     std::shared_ptr<const TransmittionScheduler::Transmission> item = scheduler.popNext(1);
     ASSERT_NE(item, nullptr);
@@ -277,6 +277,26 @@ TEST_F(TransmissionSchedulePopTest, popTest1)
     // This one should auto reload
     EXPECT_EQ((*iter)->transmissionId, 1);
     EXPECT_EQ((*iter)->nextTxTimeUs, 16002);
+}
+
+TEST_F(TransmissionSchedulePopTest, popTestAutoReload2)
+{
+    std::shared_ptr<const TransmittionScheduler::Transmission> item = scheduler.popNext(1);
+    ASSERT_NE(item, nullptr);
+    EXPECT_EQ(item->packet->getFrameCommand(), 0x11);
+    item = scheduler.popNext(16003);
+    ASSERT_NE(item, nullptr);
+    EXPECT_EQ(item->packet->getFrameCommand(), 0x22);
+
+    const std::list<std::shared_ptr<TransmittionScheduler::Transmission>> schedule = scheduler.getSchedule();
+
+    ASSERT_EQ(schedule.size(), 2);
+    std::list<std::shared_ptr<TransmittionScheduler::Transmission>>::const_iterator iter = schedule.cbegin();
+    EXPECT_EQ((*iter++)->transmissionId, 2);
+    // This one should auto reload
+    EXPECT_EQ((*iter)->transmissionId, 1);
+    // The one at 16002 was missed, so it should reload to the one after
+    EXPECT_EQ((*iter)->nextTxTimeUs, 32002);
 }
 
 class TransmissionScheduleCancelTest : public TransmissionSchedulePopTest

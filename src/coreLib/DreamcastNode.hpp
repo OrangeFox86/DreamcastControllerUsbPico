@@ -114,7 +114,7 @@ class DreamcastNode
 
     private:
         //! Default constructor - not implemented
-        DreamcastNode();
+        DreamcastNode() = delete;
 
     protected:
         //! Maximum number of players

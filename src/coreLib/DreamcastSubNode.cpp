@@ -23,8 +23,15 @@ bool DreamcastSubNode::handleData(uint8_t len,
     // If device info received, add the sub peripheral
     if (cmd == COMMAND_RESPONSE_DEVICE_INFO)
     {
-        peripheralFactory(payload[0]);
-        return (mPeripherals.size() > 0);
+        if (len > 0)
+        {
+            peripheralFactory(payload[0]);
+            return (mPeripherals.size() > 0);
+        }
+        else
+        {
+            return false;
+        }
     }
 
     // Pass data to sub peripheral
@@ -33,19 +40,23 @@ bool DreamcastSubNode::handleData(uint8_t len,
 
 void DreamcastSubNode::task(uint64_t currentTimeUs)
 {
-    if (mConnected && currentTimeUs >= mNextCheckTime)
+    if (mConnected)
     {
         // Request device info new device was newly attached
         if (mPeripherals.size() <= 0)
         {
-            MaplePacket packet(COMMAND_DEVICE_INFO_REQUEST,
-                               DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr),
-                               NULL,
-                               0);
-            // This will return false if bus is busy
-            if (mBus.write(packet, true))
+            if (currentTimeUs >= mNextCheckTime)
             {
-                mNextCheckTime = currentTimeUs + US_PER_CHECK;
+                MaplePacket packet(
+                    COMMAND_DEVICE_INFO_REQUEST,
+                    DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr),
+                    NULL,
+                    0);
+                // This will return false if bus is busy
+                if (mBus.write(packet, true))
+                {
+                    mNextCheckTime = currentTimeUs + US_PER_CHECK;
+                }
             }
         }
         // Handle operations for peripherals (run task() of all peripherals)

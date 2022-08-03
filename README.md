@@ -191,6 +191,8 @@ The following addresses are used for all components on the bus.
 
 *When the main peripheral sets its sender address, it also sets the bits corresponding to which sub-peripherals are attached. For example, if sub-peripherals 1 and 2 are attached, the main peripheral's sender address will be 0x23. This informs the host what else is attached.
 
+**TODO:** Add info about player index (upper 2 bits)
+
 #### Commands
 
 | Command Value | Description |

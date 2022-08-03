@@ -27,8 +27,15 @@ bool DreamcastMainNode::handleData(uint8_t len,
     // Handle device info from main peripheral
     if (cmd == COMMAND_RESPONSE_DEVICE_INFO)
     {
-        peripheralFactory(payload[0]);
-        return (mPeripherals.size() > 0);
+        if (len > 0)
+        {
+            peripheralFactory(payload[0]);
+            return (mPeripherals.size() > 0);
+        }
+        else
+        {
+            return false;
+        }
     }
 
     return handlePeripheralData(len, cmd, payload);

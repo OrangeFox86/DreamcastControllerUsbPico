@@ -30,7 +30,7 @@ class DreamcastSubNode : public DreamcastNode
         //! Called from the main node to update the connection state of peripherals on this sub node
         virtual void setConnected(bool connected);
 
-    private:
+    protected:
         //! Number of microseconds in between each info request when no peripheral is detected
         static const uint32_t US_PER_CHECK = 16000;
         //! The clock time of the next info request when no peripheral is detected
