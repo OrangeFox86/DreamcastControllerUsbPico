@@ -7,30 +7,33 @@ TransmittionScheduler::~TransmittionScheduler() {}
 
 uint32_t TransmittionScheduler::add(std::shared_ptr<Transmission> tx)
 {
-    std::list<std::shared_ptr<Transmission>>::const_iterator iter = mSchedule.cend();
-    if (iter != mSchedule.cbegin())
+    // Keep iterating until correct position is found
+    // For this to be the right position, it either needs to start and end before the next
+    // packet or starts before the next packet and is higher or same priority.
+    std::list<std::shared_ptr<Transmission>>::const_iterator iter = mSchedule.cbegin();
+    while(iter != mSchedule.cend())
     {
-        std::list<std::shared_ptr<Transmission>>::const_iterator iterNext = iter;
-        --iterNext;
-        // Keep iterating until correct position is found
-        // For this to be the right position, it either needs to start and end before the next
-        // packet or starts before the next packet and is higher or same priority.
-        while(iter != mSchedule.cbegin()
-              && ((*iterNext)->nextTxTimeUs > tx->getNextCompletionTime()
-                || (
-                    (*iterNext)->getNextCompletionTime() > tx->nextTxTimeUs
-                    && ((
-                            tx->nextTxTimeUs < (*iterNext)->nextTxTimeUs
-                            && (*iterNext)->priority == tx->priority
-                        )
-                        || (*iterNext)->priority > tx->priority)
-                )
-              )
-            )
+        // If this transmission starts before this element...
+        if (tx->nextTxTimeUs < (*iter)->nextTxTimeUs)
         {
-            --iter;
-            --iterNext;
+            // if this transmission also ends before this element starts
+            // or is of higher or same priority...
+            if (tx->getNextCompletionTime() < (*iter)->nextTxTimeUs
+                || tx->priority <= (*iter)->priority)
+            {
+                // Stop here
+                break;
+            }
         }
+        // If this transmission starts before this element completes
+        // and is higher priority...
+        else if (tx->nextTxTimeUs < (*iter)->getNextCompletionTime()
+                    && tx->priority < (*iter)->priority)
+        {
+            // Stop here
+            break;
+        }
+        ++iter;
     }
 
     mSchedule.insert(iter, tx);
@@ -87,7 +90,22 @@ std::shared_ptr<const TransmittionScheduler::Transmission> TransmittionScheduler
         }
         else
         {
-            // TODO: See if a item down the schedule could start now and end before mSchedule.begin()
+            // See if a item down the schedule could start now and end before mSchedule.begin().
+            // It's easier to check here than to rearrange schedule every time a higher priority
+            // transmission preempts a lower priority one.
+            std::list<std::shared_ptr<Transmission>>::iterator iter = mSchedule.begin();
+            ++iter;
+            while(iter != mSchedule.end())
+            {
+                if (time >= (*iter)->nextTxTimeUs
+                    && (*iter)->getNextCompletionTime() < (*mSchedule.begin())->nextTxTimeUs)
+                {
+                    item = (*iter);
+                    mSchedule.erase(iter);
+                    break;
+                }
+                ++iter;
+            }
         }
     }
     return item;

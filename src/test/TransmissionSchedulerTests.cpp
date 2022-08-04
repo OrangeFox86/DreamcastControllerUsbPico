@@ -203,10 +203,62 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary2)
     EXPECT_EQ((*iter++)->transmissionId, 2);
 }
 
-class TransmissionSchedulePopTest : public TransmissionScheduleTest
+TEST_F(TransmissionScheduleTest, multiAddBoundary3)
+{
+    uint8_t priority = 255;
+    uint64_t txTime = 1;
+    MaplePacket packet1(0x11, 0x01, 0x99887766);
+    bool expectResponse = true;
+    uint32_t expectedResponseNumPayloadWords = 10;
+    uint32_t autoRepeatUs = 0;
+    uint32_t readTimeoutUs = 8675309;
+    uint32_t id1 = scheduler.add(priority,
+                    txTime,
+                    packet1,
+                    expectResponse,
+                    expectedResponseNumPayloadWords,
+                    autoRepeatUs,
+                    readTimeoutUs);
+    EXPECT_EQ(id1, 0);
+
+    txTime = 2;
+    expectedResponseNumPayloadWords = 3; // 267 us
+    MaplePacket packet2(0x22, 0x02, 0x99887766);
+    uint32_t id2 = scheduler.add(priority,
+                    txTime,
+                    packet2,
+                    expectResponse,
+                    expectedResponseNumPayloadWords,
+                    autoRepeatUs,
+                    readTimeoutUs);
+    EXPECT_EQ(id2, 1);
+
+    priority = 0;
+    txTime = 2 + 300;
+    expectedResponseNumPayloadWords = 0;
+    MaplePacket packet3(0x33, 0x02, 0x99887766);
+    uint32_t id3 = scheduler.add(priority,
+                    txTime,
+                    packet3,
+                    expectResponse,
+                    expectedResponseNumPayloadWords,
+                    autoRepeatUs,
+                    readTimeoutUs);
+    EXPECT_EQ(id3, 2);
+
+    const std::list<std::shared_ptr<TransmittionScheduler::Transmission>> schedule = scheduler.getSchedule();
+
+    ASSERT_EQ(schedule.size(), 3);
+    std::list<std::shared_ptr<TransmittionScheduler::Transmission>>::const_iterator iter = schedule.cbegin();
+    EXPECT_EQ((*iter++)->transmissionId, 2);
+    EXPECT_EQ((*iter++)->transmissionId, 0);
+    EXPECT_EQ((*iter++)->transmissionId, 1);
+}
+
+class TransmissionSchedulePopTestA : public TransmissionScheduleTest
 {
     public:
-        TransmissionSchedulePopTest() {}
+        TransmissionSchedulePopTestA() {}
 
     protected:
         virtual void SetUp()
@@ -247,7 +299,7 @@ class TransmissionSchedulePopTest : public TransmissionScheduleTest
         }
 };
 
-TEST_F(TransmissionSchedulePopTest, popTestNull)
+TEST_F(TransmissionSchedulePopTestA, popTestNull)
 {
     EXPECT_EQ(scheduler.popNext(0), nullptr);
 
@@ -260,7 +312,7 @@ TEST_F(TransmissionSchedulePopTest, popTestNull)
     EXPECT_EQ((*iter++)->transmissionId, 2);
 }
 
-TEST_F(TransmissionSchedulePopTest, popTestAutoReload1)
+TEST_F(TransmissionSchedulePopTestA, popTestAutoReload1)
 {
     std::shared_ptr<const TransmittionScheduler::Transmission> item = scheduler.popNext(1);
     ASSERT_NE(item, nullptr);
@@ -279,7 +331,7 @@ TEST_F(TransmissionSchedulePopTest, popTestAutoReload1)
     EXPECT_EQ((*iter)->nextTxTimeUs, 16002);
 }
 
-TEST_F(TransmissionSchedulePopTest, popTestAutoReload2)
+TEST_F(TransmissionSchedulePopTestA, popTestAutoReload2)
 {
     std::shared_ptr<const TransmittionScheduler::Transmission> item = scheduler.popNext(1);
     ASSERT_NE(item, nullptr);
@@ -299,7 +351,62 @@ TEST_F(TransmissionSchedulePopTest, popTestAutoReload2)
     EXPECT_EQ((*iter)->nextTxTimeUs, 32002);
 }
 
-class TransmissionScheduleCancelTest : public TransmissionSchedulePopTest
+class TransmissionSchedulePopTestB : public TransmissionScheduleTest
+{
+    public:
+        TransmissionSchedulePopTestB() {}
+
+    protected:
+        virtual void SetUp()
+        {
+            uint8_t priority = 255;
+            uint64_t txTime = 1;
+            MaplePacket packet1(0x11, 0x01, 0x99887766);
+            bool expectResponse = true;
+            uint32_t expectedResponseNumPayloadWords = 10;
+            uint32_t autoRepeatUs = 0;
+            uint32_t readTimeoutUs = 8675309;
+            scheduler.add(priority,
+                          txTime,
+                          packet1,
+                          expectResponse,
+                          expectedResponseNumPayloadWords,
+                          autoRepeatUs,
+                          readTimeoutUs);
+            priority = 0;
+            txTime = 2 + 300;
+            expectedResponseNumPayloadWords = 0;
+            MaplePacket packet3(0x22, 0x02, 0x99887766);
+            scheduler.add(priority,
+                          txTime,
+                          packet3,
+                          expectResponse,
+                          expectedResponseNumPayloadWords,
+                          autoRepeatUs,
+                          readTimeoutUs);
+            priority = 255;
+            txTime = 2;
+            expectedResponseNumPayloadWords = 3; // 267 us
+            MaplePacket packet2(0x33, 0x02, 0x99887766);
+            scheduler.add(priority,
+                          txTime,
+                          packet2,
+                          expectResponse,
+                          expectedResponseNumPayloadWords,
+                          autoRepeatUs,
+                          readTimeoutUs);
+        }
+};
+
+TEST_F(TransmissionSchedulePopTestB, popTestAutoReload2)
+{
+    // Transmission 2 should be bumped up to be executed before 0 because 0 yeileded to 1
+    std::shared_ptr<const TransmittionScheduler::Transmission> item = scheduler.popNext(2);
+    ASSERT_NE(item, nullptr);
+    EXPECT_EQ(item->transmissionId, 2);
+}
+
+class TransmissionScheduleCancelTest : public TransmissionSchedulePopTestA
 {
     public:
         TransmissionScheduleCancelTest() {}
