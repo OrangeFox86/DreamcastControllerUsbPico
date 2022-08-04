@@ -12,7 +12,7 @@ public:
     struct Transmission
     {
         const uint32_t transmissionId;
-        const bool highPriority;
+        const uint8_t priority;
         const bool expectResponse;
         const uint32_t readTimeoutUs;
         const uint32_t autoRepeatUs;
@@ -21,7 +21,7 @@ public:
         const std::shared_ptr<MaplePacket> packet;
 
         Transmission(uint32_t transmissionId,
-                     bool highPriority,
+                     bool priority,
                      bool expectResponse,
                      uint32_t readTimeoutUs,
                      uint32_t autoRepeatUs,
@@ -29,7 +29,7 @@ public:
                      uint64_t nextTxTimeUs,
                      std::shared_ptr<MaplePacket> packet):
             transmissionId(transmissionId),
-            highPriority(highPriority),
+            priority(priority),
             expectResponse(expectResponse),
             readTimeoutUs(readTimeoutUs),
             autoRepeatUs(autoRepeatUs),
@@ -37,6 +37,11 @@ public:
             nextTxTimeUs(nextTxTimeUs),
             packet(packet)
         {}
+
+        uint64_t getNextCompletionTime()
+        {
+            return nextTxTimeUs + txDurationUs;
+        }
     };
 
 public:
@@ -47,7 +52,7 @@ public:
     virtual ~TransmittionScheduler();
 
     //! Add a transmission to the schedule
-    //! @param[in] highPritority  true iff this is a high priority transmission
+    //! @param[in] priority  priority of this transmission (0 is highest priority)
     //! @param[in] txTime  Time at which this should transmit in microseconds
     //! @param[in,out] packet  Packet data to send (internal data is moved upon calling this)
     //! @param[in] expectResponse  true iff a response is expected after transmission
@@ -55,7 +60,7 @@ public:
     //! @param[in] autoRepeatUs  How often to repeat this transmission in microseconds
     //! @param[in] readTimeoutUs  Maximum amount of time to wait for full packet to be received
     //! @returns transmission ID
-    uint32_t add(bool highPriority,
+    uint32_t add(uint8_t priority,
                  uint64_t txTime,
                  MaplePacket& packet,
                  bool expectResponse,

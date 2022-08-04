@@ -37,14 +37,14 @@ class TransmissionScheduleTest : public ::testing::Test
 TEST_F(TransmissionScheduleTest, multiAdd)
 {
     // 3
-    bool highPriority = false;
+    uint8_t priority = 255;
     uint64_t txTime = 123;
     MaplePacket packet1(0x55, 0xAA, 0x99887766);
     bool expectResponse = true;
     uint32_t expectedResponseNumPayloadWords = 3;
     uint32_t autoRepeatUs = 16000;
     uint32_t readTimeoutUs = 8675309;
-    uint32_t id1 = scheduler.add(highPriority,
+    uint32_t id1 = scheduler.add(priority,
                                  txTime,
                                  packet1,
                                  expectResponse,
@@ -56,7 +56,7 @@ TEST_F(TransmissionScheduleTest, multiAdd)
     // 4
     txTime = 124;
     MaplePacket packet2(0x01, 0x10, 0x11223344);
-    uint32_t id2 = scheduler.add(highPriority,
+    uint32_t id2 = scheduler.add(priority,
                                  txTime,
                                  packet2,
                                  expectResponse,
@@ -68,10 +68,10 @@ TEST_F(TransmissionScheduleTest, multiAdd)
     // 1
     // Even though this is scheduled later, it is scheduled to run during all other packets here.
     // Since it is high priority, it takes precidence.
-    highPriority = true;
+    priority = 0;
     txTime = 230;
     MaplePacket packet3(0x12, 0x34, 0x56789012);
-    uint32_t id3 = scheduler.add(highPriority,
+    uint32_t id3 = scheduler.add(priority,
                                  txTime,
                                  packet3,
                                  expectResponse,
@@ -81,10 +81,10 @@ TEST_F(TransmissionScheduleTest, multiAdd)
     EXPECT_EQ(id3, 2);
 
     // 2
-    highPriority = false;
+    priority = 255;
     txTime = 22;
     MaplePacket packet4(0x35, 0x79, 0x11111111);
-    uint32_t id4 = scheduler.add(highPriority,
+    uint32_t id4 = scheduler.add(priority,
                                  txTime,
                                  packet4,
                                  expectResponse,
@@ -105,14 +105,14 @@ TEST_F(TransmissionScheduleTest, multiAdd)
 
 TEST_F(TransmissionScheduleTest, multiAddBoundary1)
 {
-    bool highPriority = false;
+    uint8_t priority = 255;
     uint64_t txTime = 123;
     MaplePacket packet1(0x11, 0xAA, 0x99887766);
     bool expectResponse = true;
     uint32_t expectedResponseNumPayloadWords = 3; // 267 us
     uint32_t autoRepeatUs = 16000;
     uint32_t readTimeoutUs = 8675309;
-    uint32_t id1 = scheduler.add(highPriority,
+    uint32_t id1 = scheduler.add(priority,
                                  txTime,
                                  packet1,
                                  expectResponse,
@@ -123,7 +123,7 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary1)
 
     txTime = 124;
     MaplePacket packet2(0x33, 0xAA, 0x99887766);
-    uint32_t id2 = scheduler.add(highPriority,
+    uint32_t id2 = scheduler.add(priority,
                                  txTime,
                                  packet2,
                                  expectResponse,
@@ -132,10 +132,10 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary1)
                                  readTimeoutUs);
     EXPECT_EQ(id2, 1);
 
-    highPriority = true;
-    txTime = 123 + 267 + 1;
+    priority = 0;
+    txTime = 123 + 267;
     MaplePacket packet3(0x22, 0xAA, 0x99887766);
-    uint32_t id3 = scheduler.add(highPriority,
+    uint32_t id3 = scheduler.add(priority,
                                  txTime,
                                  packet3,
                                  expectResponse,
@@ -155,14 +155,14 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary1)
 
 TEST_F(TransmissionScheduleTest, multiAddBoundary2)
 {
-    bool highPriority = true;
+    bool priority = 0;
     uint64_t txTime = 123 + 267 + 1;
     MaplePacket packet1(0x22, 0xAA, 0x99887766);
     bool expectResponse = true;
     uint32_t expectedResponseNumPayloadWords = 3; // 267 us
     uint32_t autoRepeatUs = 16000;
     uint32_t readTimeoutUs = 8675309;
-    uint32_t id1 = scheduler.add(highPriority,
+    uint32_t id1 = scheduler.add(priority,
                                  txTime,
                                  packet1,
                                  expectResponse,
@@ -171,10 +171,10 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary2)
                                  readTimeoutUs);
     EXPECT_EQ(id1, 0);
 
-    highPriority = false;
+    priority = 255;
     txTime = 123;
     MaplePacket packet2(0x11, 0xAA, 0x99887766);
-    uint32_t id2 = scheduler.add(highPriority,
+    uint32_t id2 = scheduler.add(priority,
                                  txTime,
                                  packet2,
                                  expectResponse,
@@ -185,7 +185,7 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary2)
 
     txTime = 124;
     MaplePacket packet3(0x33, 0xAA, 0x99887766);
-    uint32_t id3 = scheduler.add(highPriority,
+    uint32_t id3 = scheduler.add(priority,
                                  txTime,
                                  packet3,
                                  expectResponse,
@@ -211,14 +211,14 @@ class TransmissionSchedulePopTest : public TransmissionScheduleTest
     protected:
         virtual void SetUp()
         {
-            bool highPriority = false;
+            uint8_t priority = 255;
             uint64_t txTime = 1;
             MaplePacket packet1(0x11, 0x01, 0x99887766);
             bool expectResponse = true;
             uint32_t expectedResponseNumPayloadWords = 0;
             uint32_t autoRepeatUs = 0;
             uint32_t readTimeoutUs = 8675309;
-            scheduler.add(highPriority,
+            scheduler.add(priority,
                           txTime,
                           packet1,
                           expectResponse,
@@ -228,7 +228,7 @@ class TransmissionSchedulePopTest : public TransmissionScheduleTest
             txTime = 2;
             autoRepeatUs = 16000;
             MaplePacket packet2(0x22, 0x02, 0x99887766);
-            scheduler.add(highPriority,
+            scheduler.add(priority,
                           txTime,
                           packet2,
                           expectResponse,
@@ -237,7 +237,7 @@ class TransmissionSchedulePopTest : public TransmissionScheduleTest
                           readTimeoutUs);
             txTime = 3;
             MaplePacket packet3(0x33, 0x02, 0x99887766);
-            scheduler.add(highPriority,
+            scheduler.add(priority,
                           txTime,
                           packet3,
                           expectResponse,
