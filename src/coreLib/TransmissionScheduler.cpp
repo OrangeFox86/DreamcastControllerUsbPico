@@ -1,11 +1,14 @@
 #include "TransmissionScheduler.hpp"
 #include "utils.h"
 
-TransmittionScheduler::TransmittionScheduler(): mNextId(0), mSchedule() {}
+// STL
+#include <algorithm>
 
-TransmittionScheduler::~TransmittionScheduler() {}
+TransmissionScheduler::TransmissionScheduler(): mNextId(0), mSchedule() {}
 
-uint32_t TransmittionScheduler::add(std::shared_ptr<Transmission> tx)
+TransmissionScheduler::~TransmissionScheduler() {}
+
+uint32_t TransmissionScheduler::add(std::shared_ptr<Transmission> tx)
 {
     // Keep iterating until correct position is found
     // For this to be the right position, it either needs to start and end before the next
@@ -40,7 +43,7 @@ uint32_t TransmittionScheduler::add(std::shared_ptr<Transmission> tx)
     return tx->transmissionId;
 }
 
-uint32_t TransmittionScheduler::add(uint8_t priority,
+uint32_t TransmissionScheduler::add(uint8_t priority,
                                     uint64_t txTime,
                                     MaplePacket& packet,
                                     bool expectResponse,
@@ -66,7 +69,7 @@ uint32_t TransmittionScheduler::add(uint8_t priority,
     return add(tx);
 }
 
-std::shared_ptr<const TransmittionScheduler::Transmission> TransmittionScheduler::popNext(uint64_t time)
+std::shared_ptr<const TransmissionScheduler::Transmission> TransmissionScheduler::popNext(uint64_t time)
 {
     std::shared_ptr<Transmission> item = nullptr;
     if (!mSchedule.empty())
@@ -94,16 +97,23 @@ std::shared_ptr<const TransmittionScheduler::Transmission> TransmittionScheduler
             // It's easier to check here than to rearrange schedule every time a higher priority
             // transmission preempts a lower priority one.
             std::list<std::shared_ptr<Transmission>>::iterator iter = mSchedule.begin();
+            std::list<uint8_t> recipientAddrs;
+            recipientAddrs.push_back((*iter)->packet->getFrameRecipientAddr());
             ++iter;
             while(iter != mSchedule.end())
             {
                 if (time >= (*iter)->nextTxTimeUs
-                    && (*iter)->getNextCompletionTime() < (*mSchedule.begin())->nextTxTimeUs)
+                    && (*iter)->getNextCompletionTime() < (*mSchedule.begin())->nextTxTimeUs
+                    // Ensure the order is preserved for each recipient address
+                    && std::find(recipientAddrs.begin(),
+                                 recipientAddrs.end(),
+                                 (*iter)->packet->getFrameRecipientAddr()) == recipientAddrs.end())
                 {
                     item = (*iter);
                     mSchedule.erase(iter);
                     break;
                 }
+                recipientAddrs.push_back((*iter)->packet->getFrameRecipientAddr());
                 ++iter;
             }
         }
@@ -111,7 +121,7 @@ std::shared_ptr<const TransmittionScheduler::Transmission> TransmittionScheduler
     return item;
 }
 
-uint32_t TransmittionScheduler::cancelById(uint32_t transmissionId)
+uint32_t TransmissionScheduler::cancelById(uint32_t transmissionId)
 {
     uint32_t n = 0;
     std::list<std::shared_ptr<Transmission>>::iterator iter = mSchedule.begin();
@@ -130,7 +140,7 @@ uint32_t TransmittionScheduler::cancelById(uint32_t transmissionId)
     return n;
 }
 
-uint32_t TransmittionScheduler::cancelByRecipient(uint8_t recipientAddr)
+uint32_t TransmissionScheduler::cancelByRecipient(uint8_t recipientAddr)
 {
     uint32_t n = 0;
     std::list<std::shared_ptr<Transmission>>::iterator iter = mSchedule.begin();
@@ -149,7 +159,7 @@ uint32_t TransmittionScheduler::cancelByRecipient(uint8_t recipientAddr)
     return n;
 }
 
-uint32_t TransmittionScheduler::cancelAll()
+uint32_t TransmissionScheduler::cancelAll()
 {
     uint32_t n = mSchedule.size();
     mSchedule.clear();

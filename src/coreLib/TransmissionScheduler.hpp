@@ -5,7 +5,7 @@
 #include <list>
 #include <memory>
 
-class TransmittionScheduler
+class TransmissionScheduler
 {
 public:
     //! Transmission definition
@@ -46,10 +46,10 @@ public:
 
 public:
     //! Default constructor
-    TransmittionScheduler();
+    TransmissionScheduler();
 
     //! Virtual destructor
-    virtual ~TransmittionScheduler();
+    virtual ~TransmissionScheduler();
 
     //! Add a transmission to the schedule
     //! @param[in] priority  priority of this transmission (0 is highest priority)
