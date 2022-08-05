@@ -72,24 +72,13 @@ uint32_t TransmissionScheduler::add(uint8_t priority,
 std::shared_ptr<const TransmissionScheduler::Transmission> TransmissionScheduler::popNext(uint64_t time)
 {
     std::shared_ptr<Transmission> item = nullptr;
+
     if (!mSchedule.empty())
     {
         if (time >= (*mSchedule.begin())->nextTxTimeUs)
         {
             item = (*mSchedule.begin());
             mSchedule.erase(mSchedule.begin());
-            if (item->autoRepeatUs > 0)
-            {
-                // Determine how many intervals to add in cast this auto reload packet has overflowed
-                uint32_t n = INT_DIVIDE_CEILING(time - item->nextTxTimeUs, item->autoRepeatUs);
-                if (n == 0)
-                {
-                    n = 1;
-                }
-                // Reinsert it back into the schedule with a new time
-                item->nextTxTimeUs += (item->autoRepeatUs * n);
-                add(item);
-            }
         }
         else
         {
@@ -117,7 +106,21 @@ std::shared_ptr<const TransmissionScheduler::Transmission> TransmissionScheduler
                 ++iter;
             }
         }
+
+        if (item != nullptr && item->autoRepeatUs > 0)
+        {
+            // Determine how many intervals to add in cast this auto reload packet has overflowed
+            uint32_t n = INT_DIVIDE_CEILING(time - item->nextTxTimeUs, item->autoRepeatUs);
+            if (n == 0)
+            {
+                n = 1;
+            }
+            // Reinsert it back into the schedule with a new time
+            item->nextTxTimeUs += (item->autoRepeatUs * n);
+            add(item);
+        }
     }
+
     return item;
 }
 

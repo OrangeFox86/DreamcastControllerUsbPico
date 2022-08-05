@@ -18,7 +18,7 @@ public:
         const uint32_t autoRepeatUs;
         const uint32_t txDurationUs;
         uint64_t nextTxTimeUs;
-        const std::shared_ptr<MaplePacket> packet;
+        std::shared_ptr<const MaplePacket> packet;
 
         Transmission(uint32_t transmissionId,
                      bool priority,

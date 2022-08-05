@@ -388,6 +388,7 @@ class TransmissionSchedulePopTestB : public TransmissionScheduleTest
             txTime = 2;
             expectedResponseNumPayloadWords = 3; // 267 us
             MaplePacket packet2(0x33, 0x02, 0x99887766);
+            autoRepeatUs = 1111;
             scheduler.add(priority,
                           txTime,
                           packet2,
@@ -404,6 +405,11 @@ TEST_F(TransmissionSchedulePopTestB, popTestAutoReload2)
     std::shared_ptr<const TransmissionScheduler::Transmission> item = scheduler.popNext(2);
     ASSERT_NE(item, nullptr);
     EXPECT_EQ(item->transmissionId, 2);
+    EXPECT_EQ(item->nextTxTimeUs, 1113);
+
+    // Transmission should auto reload
+    const std::list<std::shared_ptr<TransmissionScheduler::Transmission>> schedule = scheduler.getSchedule();
+    ASSERT_EQ(schedule.size(), 3);
 }
 
 class TransmissionScheduleCancelTest : public TransmissionSchedulePopTestA
