@@ -60,7 +60,7 @@ git submodule update --recursive --init
 
 After build completes, the binary should be located at `dist/main.uf2`.
 
-This project may be opened in vscode. In vscode, the default shortcut `ctrl+shift+b` will build the project. The default shortcut `F5` will run tests with gdb for local debugging. Open the terminal tab after executing tests with debugging to see the results.
+This project may be opened in vscode. In vscode when C++ extension is installed, the default shortcut `ctrl+shift+b` will build the project. The default shortcut `F5` will run tests with gdb for local debugging. Open the terminal tab after executing tests with debugging to see the results.
 
 # Maple Bus Implementation
 
