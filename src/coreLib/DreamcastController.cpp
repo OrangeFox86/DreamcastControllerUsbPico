@@ -3,14 +3,16 @@
 #include <string.h>
 
 
-DreamcastController::DreamcastController(uint8_t addr, MapleBusInterface& bus, PlayerData playerData) :
-    DreamcastPeripheral(addr, bus, playerData.playerIndex),
+DreamcastController::DreamcastController(uint8_t addr, PrioritizedTxScheduler& scheduler, PlayerData playerData) :
+    DreamcastPeripheral(addr, scheduler, playerData.playerIndex),
     mGamepad(playerData.gamepad),
     mNextCheckTime(0),
     mWaitingForData(false),
     mNoDataCount(0)
 {
     mGamepad.controllerConnected();
+    MaplePacket packet(COMMAND_GET_CONDITION, getRecipientAddress(), DEVICE_FN_CONTROLLER);
+    mPrioritizedTxScheduler.add(0, 0, packet, true, 3, US_PER_CHECK);
 }
 
 DreamcastController::~DreamcastController()
@@ -56,13 +58,8 @@ bool DreamcastController::task(uint64_t currentTimeUs)
 
         if (connected)
         {
-            // Get controller status
-            MaplePacket packet(COMMAND_GET_CONDITION, getRecipientAddress(), DEVICE_FN_CONTROLLER);
-            if (mBus.write(packet, true))
-            {
-                mWaitingForData = true;
-                mNextCheckTime = currentTimeUs + US_PER_CHECK;
-            }
+            mWaitingForData = true;
+            mNextCheckTime = currentTimeUs + US_PER_CHECK;
         }
     }
     return connected;

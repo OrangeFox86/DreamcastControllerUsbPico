@@ -1,7 +1,7 @@
 #include "TransmissionTimeliner.hpp"
 #include <assert.h>
 
-TransmissionTimeliner::TransmissionTimeliner(MapleBusInterface& bus, TransmissionScheduler& schedule):
+TransmissionTimeliner::TransmissionTimeliner(MapleBusInterface& bus, PrioritizedTxScheduler& schedule):
     mBus(bus), mSchedule(schedule), mNextTx(nullptr)
 {}
 
@@ -21,10 +21,10 @@ std::shared_ptr<const MaplePacket> TransmissionTimeliner::task(uint64_t time)
 
     if (mNextTx != nullptr)
     {
-        pkt = mNextTx->packet;
-        assert(pkt->isValid());
-        if (mBus.write(*pkt, mNextTx->expectResponse, mNextTx->readTimeoutUs))
+        assert(mNextTx->packet->isValid());
+        if (mBus.write(*mNextTx->packet, mNextTx->expectResponse, mNextTx->readTimeoutUs))
         {
+            pkt = mNextTx->packet;
             mNextTx = nullptr;
         }
     }

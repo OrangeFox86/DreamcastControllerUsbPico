@@ -5,14 +5,17 @@
 #include <list>
 #include <memory>
 
-class TransmissionScheduler
+class PrioritizedTxScheduler
 {
 public:
     //! Transmission definition
     struct Transmission
     {
+        //! Unique ID of this transmission
         const uint32_t transmissionId;
+        //! Priority where 0 is highest
         const uint8_t priority;
+        //! Set to true iff a response is expected
         const bool expectResponse;
         const uint32_t readTimeoutUs;
         const uint32_t autoRepeatUs;
@@ -38,6 +41,7 @@ public:
             packet(packet)
         {}
 
+        //! @returns the estimated completion time of this transmission
         uint64_t getNextCompletionTime()
         {
             return nextTxTimeUs + txDurationUs;
@@ -46,10 +50,10 @@ public:
 
 public:
     //! Default constructor
-    TransmissionScheduler();
+    PrioritizedTxScheduler();
 
     //! Virtual destructor
-    virtual ~TransmissionScheduler();
+    virtual ~PrioritizedTxScheduler();
 
     //! Add a transmission to the schedule
     //! @param[in] priority  priority of this transmission (0 is highest priority)

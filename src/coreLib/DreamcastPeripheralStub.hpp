@@ -2,21 +2,19 @@
 
 #include "DreamcastPeripheral.hpp"
 #include "MapleBusInterface.hpp"
-#include "DreamcastControllerObserver.hpp"
 #include "PlayerData.hpp"
 
-//! Handles communication with the Dreamcast controller peripheral
-class DreamcastController : public DreamcastPeripheral
+class DreamcastPeripheralStub : public DreamcastPeripheral
 {
     public:
         //! Constructor
         //! @param[in] addr  This peripheral's address
-        //! @param[in] scheduler  The transmission scheduler this peripheral is to add to
+        //! @param[in] bus  The bus this controller is connected to
         //! @param[in] playerData  Data tied to player which controls this controller
-        DreamcastController(uint8_t addr, PrioritizedTxScheduler& scheduler, PlayerData playerData);
+        DreamcastPeripheralStub(uint8_t addr, MapleBusInterface& bus, PlayerData playerData);
 
         //! Virtual destructor
-        virtual ~DreamcastController();
+        virtual ~DreamcastPeripheralStub();
 
         //! Inherited from DreamcastPeripheral
         virtual bool handleData(uint8_t len,
@@ -32,8 +30,6 @@ class DreamcastController : public DreamcastPeripheral
         static const uint32_t NO_DATA_DISCONNECT_COUNT = 5;
         //! Time between each controller state poll (in microseconds)
         static const uint32_t US_PER_CHECK = 16000;
-        //! The gamepad to write button presses to
-        DreamcastControllerObserver& mGamepad;
         //! Time which the next controller state poll will occur
         uint64_t mNextCheckTime;
         //! True iff the controller is waiting for data

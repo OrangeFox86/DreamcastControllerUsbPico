@@ -11,9 +11,9 @@ class DreamcastScreen : public DreamcastPeripheral
     public:
         //! Constructor
         //! @param[in] addr  This peripheral's address
-        //! @param[in] bus  The bus this screen is connected to
+        //! @param[in] scheduler  The transmission scheduler this peripheral is to add to
         //! @param[in] playerData  Data tied to player which controls this screen
-        DreamcastScreen(uint8_t addr, MapleBusInterface& bus, PlayerData playerData);
+        DreamcastScreen(uint8_t addr, PrioritizedTxScheduler& scheduler, PlayerData playerData);
 
         //! Virtual destructor
         virtual ~DreamcastScreen();
@@ -38,8 +38,11 @@ class DreamcastScreen : public DreamcastPeripheral
         bool mWaitingForData;
         //! Number of consecutive times no data was received
         uint32_t mNoDataCount;
-        //! Initialized to true and set to false once the initial write is performed
-        bool mFirstWrite;
+        //! Initialized to true and set to true when write needs to be made even if screen hasn't 
+        //! been updated
+        bool mUpdateRequired;
         //! Reference to screen data which is externally modified in internally read
         ScreenData& mScreenData;
+        //! Transmission ID of the last screen
+        uint32_t mTransmissionId;
 };

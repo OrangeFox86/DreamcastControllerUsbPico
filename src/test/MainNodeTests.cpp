@@ -22,8 +22,8 @@ using ::testing::DoAll;
 class MockedDreamcastSubNode : public DreamcastSubNode
 {
     public:
-        MockedDreamcastSubNode(uint8_t addr, MapleBusInterface& bus, PlayerData playerData) :
-            DreamcastSubNode(addr, bus, playerData)
+        MockedDreamcastSubNode(uint8_t addr, std::shared_ptr<PrioritizedTxScheduler> scheduler, PlayerData playerData) :
+            DreamcastSubNode(addr, scheduler, playerData)
         {}
 
         MOCK_METHOD(bool,

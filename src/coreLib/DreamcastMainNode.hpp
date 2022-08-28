@@ -4,6 +4,8 @@
 #include "DreamcastSubNode.hpp"
 #include "MapleBusInterface.hpp"
 #include "DreamcastPeripheral.hpp"
+#include "PrioritizedTxScheduler.hpp"
+#include "TransmissionTimeliner.hpp"
 
 #include <memory>
 #include <vector>
@@ -30,13 +32,23 @@ class DreamcastMainNode : public DreamcastNode
                                 uint8_t cmd,
                                 const uint32_t *payload) final;
 
+    private:
+        //! Adds an auto reload info request to the transmission schedule
+        void addInfoRequestToSchedule();
+
     public:
         //! Number of microseconds in between each info request when no peripheral is detected
         static const uint32_t US_PER_CHECK = 16000;
+        //! Main node has highest priority
+        static const uint8_t MY_TRANSMISSION_PRIORITY = 0;
 
     protected:
-        //! The clock time of the next info request when no peripheral is detected
-        uint64_t mNextCheckTime;
+        //! The bus on which this node communicates
+        MapleBusInterface& mBus;
         //! The sub nodes under this node
         std::vector<std::shared_ptr<DreamcastSubNode>> mSubNodes;
+        //! Executes transmissions from the schedule
+        TransmissionTimeliner mTransmissionTimeliner;
+        //! ID of the device info request auto reload transmission this object added to the schedule
+        int64_t mScheduleId;
 };

@@ -22,8 +22,8 @@ using ::testing::DoAll;
 class DreamcastSubNodeOverride : public DreamcastSubNode
 {
     public:
-        DreamcastSubNodeOverride(uint8_t addr, MapleBusInterface& bus, PlayerData playerData) :
-            DreamcastSubNode(addr, bus, playerData)
+        DreamcastSubNodeOverride(uint8_t addr, std::shared_ptr<PrioritizedTxScheduler> scheduler, PlayerData playerData) :
+            DreamcastSubNode(addr, scheduler, playerData)
         {
         }
 
@@ -37,12 +37,6 @@ class DreamcastSubNodeOverride : public DreamcastSubNode
             mPeripherals = mPeripheralsToAdd;
             mockMethodPeripheralFactory(functionCode);
         }
-
-        //! Allows the test to check the value of mNextCheckTime
-        uint64_t getNextCheckTime() {return mNextCheckTime;}
-
-        //! Allows the test to initialize the value of mNextCheckTime
-        void setNextCheckTime(uint64_t t) {mNextCheckTime = t;}
 
         //! Allows the test to check what peripherals the node has
         std::vector<std::shared_ptr<DreamcastPeripheral>>& getPeripherals()

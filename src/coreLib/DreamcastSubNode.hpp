@@ -8,9 +8,11 @@ class DreamcastSubNode : public DreamcastNode
     public:
         //! Constructor
         //! @param[in] addr  The address of this sub node
-        //! @param[in] bus  The bus on which this node communicates
+        //! @param[in] scheduler  The transmission scheduler this peripheral is to add to
         //! @param[in] playerData  The player data passed to any connected peripheral
-        DreamcastSubNode(uint8_t addr, MapleBusInterface& bus, PlayerData playerData);
+        DreamcastSubNode(uint8_t addr,
+                         std::shared_ptr<PrioritizedTxScheduler> scheduler,
+                         PlayerData playerData);
 
         //! Copy constructor
         DreamcastSubNode(const DreamcastSubNode& rhs);
@@ -33,9 +35,11 @@ class DreamcastSubNode : public DreamcastNode
     protected:
         //! Number of microseconds in between each info request when no peripheral is detected
         static const uint32_t US_PER_CHECK = 16000;
-        //! The clock time of the next info request when no peripheral is detected
-        uint64_t mNextCheckTime;
+        //! Sub node has priority 1 (1 below priority 0)
+        static const uint8_t MY_TRANSMISSION_PRIORITY = 1;
         //! Detected peripheral connection state
         bool mConnected;
+        //! ID of the device info request auto reload transmission this object added to the schedule
+        int64_t mScheduleId;
 
 };
