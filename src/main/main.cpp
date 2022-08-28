@@ -93,6 +93,10 @@ int main()
 
     board_init();
 
+#if SHOW_DEBUG_MESSAGES
+    stdio_init_all();
+#endif
+
     multicore_launch_core1(core1);
 
     set_usb_devices(devices, sizeof(devices) / sizeof(devices[1]));

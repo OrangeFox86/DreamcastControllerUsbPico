@@ -114,6 +114,7 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
         else
         {
             // Main peripheral disconnected
+            mPrioritizedTxScheduler->cancelByRecipient(getRecipientAddress());
             for (std::vector<std::shared_ptr<DreamcastSubNode>>::iterator iter = mSubNodes.begin();
                  iter != mSubNodes.end();
                  ++iter)

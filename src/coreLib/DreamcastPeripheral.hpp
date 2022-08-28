@@ -17,10 +17,7 @@ class DreamcastPeripheral
 
         //! Virtual destructor
         virtual ~DreamcastPeripheral() 
-        {
-            // Make sure nothing is in the schedule for this recipient
-            mPrioritizedTxScheduler.cancelByRecipient(getRecipientAddress());
-        }
+        {}
 
         //! Handles incoming data destined for this device
         //! @param[in] len  Number of words in payload

@@ -1,6 +1,6 @@
 #include "DreamcastSubNode.hpp"
 #include "dreamcast_constants.h"
-
+#include "utils.h"
 
 DreamcastSubNode::DreamcastSubNode(uint8_t addr,
                                    std::shared_ptr<PrioritizedTxScheduler> scheduler,
@@ -64,8 +64,7 @@ void DreamcastSubNode::task(uint64_t currentTimeUs)
 
 void DreamcastSubNode::mainPeripheralDisconnected()
 {
-    mPeripherals.clear();
-    mPrioritizedTxScheduler->cancelByRecipient(getRecipientAddress());
+    setConnected(false);
 }
 
 void DreamcastSubNode::setConnected(bool connected)
@@ -77,6 +76,7 @@ void DreamcastSubNode::setConnected(bool connected)
         mPrioritizedTxScheduler->cancelByRecipient(getRecipientAddress());
         if (mConnected)
         {
+            DEBUG_PRINT("sub node 0x%02hX connected\n", getRecipientAddress());
             // Keep asking for info until valid response is heard
             MaplePacket packet(
                 COMMAND_DEVICE_INFO_REQUEST,
@@ -90,6 +90,10 @@ void DreamcastSubNode::setConnected(bool connected)
                 true,
                 EXPECTED_DEVICE_INFO_PAYLOAD_WORDS,
                 US_PER_CHECK);
+        }
+        else
+        {
+            DEBUG_PRINT("sub node 0x%02hX disconnected\n", getRecipientAddress());
         }
     }
 }
