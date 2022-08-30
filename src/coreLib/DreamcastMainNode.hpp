@@ -4,7 +4,6 @@
 #include "DreamcastSubNode.hpp"
 #include "MapleBusInterface.hpp"
 #include "DreamcastPeripheral.hpp"
-#include "PrioritizedTxScheduler.hpp"
 #include "TransmissionTimeliner.hpp"
 
 #include <memory>
@@ -19,7 +18,9 @@ class DreamcastMainNode : public DreamcastNode
         //! Constructor
         //! @param[in] bus  The bus on which this node communicates
         //! @param[in] playerData  The player data passed to any connected peripheral
-        DreamcastMainNode(MapleBusInterface& bus, PlayerData playerData);
+        DreamcastMainNode(MapleBusInterface& bus,
+                          PlayerData playerData,
+                          std::shared_ptr<PrioritizedTxScheduler> prioritizedTxScheduler);
 
         //! Virtual destructor
         virtual ~DreamcastMainNode();
@@ -40,7 +41,9 @@ class DreamcastMainNode : public DreamcastNode
         //! Number of microseconds in between each info request when no peripheral is detected
         static const uint32_t US_PER_CHECK = 16000;
         //! Main node has highest priority
-        static const uint8_t MY_TRANSMISSION_PRIORITY = 0;
+        static const uint8_t MAIN_TRANSMISSION_PRIORITY = 0;
+        //! Sub nodes have lower priority
+        static const uint8_t SUB_TRANSMISSION_PRIORITY = 1;
 
     protected:
         //! The bus on which this node communicates

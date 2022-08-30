@@ -6,7 +6,7 @@
 #include "PlayerData.hpp"
 #include "DreamcastController.hpp"
 #include "DreamcastScreen.hpp"
-#include "PrioritizedTxScheduler.hpp"
+#include "EndpointTxSchedulerInterface.hpp"
 
 #include <stdint.h>
 #include <vector>
@@ -38,23 +38,15 @@ class DreamcastNode
     protected:
         //! Main constructor with scheduler
         DreamcastNode(uint8_t addr,
-                      std::shared_ptr<PrioritizedTxScheduler> scheduler,
+                      std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                       PlayerData playerData) :
-            mAddr(addr), mPrioritizedTxScheduler(scheduler), mPlayerData(playerData), mPeripherals()
-        {}
-
-        //! Main constructor without scheduler
-        DreamcastNode(uint8_t addr, PlayerData playerData) :
-            mAddr(addr),
-            mPrioritizedTxScheduler(std::make_shared<PrioritizedTxScheduler>()),
-            mPlayerData(playerData),
-            mPeripherals()
+            mAddr(addr), mEndpointTxScheduler(scheduler), mPlayerData(playerData), mPeripherals()
         {}
 
         //! Copy constructor
         DreamcastNode(const DreamcastNode& rhs) :
             mAddr(rhs.mAddr),
-            mPrioritizedTxScheduler(rhs.mPrioritizedTxScheduler),
+            mEndpointTxScheduler(rhs.mEndpointTxScheduler),
             mPlayerData(rhs.mPlayerData),
             mPeripherals()
         {
@@ -113,11 +105,11 @@ class DreamcastNode
 
             if (functionCode & DEVICE_FN_CONTROLLER)
             {
-                mPeripherals.push_back(std::make_shared<DreamcastController>(mAddr, *mPrioritizedTxScheduler, mPlayerData));
+                mPeripherals.push_back(std::make_shared<DreamcastController>(mAddr, mEndpointTxScheduler, mPlayerData));
             }
             else if (functionCode & DEVICE_FN_LCD)
             {
-                mPeripherals.push_back(std::make_shared<DreamcastScreen>(mAddr, *mPrioritizedTxScheduler, mPlayerData));
+                mPeripherals.push_back(std::make_shared<DreamcastScreen>(mAddr, mEndpointTxScheduler, mPlayerData));
             }
             // TODO: handle other peripherals here
             // TODO: add a stub peripheral if none were created
@@ -139,7 +131,7 @@ class DreamcastNode
         //! Address of this node
         const uint8_t mAddr;
         //! Keeps all scheduled transmissions for my bus
-        const std::shared_ptr<PrioritizedTxScheduler> mPrioritizedTxScheduler;
+        const std::shared_ptr<EndpointTxSchedulerInterface> mEndpointTxScheduler;
         //! Player data on this node
         PlayerData mPlayerData;
         //! The connected peripherals addressed to this node (usually 0 to 2 items)

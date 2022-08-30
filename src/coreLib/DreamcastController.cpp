@@ -3,7 +3,7 @@
 #include <string.h>
 
 
-DreamcastController::DreamcastController(uint8_t addr, PrioritizedTxScheduler& scheduler, PlayerData playerData) :
+DreamcastController::DreamcastController(uint8_t addr, std::shared_ptr<EndpointTxSchedulerInterface> scheduler, PlayerData playerData) :
     DreamcastPeripheral(addr, scheduler, playerData.playerIndex),
     mGamepad(playerData.gamepad),
     mNextCheckTime(0),
@@ -12,7 +12,7 @@ DreamcastController::DreamcastController(uint8_t addr, PrioritizedTxScheduler& s
 {
     mGamepad.controllerConnected();
     MaplePacket packet(COMMAND_GET_CONDITION, getRecipientAddress(), DEVICE_FN_CONTROLLER);
-    mPrioritizedTxScheduler.add(0, 0, packet, true, 3, US_PER_CHECK);
+    mEndpointTxScheduler->add(0, packet, true, 3, US_PER_CHECK);
 }
 
 DreamcastController::~DreamcastController()

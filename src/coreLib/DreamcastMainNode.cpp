@@ -2,13 +2,20 @@
 #include "DreamcastPeripheral.hpp"
 #include "dreamcast_constants.h"
 #include "DreamcastController.hpp"
+#include "EndpointTxScheduler.hpp"
 
 DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus,
-                                     PlayerData playerData) :
-    DreamcastNode(DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK, playerData),
+                                     PlayerData playerData,
+                                     std::shared_ptr<PrioritizedTxScheduler> prioritizedTxScheduler) :
+    DreamcastNode(DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK, 
+                  std::make_shared<EndpointTxScheduler>(
+                    prioritizedTxScheduler,
+                    MAIN_TRANSMISSION_PRIORITY
+                  ),
+                  playerData), 
     mBus(bus),
     mSubNodes(),
-    mTransmissionTimeliner(bus, *mPrioritizedTxScheduler),
+    mTransmissionTimeliner(bus, prioritizedTxScheduler),
     mScheduleId(-1)
 {
     addInfoRequestToSchedule();
@@ -16,7 +23,9 @@ DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus,
     for (uint32_t i = 0; i < DreamcastPeripheral::MAX_SUB_PERIPHERALS; ++i)
     {
         mSubNodes.push_back(std::make_shared<DreamcastSubNode>(
-            DreamcastPeripheral::subPeripheralMask(i), mPrioritizedTxScheduler, mPlayerData));
+            DreamcastPeripheral::subPeripheralMask(i), 
+            std::make_shared<EndpointTxScheduler>(prioritizedTxScheduler, SUB_TRANSMISSION_PRIORITY),
+            mPlayerData));
     }
 }
 
@@ -38,7 +47,7 @@ bool DreamcastMainNode::handleData(uint8_t len,
                 // Remove the auto reload device info request transmission from schedule
                 if (mScheduleId >= 0)
                 {
-                    mPrioritizedTxScheduler->cancelById(mScheduleId);
+                    mEndpointTxScheduler->cancelById(mScheduleId);
                     mScheduleId = -1;
                 }
             }
@@ -114,7 +123,7 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
         else
         {
             // Main peripheral disconnected
-            mPrioritizedTxScheduler->cancelByRecipient(getRecipientAddress());
+            mEndpointTxScheduler->cancelByRecipient(getRecipientAddress());
             for (std::vector<std::shared_ptr<DreamcastSubNode>>::iterator iter = mSubNodes.begin();
                  iter != mSubNodes.end();
                  ++iter)
@@ -135,8 +144,7 @@ void DreamcastMainNode::addInfoRequestToSchedule()
                        DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr),
                        NULL,
                        0);
-    mScheduleId = mPrioritizedTxScheduler->add(
-        MY_TRANSMISSION_PRIORITY,
+    mScheduleId = mEndpointTxScheduler->add(
         PrioritizedTxScheduler::TX_TIME_ASAP,
         packet,
         true,

@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include "PrioritizedTxScheduler.hpp"
+#include "EndpointTxSchedulerInterface.hpp"
 
 //! Base class for a connected Dreamcast peripheral
 class DreamcastPeripheral
@@ -11,8 +12,10 @@ class DreamcastPeripheral
         //! @param[in] addr  This peripheral's address (mask bit)
         //! @param[in] scheduler  The transmission scheduler this peripheral is to add to
         //! @param[in] playerIndex  Player index of this peripheral [0,3]
-        DreamcastPeripheral(uint8_t addr, PrioritizedTxScheduler& scheduler, uint32_t playerIndex) :
-            mPrioritizedTxScheduler(scheduler), mPlayerIndex(playerIndex), mAddr(addr)
+        DreamcastPeripheral(uint8_t addr, 
+                            std::shared_ptr<EndpointTxSchedulerInterface> scheduler, 
+                            uint32_t playerIndex) :
+            mEndpointTxScheduler(scheduler), mPlayerIndex(playerIndex), mAddr(addr)
         {}
 
         //! Virtual destructor
@@ -77,7 +80,7 @@ class DreamcastPeripheral
 
     protected:
         //! Keeps all scheduled transmissions for the bus this peripheral is connected to
-        PrioritizedTxScheduler& mPrioritizedTxScheduler;
+        std::shared_ptr<EndpointTxSchedulerInterface> mEndpointTxScheduler;
         //! Player index of this peripheral [0,3]
         const uint32_t mPlayerIndex;
         //! Address of this device

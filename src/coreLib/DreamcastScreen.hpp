@@ -13,7 +13,9 @@ class DreamcastScreen : public DreamcastPeripheral
         //! @param[in] addr  This peripheral's address
         //! @param[in] scheduler  The transmission scheduler this peripheral is to add to
         //! @param[in] playerData  Data tied to player which controls this screen
-        DreamcastScreen(uint8_t addr, PrioritizedTxScheduler& scheduler, PlayerData playerData);
+        DreamcastScreen(uint8_t addr, 
+                        std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
+                        PlayerData playerData);
 
         //! Virtual destructor
         virtual ~DreamcastScreen();

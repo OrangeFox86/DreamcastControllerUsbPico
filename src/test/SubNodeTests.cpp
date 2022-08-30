@@ -8,6 +8,7 @@
 #include "DreamcastSubNode.hpp"
 #include "DreamcastPeripheral.hpp"
 #include "dreamcast_constants.h"
+#include "PrioritizedTxScheduler.hpp"
 
 #include <memory>
 
@@ -69,8 +70,8 @@ class SubNodeTest : public ::testing::Test
             mMutex(),
             mScreenData(mMutex),
             mPlayerData{1, mDreamcastControllerObserver, mScreenData},
-            mMapleBus(),
-            mDreamcastSubNode(0x01, mMapleBus, mPlayerData)
+            mPrioritizedTxScheduler(std::make_shared<PrioritizedTxScheduler>())
+            mDreamcastSubNode(0x01, mPrioritizedTxScheduler, mPlayerData)
         {}
 
     protected:
@@ -78,7 +79,7 @@ class SubNodeTest : public ::testing::Test
         MockMutex mMutex;
         ScreenData mScreenData;
         PlayerData mPlayerData;
-        MockMapleBus mMapleBus;
+        std::shared_ptr<PrioritizedTxScheduler> mPrioritizedTxScheduler;
         DreamcastSubNodeOverride mDreamcastSubNode;
         std::shared_ptr<MockDreamcastPeripheral> mockDreamcastPeripheral1;
         std::shared_ptr<MockDreamcastPeripheral> mockDreamcastPeripheral2;
@@ -94,10 +95,10 @@ class SubNodeTest : public ::testing::Test
             std::vector<std::shared_ptr<DreamcastPeripheral>>& peripherals =
                 mDreamcastSubNode.getPeripherals();
             mockDreamcastPeripheral1 =
-                std::make_shared<MockDreamcastPeripheral>(0x01, mMapleBus, mPlayerData.playerIndex);
+                std::make_shared<MockDreamcastPeripheral>(0x01, mPrioritizedTxScheduler, mPlayerData.playerIndex);
             peripherals.push_back(mockDreamcastPeripheral1);
             mockDreamcastPeripheral2 =
-                std::make_shared<MockDreamcastPeripheral>(0x01, mMapleBus, mPlayerData.playerIndex);
+                std::make_shared<MockDreamcastPeripheral>(0x01, mPrioritizedTxScheduler, mPlayerData.playerIndex);
             peripherals.push_back(mockDreamcastPeripheral2);
         }
 };

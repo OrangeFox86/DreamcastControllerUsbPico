@@ -1,13 +1,13 @@
 #include "TransmissionTimeliner.hpp"
 #include <assert.h>
 
-TransmissionTimeliner::TransmissionTimeliner(MapleBusInterface& bus, PrioritizedTxScheduler& schedule):
+TransmissionTimeliner::TransmissionTimeliner(MapleBusInterface& bus, std::shared_ptr<PrioritizedTxScheduler> schedule):
     mBus(bus), mSchedule(schedule), mNextTx(nullptr)
 {}
 
 uint32_t TransmissionTimeliner::recipientDisconnect(uint8_t recipientAddr)
 {
-    return mSchedule.cancelByRecipient(recipientAddr);
+    return mSchedule->cancelByRecipient(recipientAddr);
 }
 
 std::shared_ptr<const MaplePacket> TransmissionTimeliner::task(uint64_t time)
@@ -16,7 +16,7 @@ std::shared_ptr<const MaplePacket> TransmissionTimeliner::task(uint64_t time)
 
     if (mNextTx == nullptr)
     {
-        mNextTx = mSchedule.popNext(time);
+        mNextTx = mSchedule->popNext(time);
     }
 
     if (mNextTx != nullptr)

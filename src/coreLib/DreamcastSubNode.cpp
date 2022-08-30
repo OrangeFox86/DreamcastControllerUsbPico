@@ -3,7 +3,7 @@
 #include "utils.h"
 
 DreamcastSubNode::DreamcastSubNode(uint8_t addr,
-                                   std::shared_ptr<PrioritizedTxScheduler> scheduler,
+                                   std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                                    PlayerData playerData) :
     DreamcastNode(addr, scheduler, playerData),
     mConnected(false),
@@ -33,7 +33,7 @@ bool DreamcastSubNode::handleData(uint8_t len,
                 // Remove the auto reload device info request transmission from schedule
                 if (mScheduleId >= 0)
                 {
-                    mPrioritizedTxScheduler->cancelById(mScheduleId);
+                    mEndpointTxScheduler->cancelById(mScheduleId);
                     mScheduleId = -1;
                 }
             }
@@ -73,7 +73,7 @@ void DreamcastSubNode::setConnected(bool connected)
     {
         mConnected = connected;
         mPeripherals.clear();
-        mPrioritizedTxScheduler->cancelByRecipient(getRecipientAddress());
+        mEndpointTxScheduler->cancelByRecipient(getRecipientAddress());
         if (mConnected)
         {
             DEBUG_PRINT("sub node 0x%02hX connected\n", getRecipientAddress());
@@ -83,8 +83,7 @@ void DreamcastSubNode::setConnected(bool connected)
                 getRecipientAddress(),
                 NULL,
                 0);
-            mScheduleId = mPrioritizedTxScheduler->add(
-                MY_TRANSMISSION_PRIORITY,
+            mScheduleId = mEndpointTxScheduler->add(
                 PrioritizedTxScheduler::TX_TIME_ASAP,
                 packet,
                 true,

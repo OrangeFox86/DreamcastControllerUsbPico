@@ -71,12 +71,6 @@ class DreamcastMainNodeOverride : public DreamcastMainNode
             mockMethodPeripheralFactory(functionCode);
         }
 
-        //! Allows the test to check the value of mNextCheckTime
-        uint64_t getNextCheckTime() {return mNextCheckTime;}
-
-        //! Allows the test to initialize the value of mNextCheckTime
-        void setNextCheckTime(uint64_t t) {mNextCheckTime = t;}
-
         //! Allows the test to check what peripherals the node has
         std::vector<std::shared_ptr<DreamcastPeripheral>>& getPeripherals()
         {

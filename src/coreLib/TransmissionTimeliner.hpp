@@ -8,7 +8,7 @@ class TransmissionTimeliner
 {
 
 public:
-    TransmissionTimeliner(MapleBusInterface& bus, PrioritizedTxScheduler& schedule);
+    TransmissionTimeliner(MapleBusInterface& bus, std::shared_ptr<PrioritizedTxScheduler> schedule);
 
     uint32_t recipientDisconnect(uint8_t recipientAddr);
 
@@ -16,6 +16,6 @@ public:
 
 protected:
     MapleBusInterface& mBus;
-    PrioritizedTxScheduler& mSchedule;
+    std::shared_ptr<PrioritizedTxScheduler> mSchedule;
     std::shared_ptr<const PrioritizedTxScheduler::Transmission> mNextTx;
 };

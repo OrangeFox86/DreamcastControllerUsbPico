@@ -1,7 +1,9 @@
 #include "DreamcastScreen.hpp"
 #include "dreamcast_constants.h"
 
-DreamcastScreen::DreamcastScreen(uint8_t addr, PrioritizedTxScheduler& scheduler, PlayerData playerData) :
+DreamcastScreen::DreamcastScreen(uint8_t addr, 
+                                 std::shared_ptr<EndpointTxSchedulerInterface> scheduler, 
+                                 PlayerData playerData) :
     DreamcastPeripheral(addr, scheduler, playerData.playerIndex),
     mNextCheckTime(0),
     mWaitingForData(false),
@@ -55,10 +57,10 @@ bool DreamcastScreen::task(uint64_t currentTimeUs)
             mScreenData.readData(&payload[2]);
 
             // Workaround: make sure previous tx is canceled in case it hasn't gone out yet
-            mPrioritizedTxScheduler.cancelById(mTransmissionId);
+            mEndpointTxScheduler->cancelById(mTransmissionId);
 
             MaplePacket packet(COMMAND_BLOCK_WRITE, getRecipientAddress(), payload, numPayloadWords);
-            mTransmissionId = mPrioritizedTxScheduler.add(1, 0, packet, true, 0);
+            mTransmissionId = mEndpointTxScheduler->add(0, packet, true, 0);
             mWaitingForData = true;
             mNextCheckTime = currentTimeUs + US_PER_CHECK;
 
