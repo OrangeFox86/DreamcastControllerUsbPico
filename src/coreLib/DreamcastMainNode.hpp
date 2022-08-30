@@ -41,9 +41,9 @@ class DreamcastMainNode : public DreamcastNode
         //! Number of microseconds in between each info request when no peripheral is detected
         static const uint32_t US_PER_CHECK = 16000;
         //! Main node has highest priority
-        static const uint8_t MAIN_TRANSMISSION_PRIORITY = 0;
+        static const uint8_t MAIN_TRANSMISSION_PRIORITY;
         //! Sub nodes have lower priority
-        static const uint8_t SUB_TRANSMISSION_PRIORITY = 1;
+        static const uint8_t SUB_TRANSMISSION_PRIORITY;
 
     protected:
         //! The bus on which this node communicates

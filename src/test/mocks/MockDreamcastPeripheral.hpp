@@ -8,7 +8,9 @@
 class MockDreamcastPeripheral : public DreamcastPeripheral
 {
     public:
-        MockDreamcastPeripheral(uint8_t addr, PrioritizedTxScheduler& scheduler, uint32_t playerIndex) :
+        MockDreamcastPeripheral(uint8_t addr, 
+                                std::shared_ptr<EndpointTxSchedulerInterface> scheduler, 
+                                uint32_t playerIndex) :
             DreamcastPeripheral(addr, scheduler, playerIndex)
         {}
 
