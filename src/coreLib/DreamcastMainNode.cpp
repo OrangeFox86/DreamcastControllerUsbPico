@@ -93,7 +93,7 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
                      ++iter)
                 {
                     uint8_t mask = (*iter)->getAddr();
-                    (*iter)->setConnected((sendAddr & mask) != 0);
+                    (*iter)->setConnected((sendAddr & mask) != 0, currentTimeUs);
                 }
 
                 // Have the device handle the data
@@ -133,7 +133,7 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
             {
                 (*iter)->mainPeripheralDisconnected();
             }
-            addInfoRequestToSchedule();
+            addInfoRequestToSchedule(currentTimeUs);
         }
     }
 
@@ -141,14 +141,19 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
     // TODO: let peripheral know this packet was sent
 }
 
-void DreamcastMainNode::addInfoRequestToSchedule()
+void DreamcastMainNode::addInfoRequestToSchedule(uint64_t currentTimeUs)
 {
+    uint64_t txTime = PrioritizedTxScheduler::TX_TIME_ASAP;
+    if (currentTimeUs > 0)
+    {
+        txTime = PrioritizedTxScheduler::computeNextTimeCadence(currentTimeUs, US_PER_CHECK);
+    }
     MaplePacket packet(COMMAND_DEVICE_INFO_REQUEST,
                        DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr),
                        NULL,
                        0);
     mScheduleId = mEndpointTxScheduler->add(
-        PrioritizedTxScheduler::TX_TIME_ASAP,
+        txTime,
         packet,
         true,
         EXPECTED_DEVICE_INFO_PAYLOAD_WORDS,

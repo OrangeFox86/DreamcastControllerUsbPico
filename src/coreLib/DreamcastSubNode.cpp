@@ -67,7 +67,7 @@ void DreamcastSubNode::mainPeripheralDisconnected()
     setConnected(false);
 }
 
-void DreamcastSubNode::setConnected(bool connected)
+void DreamcastSubNode::setConnected(bool connected, uint64_t currentTimeUs)
 {
     if (mConnected != connected)
     {
@@ -83,8 +83,13 @@ void DreamcastSubNode::setConnected(bool connected)
                 getRecipientAddress(),
                 NULL,
                 0);
+            uint64_t txTime = PrioritizedTxScheduler::TX_TIME_ASAP;
+            if (currentTimeUs > 0)
+            {
+                txTime = PrioritizedTxScheduler::computeNextTimeCadence(currentTimeUs, US_PER_CHECK);
+            }
             mScheduleId = mEndpointTxScheduler->add(
-                PrioritizedTxScheduler::TX_TIME_ASAP,
+                txTime,
                 packet,
                 true,
                 EXPECTED_DEVICE_INFO_PAYLOAD_WORDS,

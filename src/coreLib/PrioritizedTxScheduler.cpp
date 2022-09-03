@@ -74,6 +74,28 @@ uint32_t PrioritizedTxScheduler::add(uint8_t priority,
     return add(tx);
 }
 
+uint64_t PrioritizedTxScheduler::computeNextTimeCadence(uint64_t currentTime,
+                                                        uint64_t period, 
+                                                        uint64_t offset)
+{
+    // Cover the edge case where the offset is in the future for some reason
+    if (offset > currentTime)
+    {
+        return offset;
+    }
+    else
+    {
+        // Determine how many intervals to advance past offset
+        uint32_t n = INT_DIVIDE_CEILING(currentTime - offset, period);
+        if (n == 0)
+        {
+            n = 1;
+        }
+        // Compute the next cadence
+        return offset + (period * n);
+    }
+}
+
 std::shared_ptr<const PrioritizedTxScheduler::Transmission> PrioritizedTxScheduler::popNext(uint64_t time)
 {
     std::shared_ptr<Transmission> item = nullptr;
@@ -114,14 +136,7 @@ std::shared_ptr<const PrioritizedTxScheduler::Transmission> PrioritizedTxSchedul
 
         if (item != nullptr && item->autoRepeatUs > 0)
         {
-            // Determine how many intervals to add in cast this auto reload packet has overflowed
-            uint32_t n = INT_DIVIDE_CEILING(time - item->nextTxTimeUs, item->autoRepeatUs);
-            if (n == 0)
-            {
-                n = 1;
-            }
-            // Reinsert it back into the schedule with a new time
-            item->nextTxTimeUs += (item->autoRepeatUs * n);
+            item->nextTxTimeUs = computeNextTimeCadence(time, item->autoRepeatUs, item->nextTxTimeUs);
             add(item);
         }
     }

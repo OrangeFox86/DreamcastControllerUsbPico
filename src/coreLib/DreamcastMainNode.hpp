@@ -35,7 +35,7 @@ class DreamcastMainNode : public DreamcastNode
 
     private:
         //! Adds an auto reload info request to the transmission schedule
-        void addInfoRequestToSchedule();
+        void addInfoRequestToSchedule(uint64_t currentTimeUs = 0);
 
     public:
         //! Number of microseconds in between each info request when no peripheral is detected

@@ -19,6 +19,7 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::SetArgReferee;
 using ::testing::DoAll;
+using ::testing::AnyNumber;
 
 class MockedDreamcastSubNode : public DreamcastSubNode
 {
@@ -36,7 +37,12 @@ class MockedDreamcastSubNode : public DreamcastSubNode
 
         MOCK_METHOD(void, mainPeripheralDisconnected, (), (override));
 
-        MOCK_METHOD(void, setConnected, (bool connected), (override));
+        MOCK_METHOD(void, setConnected, (bool connected, uint64_t currentTimeUs), (override));
+
+        void setConnected(bool connected)
+        {
+            setConnected(connected, 0);
+        }
 };
 
 class DreamcastMainNodeOverride : public DreamcastMainNode
@@ -193,11 +199,11 @@ TEST_F(MainNodeTest, peripheralConnect)
     // The peripheralFactory method should be called with function code 0x00000001
     EXPECT_CALL(mDreamcastMainNode, mockMethodPeripheralFactory(0x00000001)).Times(1);
     // No sub peripherals detected (addr value is 0x20 - 0 in the last 5 bits)
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], setConnected(false)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], setConnected(false)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[2], setConnected(false)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[3], setConnected(false)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[4], setConnected(false)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], setConnected(false, _)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], setConnected(false, _)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[2], setConnected(false, _)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[3], setConnected(false, _)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[4], setConnected(false, _)).Times(1);
     // The peripheral's task function will be called with the current time
     EXPECT_CALL(*mockedDreamcastPeripheral, task(1000000)).Times(1).WillOnce(Return(true));
     // All sub node's task functions will be called with the current time
@@ -264,7 +270,7 @@ TEST_P(MainNodeSubPeripheralConnectTest, subPeripheralConnect)
 
     // --- MOCKING ---
     // The task should always first process events on the maple bus
-    EXPECT_CALL(mMapleBus, processEvents(1000000)).Times(1);
+    EXPECT_CALL(mMapleBus, processEvents(123)).Times(1);
     // The task will then read data from the bus, and a sub peripheral's info is returned
     uint32_t data[2] = {0x05000001U | (0x01U << (idx + 8)), 8675309};
     EXPECT_CALL(mMapleBus, getReadData(_, _))
@@ -276,16 +282,18 @@ TEST_P(MainNodeSubPeripheralConnectTest, subPeripheralConnect)
         handleData((uint8_t)1, (uint8_t)5, &data[1])
     ).Times(1).WillOnce(Return(true));
     // The peripheral's task() function will be called with the current time
-    EXPECT_CALL(*mockedDreamcastPeripheral, task(1000000)).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*mockedDreamcastPeripheral, task(123)).Times(1).WillOnce(Return(true));
     // All sub node's task functions will be called with the current time
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], task(1000000)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], task(1000000)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[2], task(1000000)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[3], task(1000000)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[4], task(1000000)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], task(123)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], task(123)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[2], task(123)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[3], task(123)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[4], task(123)).Times(1);
+    // Don't care if bus writes
+    EXPECT_CALL(mMapleBus, write(_, _, _)).Times(AnyNumber());
 
     // --- TEST EXECUTION ---
-    mDreamcastMainNode.task(1000000);
+    mDreamcastMainNode.task(123);
 
     // --- EXPECTATIONS ---
 }

@@ -40,4 +40,6 @@ class DreamcastController : public DreamcastPeripheral
         bool mWaitingForData;
         //! Number of consecutive times no data was received
         uint32_t mNoDataCount;
+        //! Initialized to true and set to false in task()
+        bool mFirstTask;
 };

@@ -60,7 +60,7 @@ bool DreamcastScreen::task(uint64_t currentTimeUs)
             mEndpointTxScheduler->cancelById(mTransmissionId);
 
             MaplePacket packet(COMMAND_BLOCK_WRITE, getRecipientAddress(), payload, numPayloadWords);
-            mTransmissionId = mEndpointTxScheduler->add(0, packet, true, 0);
+            mTransmissionId = mEndpointTxScheduler->add(PrioritizedTxScheduler::TX_TIME_ASAP, packet, true, 0);
             mWaitingForData = true;
             mNextCheckTime = currentTimeUs + US_PER_CHECK;
 

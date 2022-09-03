@@ -8,11 +8,10 @@ DreamcastController::DreamcastController(uint8_t addr, std::shared_ptr<EndpointT
     mGamepad(playerData.gamepad),
     mNextCheckTime(0),
     mWaitingForData(false),
-    mNoDataCount(0)
+    mNoDataCount(0),
+    mFirstTask(true)
 {
     mGamepad.controllerConnected();
-    MaplePacket packet(COMMAND_GET_CONDITION, getRecipientAddress(), DEVICE_FN_CONTROLLER);
-    mEndpointTxScheduler->add(0, packet, true, 3, US_PER_CHECK);
 }
 
 DreamcastController::~DreamcastController()
@@ -45,6 +44,14 @@ bool DreamcastController::handleData(uint8_t len,
 
 bool DreamcastController::task(uint64_t currentTimeUs)
 {
+    if (mFirstTask)
+    {
+        mFirstTask = false;
+        MaplePacket packet(COMMAND_GET_CONDITION, getRecipientAddress(), DEVICE_FN_CONTROLLER);
+        uint64_t txTime = PrioritizedTxScheduler::computeNextTimeCadence(currentTimeUs, US_PER_CHECK);
+        mEndpointTxScheduler->add(txTime, packet, true, 3, US_PER_CHECK);
+    }
+
     bool connected = (mNoDataCount < NO_DATA_DISCONNECT_COUNT);
     if (currentTimeUs > mNextCheckTime)
     {
