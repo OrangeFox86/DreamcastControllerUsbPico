@@ -59,6 +59,7 @@ bool DreamcastMainNode::handleData(uint8_t len,
                     mEndpointTxScheduler->cancelById(mScheduleId2);
                     mScheduleId2 = -1;
                 }
+                DEBUG_PRINT("Main peripheral connected\n");
             }
             return (mPeripherals.size() > 0);
         }
@@ -140,6 +141,7 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
                 (*iter)->mainPeripheralDisconnected();
             }
             addInfoRequestToSchedule(currentTimeUs);
+            DEBUG_PRINT("Main peripheral disconnected\n");
         }
     }
 

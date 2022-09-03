@@ -55,7 +55,7 @@ uint32_t PrioritizedTxScheduler::add(uint8_t priority,
 
     if (expectResponse)
     {
-        pktDurationNs += 
+        pktDurationNs +=
             RX_DELAY_NS + MaplePacket::getTxTimeNs(expectedResponseNumPayloadWords, RX_NS_PER_BIT);
     }
 
@@ -92,7 +92,7 @@ uint32_t PrioritizedTxScheduler::addReset(uint8_t priority, uint64_t txTime, uin
 }
 
 uint64_t PrioritizedTxScheduler::computeNextTimeCadence(uint64_t currentTime,
-                                                        uint64_t period, 
+                                                        uint64_t period,
                                                         uint64_t offset)
 {
     // Cover the edge case where the offset is in the future for some reason
@@ -131,22 +131,32 @@ std::shared_ptr<const PrioritizedTxScheduler::Transmission> PrioritizedTxSchedul
             // transmission preempts a lower priority one.
             std::list<std::shared_ptr<Transmission>>::iterator iter = mSchedule.begin();
             std::list<uint8_t> recipientAddrs;
-            recipientAddrs.push_back((*iter)->packet->getFrameRecipientAddr());
+            uint8_t recipientAddr = 0;
+            if ((*iter)->packet != nullptr)
+            {
+                recipientAddr = (*iter)->packet->getFrameRecipientAddr();
+            }
+            recipientAddrs.push_back(recipientAddr);
             ++iter;
             while(iter != mSchedule.end())
             {
+                uint8_t recipientAddr = 0;
+                if ((*iter)->packet != nullptr)
+                {
+                    recipientAddr = (*iter)->packet->getFrameRecipientAddr();
+                }
                 if (time >= (*iter)->nextTxTimeUs
                     && (*iter)->getNextCompletionTime() < (*mSchedule.begin())->nextTxTimeUs
                     // Ensure the order is preserved for each recipient address
                     && std::find(recipientAddrs.begin(),
                                  recipientAddrs.end(),
-                                 (*iter)->packet->getFrameRecipientAddr()) == recipientAddrs.end())
+                                 recipientAddr) == recipientAddrs.end())
                 {
                     item = (*iter);
                     mSchedule.erase(iter);
                     break;
                 }
-                recipientAddrs.push_back((*iter)->packet->getFrameRecipientAddr());
+                recipientAddrs.push_back(recipientAddr);
                 ++iter;
             }
         }
