@@ -22,6 +22,10 @@ class MapleBusInterface
                            bool expectResponse,
                            uint32_t readTimeoutUs=DEFAULT_MAPLE_READ_TIMEOUT_US) = 0;
 
+        //! Writes reset sequence (blocking)
+        //! @returns true iff the bus was "open" and reset sequence was written
+        virtual bool writeReset() = 0;
+
         //! Retrieves the last valid set of data read.
         //! @param[out] len  The number of words received
         //! @param[out] newData  Set to true iff new data was received since the last call

@@ -69,7 +69,24 @@ uint32_t PrioritizedTxScheduler::add(uint8_t priority,
                                        autoRepeatUs,
                                        pktDurationUs,
                                        txTime,
+                                       false,
                                        std::make_shared<MaplePacket>(std::move(packet)));
+
+    return add(tx);
+}
+
+uint32_t PrioritizedTxScheduler::addReset(uint8_t priority, uint64_t txTime, uint32_t autoRepeatUs)
+{
+    std::shared_ptr<Transmission> tx =
+        std::make_shared<Transmission>(mNextId++,
+                                       priority,
+                                       false,
+                                       DEFAULT_MAPLE_READ_TIMEOUT_US,
+                                       autoRepeatUs,
+                                       RESET_SEND_DURATION_US,
+                                       txTime,
+                                       true,
+                                       nullptr);
 
     return add(tx);
 }

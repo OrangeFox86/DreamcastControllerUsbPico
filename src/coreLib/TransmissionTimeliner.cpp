@@ -16,11 +16,23 @@ std::shared_ptr<const MaplePacket> TransmissionTimeliner::task(uint64_t time)
 
     if (mNextTx != nullptr)
     {
-        assert(mNextTx->packet->isValid());
-        if (mBus.write(*mNextTx->packet, mNextTx->expectResponse, mNextTx->readTimeoutUs))
+        if (mNextTx->packet != nullptr)
         {
-            pkt = mNextTx->packet;
-            mNextTx = nullptr;
+            assert(mNextTx->packet->isValid());
+            assert(!mNextTx->reset);
+            if (mBus.write(*mNextTx->packet, mNextTx->expectResponse, mNextTx->readTimeoutUs))
+            {
+                pkt = mNextTx->packet;
+                mNextTx = nullptr;
+            }
+        }
+        else
+        {
+            assert(mNextTx->reset);
+            if (mBus.writeReset())
+            {
+                mNextTx = nullptr;
+            }
         }
     }
 

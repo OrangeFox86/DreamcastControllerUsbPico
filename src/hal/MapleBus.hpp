@@ -36,6 +36,10 @@ class MapleBus : public MapleBusInterface
                    bool expectResponse,
                    uint32_t readTimeoutUs=DEFAULT_MAPLE_READ_TIMEOUT_US);
 
+        //! Writes reset sequence (blocking)
+        //! @returns true iff the bus was "open" and reset sequence was written
+        bool writeReset();
+
         //! Called from a PIO ISR when read has completed for this sender.
         void readIsr();
 
@@ -58,6 +62,9 @@ class MapleBus : public MapleBusInterface
         inline bool isBusy() { return mWriteInProgress || mReadInProgress; }
 
     private:
+        //! @returns true iff the bus is "open"
+        bool checkLine();
+
         //! Ensures that the bus is open and starts the write PIO state machine.
         bool writeInit();
 

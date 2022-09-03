@@ -128,7 +128,9 @@ class MapleOutStateMachine
             mProgram(getMapleOutProgram()),
             mPinA(pin_a),
             mPinB(pin_a + 1),
-            mMaskAB(3 << pin_a),
+            mMaskA(1 << mPinA),
+            mMaskB(1 << mPinB),
+            mMaskAB(mMaskA | mMaskB),
             mSmIdx(pio_claim_unused_sm(mProgram.mPio, true))
         {
             // Initialize the two pins as inputs with pullups
@@ -177,6 +179,37 @@ class MapleOutStateMachine
             gpio_set_dir_in_masked(mMaskAB);
         }
 
+        inline void manualStart() const
+        {
+            // Ensure PIO is not in control of it
+            pio_sm_set_enabled(mProgram.mPio, mSmIdx, false);
+            // Drive A low (beginning of any start sequence) and set output
+            gpio_put_masked(mMaskAB, mMaskB);
+            gpio_set_dir_out_masked(mMaskAB);
+            gpio_set_function(mPinA, GPIO_FUNC_SIO);
+            gpio_set_function(mPinB, GPIO_FUNC_SIO);
+        }
+
+        inline void manualPut(uint mask) const
+        {
+            gpio_put_masked(mMaskAB, mask);
+        }
+
+        inline void manualToggleA() const
+        {
+            gpio_xor_mask(mMaskA);
+        }
+
+        inline void manualToggleB() const
+        {
+            gpio_xor_mask(mMaskB);
+        }
+
+        inline void manualStop() const
+        {
+            stop();
+        }
+
     private:
         inline static const PioProgram& getMapleOutProgram()
         {
@@ -188,6 +221,8 @@ class MapleOutStateMachine
         const PioProgram& mProgram;
         const uint mPinA;
         const uint mPinB;
+        const uint mMaskA;
+        const uint mMaskB;
         const uint mMaskAB;
         const uint mSmIdx;
 };

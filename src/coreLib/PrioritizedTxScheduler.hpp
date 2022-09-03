@@ -21,6 +21,7 @@ public:
         const uint32_t autoRepeatUs;
         const uint32_t txDurationUs;
         uint64_t nextTxTimeUs;
+        bool reset;
         std::shared_ptr<const MaplePacket> packet;
 
         Transmission(uint32_t transmissionId,
@@ -30,6 +31,7 @@ public:
                      uint32_t autoRepeatUs,
                      uint32_t txDurationUs,
                      uint64_t nextTxTimeUs,
+                     bool reset,
                      std::shared_ptr<MaplePacket> packet):
             transmissionId(transmissionId),
             priority(priority),
@@ -38,6 +40,7 @@ public:
             autoRepeatUs(autoRepeatUs),
             txDurationUs(txDurationUs),
             nextTxTimeUs(nextTxTimeUs),
+            reset(reset),
             packet(packet)
         {}
 
@@ -72,6 +75,13 @@ public:
                  uint32_t autoRepeatUs=0,
                  uint32_t readTimeoutUs=DEFAULT_MAPLE_READ_TIMEOUT_US);
 
+
+    //! Add reset transmission to schedule
+    //! @param[in] priority  priority of this transmission (0 is highest priority)
+    //! @param[in] txTime  Time at which this should transmit in microseconds
+    //! @param[in] autoRepeatUs  How often to repeat this transmission in microseconds
+    uint32_t addReset(uint8_t priority, uint64_t txTime, uint32_t autoRepeatUs=0);
+
     //! Pops the next scheduled packet, given the current time
     //! @param[in] time  The current time
     //! @returns nullptr if no scheduled packet is available for the given time
@@ -98,7 +108,7 @@ public:
     //! @param[in] offset  The offset that this item began or previously executed at
     //! @returns the next time in the future which is confined to period and offset
     static uint64_t computeNextTimeCadence(uint64_t currentTime,
-                                           uint64_t period, 
+                                           uint64_t period,
                                            uint64_t offset = 0);
 
 protected:
@@ -112,6 +122,8 @@ public:
     static const uint32_t RX_DELAY_NS = 50;
     //! Estimated nanoseconds per bit to receive data
     static const uint32_t RX_NS_PER_BIT = 1500;
+    //! Approximate duration to send reset
+    static const uint32_t RESET_SEND_DURATION_US = 18;
     //! Use this for txTime if the packet needs to be sent ASAP
     static const uint64_t TX_TIME_ASAP = 0;
 

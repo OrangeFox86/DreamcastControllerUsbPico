@@ -1,7 +1,7 @@
 #include "EndpointTxScheduler.hpp"
 
 EndpointTxScheduler::EndpointTxScheduler(
-    std::shared_ptr<PrioritizedTxScheduler> prioritizedScheduler, 
+    std::shared_ptr<PrioritizedTxScheduler> prioritizedScheduler,
     uint8_t fixedPriority):
         mPrioritizedScheduler(prioritizedScheduler),
         mFixedPriority(fixedPriority)
@@ -18,12 +18,17 @@ uint32_t EndpointTxScheduler::add(uint64_t txTime,
                                   uint32_t readTimeoutUs)
 {
     return mPrioritizedScheduler->add(mFixedPriority,
-                                      txTime, 
-                                      packet, 
-                                      expectResponse, 
-                                      expectedResponseNumPayloadWords, 
-                                      autoRepeatUs, 
+                                      txTime,
+                                      packet,
+                                      expectResponse,
+                                      expectedResponseNumPayloadWords,
+                                      autoRepeatUs,
                                       readTimeoutUs);
+}
+
+uint32_t EndpointTxScheduler::addReset(uint64_t txTime, uint32_t autoRepeatUs)
+{
+    return mPrioritizedScheduler->addReset(mFixedPriority, txTime, autoRepeatUs);
 }
 
 uint32_t EndpointTxScheduler::cancelById(uint32_t transmissionId)

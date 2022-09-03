@@ -176,7 +176,7 @@ inline void MapleBus::writeIsr()
     mWriteInProgress = false;
 }
 
-bool MapleBus::writeInit()
+bool MapleBus::checkLine()
 {
     const uint64_t targetTime = time_us_64() + MAPLE_OPEN_LINE_CHECK_TIME_US + 1;
 
@@ -189,6 +189,16 @@ bool MapleBus::writeInit()
             return false;
         }
     } while (time_us_64() < targetTime);
+
+    return true;
+}
+
+bool MapleBus::writeInit()
+{
+    if (!checkLine())
+    {
+        return false;
+    }
 
     mSmOut.start();
 
@@ -266,6 +276,44 @@ bool MapleBus::write(const MaplePacket& packet,
     return rv;
 }
 
+bool MapleBus::writeReset()
+{
+    bool rv = false;
+
+    processEvents();
+
+    if (!isBusy() && checkLine())
+    {
+        // Start - this sets A LOW and keeps B HIGH
+        mSmOut.manualStart();
+        // Wait for the top of a tick
+        uint64_t t = time_us_64();
+        while (t == time_us_64());
+        // Toggle B 8 times
+        for (uint32_t i = 0; i < 16; ++i)
+        {
+            // Wait for next tick
+            t = time_us_64();
+            while (t == time_us_64());
+            // Do toggle
+            mSmOut.manualToggleB();
+        }
+        // Wait for next tick
+        t = time_us_64();
+        while (t == time_us_64());
+        // Put A and B back HIGH
+        mSmOut.manualPut(mSmOut.mMaskAB);
+        // Wait for next tick
+        t = time_us_64();
+        while (t == time_us_64());
+        // Done
+        mSmOut.manualStop();
+        rv = true;
+    }
+
+    return rv;
+}
+
 void MapleBus::processEvents(uint64_t currentTimeUs)
 {
     if (isBusy())
@@ -338,4 +386,3 @@ const uint32_t* MapleBus::getReadData(uint32_t& len, bool& newData)
     len = mLastValidReadLen;
     return mLastValidRead;
 }
-

@@ -10,7 +10,7 @@ class EndpointTxScheduler : public EndpointTxSchedulerInterface
 {
 public:
     //! Default constructor
-    EndpointTxScheduler(std::shared_ptr<PrioritizedTxScheduler> prioritizedScheduler, 
+    EndpointTxScheduler(std::shared_ptr<PrioritizedTxScheduler> prioritizedScheduler,
                         uint8_t fixedPriority);
 
     //! Virtual destructor
@@ -30,6 +30,11 @@ public:
                          uint32_t expectedResponseNumPayloadWords=0,
                          uint32_t autoRepeatUs=0,
                          uint32_t readTimeoutUs=DEFAULT_MAPLE_READ_TIMEOUT_US) final;
+
+    //! Add reset transmission to schedule
+    //! @param[in] txTime  Time at which this should transmit in microseconds
+    //! @param[in] autoRepeatUs  How often to repeat this transmission in microseconds
+    virtual uint32_t addReset(uint64_t txTime, uint32_t autoRepeatUs=0) final;
 
     //! Cancels scheduled transmission by transmission ID
     //! @param[in] transmissionId  The transmission ID of the transmissions to cancel
