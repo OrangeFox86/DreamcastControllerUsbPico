@@ -21,6 +21,23 @@
 //! @warning this class is not "thread safe" - it should only be used by 1 core.
 class MapleBus : public MapleBusInterface
 {
+    private:
+        // TODO: use this phase instead of multiple booleans (better for atomic write/read)
+        //! Enumerates the current phase in the state machine
+        enum Phase
+        {
+            //! Initialized phase and phase after completion and events are processed
+            IDLE = 0,
+            //! Write is currently in progress
+            WRITE_IN_PROGRESS,
+            //! Write completed and no read was expected
+            WRITE_COMPLETE,
+            //! Currently waiting for response
+            READ_IN_PROGRESS,
+            //! Write and read cycle completed
+            READ_COMPLETE
+        };
+
     public:
         //! Maple Bus constructor
         //! @param[in] pinA  GPIO index for pin A. The very next GPIO will be designated as pin B.
@@ -42,17 +59,11 @@ class MapleBus : public MapleBusInterface
         //! Called from a PIO ISR when write has completed for this sender.
         void writeIsr();
 
-        //! Retrieves the last valid set of data read.
-        //! @param[out] len  The number of words received
-        //! @param[out] newData  Set to true iff new data was received since the last call
-        //! @returns a pointer to the bytes read.
-        //! @warning this call should be serialized with calls to write() as those calls may change
-        //!          the data in the underlying buffer which is returned.
-        const uint32_t* getReadData(uint32_t& len, bool& newData);
-
-        //! Processes timing events for the current time.
-        //! @param[in] currentTimeUs  The current time to process for (0 to internally get time)
-        void processEvents(uint64_t currentTimeUs=0);
+        //! Processes timing events for the current time. This should be called before any write
+        //! call in order to check timeouts and clear out any used resources.
+        //! @param[in] currentTimeUs  The current time to process for
+        //! @returns updated status since last call
+        Status processEvents(uint64_t currentTimeUs);
 
         //! @returns true iff the bus is currently busy reading or writing.
         inline bool isBusy() { return mWriteInProgress || mReadInProgress; }
@@ -60,9 +71,6 @@ class MapleBus : public MapleBusInterface
     private:
         //! Ensures that the bus is open and starts the write PIO state machine.
         bool writeInit();
-
-        //! If new data is available and is valid, updates mLastValidRead.
-        void updateLastValidReadBuffer();
 
         //! Swaps the endianness of a 32 bit word from the given source to the given destination
         //! while also computing a crc over the 4 bytes.
@@ -111,10 +119,6 @@ class MapleBus : public MapleBusInterface
         volatile uint32_t mReadBuffer[257];
         //! Holds the last know valid read buffer (no CRC - that was validated)
         uint32_t mLastValidRead[256];
-        //! Number of words stored in mLastValidRead, including the frame word
-        uint32_t mLastValidReadLen;
-        //! True iff mLastValidRead was updated since last call to getReadData()
-        bool mNewDataAvailable;
         //! True iff mReadBuffer was updated since last call to updateLastValidReadBuffer()
         volatile bool mReadUpdated;
         //! True when write is currently in progress

@@ -68,19 +68,16 @@ bool DreamcastMainNode::handleData(uint8_t len,
 
 void DreamcastMainNode::task(uint64_t currentTimeUs)
 {
-    mBus.processEvents(currentTimeUs);
+    MapleBusInterface::Status busStatus = mBus.processEvents(currentTimeUs);
 
     // See if there is anything to receive
-    uint32_t len = 0;
-    bool newData = false;
-    const uint32_t* dat = mBus.getReadData(len, newData);
-    if (newData)
+    if (busStatus.readBuffer != nullptr)
     {
-        uint8_t sendAddr = *dat >> 8 & 0xFF;
-        uint8_t recAddr = *dat >> 16 & 0xFF;
-        uint8_t cmd = *dat >> 24;
-        const uint32_t* payload = dat + 1;
-        --len;
+        uint8_t sendAddr = *busStatus.readBuffer >> 8 & 0xFF;
+        uint8_t recAddr = *busStatus.readBuffer >> 16 & 0xFF;
+        uint8_t cmd = *busStatus.readBuffer >> 24;
+        const uint32_t* payload = busStatus.readBuffer + 1;
+        --busStatus.readBufferLen;
 
         if (recAddr == 0x00)
         {
@@ -98,14 +95,14 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
                 }
 
                 // Have the device handle the data
-                handleData(len, cmd, payload);
+                handleData(busStatus.readBufferLen, cmd, payload);
             }
             else
             {
                 int32_t idx = DreamcastPeripheral::subPeripheralIndex(sendAddr);
                 if (idx >= 0 && (uint32_t)idx < mSubNodes.size())
                 {
-                    mSubNodes[idx]->handleData(len, cmd, payload);
+                    mSubNodes[idx]->handleData(busStatus.readBufferLen, cmd, payload);
                 }
             }
         }

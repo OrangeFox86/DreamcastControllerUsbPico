@@ -10,6 +10,27 @@
 class MapleBusInterface
 {
     public:
+        //! Status due to processing events (see MapleBusInterface::processEvents)
+        struct Status
+        {
+            //! A pointer to the bytes read or nullptr if no new data available
+            const uint32_t* readBuffer;
+            //! The number of words received or 0 if no new data available
+            uint32_t readBufferLen;
+            //! Set to true iff a write failed since the last call
+            bool writeFail;
+            //! Set to true iff a read failed since the last call
+            bool readFail;
+
+            Status() :
+                readBuffer(nullptr),
+                readBufferLen(0),
+                writeFail(false),
+                readFail(false)
+            {}
+        };
+
+    public:
         //! Virtual desturctor
         virtual ~MapleBusInterface() {}
 
@@ -22,17 +43,11 @@ class MapleBusInterface
                            bool expectResponse,
                            uint32_t readTimeoutUs=DEFAULT_MAPLE_READ_TIMEOUT_US) = 0;
 
-        //! Retrieves the last valid set of data read.
-        //! @param[out] len  The number of words received
-        //! @param[out] newData  Set to true iff new data was received since the last call
-        //! @returns a pointer to the bytes read.
-        //! @warning this call should be serialized with calls to write() as those calls may change
-        //!          the data in the underlying buffer which is returned.
-        virtual const uint32_t* getReadData(uint32_t& len, bool& newData) = 0;
-
-        //! Processes timing events for the current time.
-        //! @param[in] currentTimeUs  The current time to process for (0 to internally get time)
-        virtual void processEvents(uint64_t currentTimeUs=0) = 0;
+        //! Processes timing events for the current time. This should be called before any write
+        //! call in order to check timeouts and clear out any used resources.
+        //! @param[in] currentTimeUs  The current time to process for
+        //! @returns updated status since last call
+        virtual Status processEvents(uint64_t currentTimeUs) = 0;
 
         //! @returns true iff the bus is currently busy reading or writing.
         virtual bool isBusy() = 0;

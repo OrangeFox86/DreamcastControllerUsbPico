@@ -104,8 +104,6 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     mWriteBuffer(),
     mReadBuffer(),
     mLastValidRead(),
-    mLastValidReadLen(0),
-    mNewDataAvailable(false),
     mReadUpdated(false),
     mWriteInProgress(false),
     mExpectingResponse(false),
@@ -159,8 +157,8 @@ inline void MapleBus::readIsr()
     else
     {
         mSmIn.stop();
-        mReadInProgress = false;
         mReadUpdated = true;
+        mReadInProgress = false;
     }
 }
 
@@ -201,8 +199,6 @@ bool MapleBus::write(const MaplePacket& packet,
 {
     bool rv = false;
 
-    processEvents();
-
     if (!isBusy() && packet.isValid())
     {
         // Make sure previous DMA instances are killed
@@ -238,13 +234,6 @@ bool MapleBus::write(const MaplePacket& packet,
 
             if (expectResponse)
             {
-                // Flush the read buffer
-                updateLastValidReadBuffer();
-                // Clear out the read buffer for good measure
-                for (uint32_t i = 0; i < sizeof(mReadBuffer) / sizeof(mReadBuffer[0]); ++i)
-                {
-                    mReadBuffer[i] = 0;
-                }
                 // Start reading
                 dma_channel_transfer_to_buffer_now(
                     mDmaReadChannel, mReadBuffer, sizeof(mReadBuffer) / sizeof(mReadBuffer[0]));
@@ -266,76 +255,76 @@ bool MapleBus::write(const MaplePacket& packet,
     return rv;
 }
 
-void MapleBus::processEvents(uint64_t currentTimeUs)
+MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
 {
+    Status status;
+
     if (isBusy())
     {
-        // If currentTimeUs wasn't set, get the current time
-        if (currentTimeUs == 0)
-        {
-            currentTimeUs = time_us_64();
-        }
-
         if (currentTimeUs > mProcKillTime)
         {
             if (mWriteInProgress)
             {
                 mSmOut.stop();
                 mWriteInProgress = false;
+                status.writeFail = true;
             }
             if (mReadInProgress)
             {
                 mSmIn.stop();
                 mReadInProgress = false;
+                status.readFail = true;
             }
         }
     }
-}
 
-void MapleBus::updateLastValidReadBuffer()
-{
     if (mReadUpdated)
     {
+        mReadUpdated = false;
+
         // Wait up to 1 ms for the RX FIFO to become empty (automatically drained by the read DMA)
         uint64_t timeoutTime = time_us_64() + 1000;
         while (!pio_sm_is_rx_fifo_empty(mSmIn.mProgram.mPio, mSmIn.mSmIdx)
                && time_us_64() < timeoutTime);
 
-        mReadUpdated = false;
-        uint32_t buffer[256];
-        // The frame word always contains how many proceeding words there are [0,255]
-        uint32_t len = mReadBuffer[0] >> 24;
-        uint8_t crc = 0;
-        // Bytes are loaded to the left, but the first byte is actually the LSB.
-        // This means we need to byte swap (compute crc while we're at it)
-        for (uint32_t i = 0; i < len + 1; ++i)
-        {
-            swapByteOrder(buffer[i], mReadBuffer[i], crc);
-        }
-        // crc in the last word does not need to be byte swapped
-        // Data is only valid if the CRC is correct and first word has something in it (cmd 0 is invalid)
-        if (crc == mReadBuffer[len + 1] && mReadBuffer[0] != 0)
-        {
-            memcpy(mLastValidRead, buffer, (len + 1) * 4);
-            mLastValidReadLen = len + 1;
-            mNewDataAvailable = true;
-        }
-    }
-}
+        // transfer_count is decrements down to 0, so compute the inverse to get number of words
+        uint32_t dmaWordsRead = (sizeof(mReadBuffer) / sizeof(mReadBuffer[0]))
+                                - dma_channel_hw_addr(mDmaReadChannel)->transfer_count;
 
-const uint32_t* MapleBus::getReadData(uint32_t& len, bool& newData)
-{
-    updateLastValidReadBuffer();
-    if (mNewDataAvailable)
-    {
-        mNewDataAvailable = false;
-        newData = true;
+        // Should have at least frame and CRC words
+        if (dmaWordsRead > 1)
+        {
+            uint32_t buffer[256];
+            // The frame word always contains how many proceeding words there are [0,255]
+            uint32_t len = mReadBuffer[0] >> 24;
+            if (len == (dmaWordsRead - 2))
+            {
+                uint8_t crc = 0;
+                // Bytes are loaded to the left, but the first byte is actually the LSB.
+                // This means we need to byte swap (compute crc while we're at it)
+                for (uint32_t i = 0; i < len + 1; ++i)
+                {
+                    swapByteOrder(buffer[i], mReadBuffer[i], crc);
+                }
+                // crc in the last word does not need to be byte swapped
+                // Data is only valid if the CRC is correct and first word has something in it (cmd 0 is invalid)
+                if (crc == mReadBuffer[len + 1] && mReadBuffer[0] != 0)
+                {
+                    memcpy(mLastValidRead, buffer, (len + 1) * 4);
+                    status.readBuffer = mLastValidRead;
+                    status.readBufferLen = len + 1;
+                }
+            }
+            else
+            {
+                status.readFail = true;
+            }
+        }
+        else
+        {
+            status.readFail = true;
+        }
     }
-    else
-    {
-        newData = false;
-    }
-    len = mLastValidReadLen;
-    return mLastValidRead;
-}
 
+    return status;
+}
