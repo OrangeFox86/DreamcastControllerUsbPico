@@ -1,6 +1,9 @@
 #ifndef __CONFIGURATION_H__
 #define __CONFIGURATION_H__
 
+// true to setup and show debug messages
+#define SHOW_DEBUG_MESSAGES false
+
 // Adjust the CPU clock frequency here
 #define CPU_FREQ_KHZ 133000
 

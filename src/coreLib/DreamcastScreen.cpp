@@ -1,13 +1,16 @@
 #include "DreamcastScreen.hpp"
 #include "dreamcast_constants.h"
 
-DreamcastScreen::DreamcastScreen(uint8_t addr, MapleBusInterface& bus, PlayerData playerData) :
-    DreamcastPeripheral(addr, bus, playerData.playerIndex),
+DreamcastScreen::DreamcastScreen(uint8_t addr, 
+                                 std::shared_ptr<EndpointTxSchedulerInterface> scheduler, 
+                                 PlayerData playerData) :
+    DreamcastPeripheral(addr, scheduler, playerData.playerIndex),
     mNextCheckTime(0),
     mWaitingForData(false),
     mNoDataCount(0),
-    mFirstWrite(true),
-    mScreenData(playerData.screenData)
+    mUpdateRequired(true),
+    mScreenData(playerData.screenData),
+    mTransmissionId(0)
 {}
 
 DreamcastScreen::~DreamcastScreen()
@@ -42,7 +45,7 @@ bool DreamcastScreen::task(uint64_t currentTimeUs)
             connected = (mNoDataCount < NO_DATA_DISCONNECT_COUNT);
         }
 
-        if (connected && (mScreenData.isNewDataAvailable() || mFirstWrite))
+        if (connected && (mScreenData.isNewDataAvailable() || mUpdateRequired))
         {
             // Write screen data
             static const uint8_t partitionNum = 0; // Always 0
@@ -53,14 +56,15 @@ bool DreamcastScreen::task(uint64_t currentTimeUs)
             uint32_t payload[numPayloadWords] = {DEVICE_FN_LCD, writeAddrWord, 0};
             mScreenData.readData(&payload[2]);
 
-            MaplePacket packet(COMMAND_BLOCK_WRITE, getRecipientAddress(), payload, numPayloadWords);
-            if (mBus.write(packet, true))
-            {
-                mWaitingForData = true;
-                mNextCheckTime = currentTimeUs + US_PER_CHECK;
-            }
+            // Workaround: make sure previous tx is canceled in case it hasn't gone out yet
+            mEndpointTxScheduler->cancelById(mTransmissionId);
 
-            mFirstWrite = false;
+            MaplePacket packet(COMMAND_BLOCK_WRITE, getRecipientAddress(), payload, numPayloadWords);
+            mTransmissionId = mEndpointTxScheduler->add(PrioritizedTxScheduler::TX_TIME_ASAP, packet, true, 0);
+            mWaitingForData = true;
+            mNextCheckTime = currentTimeUs + US_PER_CHECK;
+
+            mUpdateRequired = false;
         }
     }
     return true;

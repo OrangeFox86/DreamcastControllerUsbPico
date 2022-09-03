@@ -8,8 +8,10 @@
 class MockDreamcastPeripheral : public DreamcastPeripheral
 {
     public:
-        MockDreamcastPeripheral(uint8_t addr, MapleBusInterface& bus, uint32_t playerIndex) :
-            DreamcastPeripheral(addr, bus, playerIndex)
+        MockDreamcastPeripheral(uint8_t addr, 
+                                std::shared_ptr<EndpointTxSchedulerInterface> scheduler, 
+                                uint32_t playerIndex) :
+            DreamcastPeripheral(addr, scheduler, playerIndex)
         {}
 
         MOCK_METHOD(bool,

@@ -1,7 +1,8 @@
 #pragma once
 
 #include <stdint.h>
-#include "MapleBusInterface.hpp"
+#include "PrioritizedTxScheduler.hpp"
+#include "EndpointTxSchedulerInterface.hpp"
 
 //! Base class for a connected Dreamcast peripheral
 class DreamcastPeripheral
@@ -9,14 +10,17 @@ class DreamcastPeripheral
     public:
         //! Constructor
         //! @param[in] addr  This peripheral's address (mask bit)
-        //! @param[in] bus  The bus that this peripheral is connected to
+        //! @param[in] scheduler  The transmission scheduler this peripheral is to add to
         //! @param[in] playerIndex  Player index of this peripheral [0,3]
-        DreamcastPeripheral(uint8_t addr, MapleBusInterface& bus, uint32_t playerIndex) :
-            mBus(bus), mPlayerIndex(playerIndex), mAddr(addr)
+        DreamcastPeripheral(uint8_t addr, 
+                            std::shared_ptr<EndpointTxSchedulerInterface> scheduler, 
+                            uint32_t playerIndex) :
+            mEndpointTxScheduler(scheduler), mPlayerIndex(playerIndex), mAddr(addr)
         {}
 
         //! Virtual destructor
-        virtual ~DreamcastPeripheral() {}
+        virtual ~DreamcastPeripheral() 
+        {}
 
         //! Handles incoming data destined for this device
         //! @param[in] len  Number of words in payload
@@ -75,8 +79,8 @@ class DreamcastPeripheral
         static const uint8_t SUB_PERIPHERAL_ADDR_START_MASK = 0x01;
 
     protected:
-        //! The bus that this peripheral is connected to
-        MapleBusInterface& mBus;
+        //! Keeps all scheduled transmissions for the bus this peripheral is connected to
+        std::shared_ptr<EndpointTxSchedulerInterface> mEndpointTxScheduler;
         //! Player index of this peripheral [0,3]
         const uint32_t mPlayerIndex;
         //! Address of this device

@@ -8,6 +8,8 @@
 #include "DreamcastSubNode.hpp"
 #include "DreamcastPeripheral.hpp"
 #include "dreamcast_constants.h"
+#include "EndpointTxSchedulerInterface.hpp"
+#include "EndpointTxScheduler.hpp"
 
 #include <memory>
 
@@ -22,8 +24,10 @@ using ::testing::DoAll;
 class DreamcastSubNodeOverride : public DreamcastSubNode
 {
     public:
-        DreamcastSubNodeOverride(uint8_t addr, MapleBusInterface& bus, PlayerData playerData) :
-            DreamcastSubNode(addr, bus, playerData)
+        DreamcastSubNodeOverride(uint8_t addr,
+                                 std::shared_ptr<EndpointTxSchedulerInterface> scheduler, 
+                                 PlayerData playerData) :
+            DreamcastSubNode(addr, scheduler, playerData)
         {
         }
 
@@ -37,12 +41,6 @@ class DreamcastSubNodeOverride : public DreamcastSubNode
             mPeripherals = mPeripheralsToAdd;
             mockMethodPeripheralFactory(functionCode);
         }
-
-        //! Allows the test to check the value of mNextCheckTime
-        uint64_t getNextCheckTime() {return mNextCheckTime;}
-
-        //! Allows the test to initialize the value of mNextCheckTime
-        void setNextCheckTime(uint64_t t) {mNextCheckTime = t;}
 
         //! Allows the test to check what peripherals the node has
         std::vector<std::shared_ptr<DreamcastPeripheral>>& getPeripherals()
@@ -75,8 +73,9 @@ class SubNodeTest : public ::testing::Test
             mMutex(),
             mScreenData(mMutex),
             mPlayerData{1, mDreamcastControllerObserver, mScreenData},
-            mMapleBus(),
-            mDreamcastSubNode(0x01, mMapleBus, mPlayerData)
+            mPrioritizedTxScheduler(std::make_shared<PrioritizedTxScheduler>()),
+            mEndpointTxScheduler(std::make_shared<EndpointTxScheduler>(mPrioritizedTxScheduler, 0)),
+            mDreamcastSubNode(0x01, mEndpointTxScheduler, mPlayerData)
         {}
 
     protected:
@@ -84,7 +83,8 @@ class SubNodeTest : public ::testing::Test
         MockMutex mMutex;
         ScreenData mScreenData;
         PlayerData mPlayerData;
-        MockMapleBus mMapleBus;
+        std::shared_ptr<PrioritizedTxScheduler> mPrioritizedTxScheduler;
+        std::shared_ptr<EndpointTxScheduler> mEndpointTxScheduler;
         DreamcastSubNodeOverride mDreamcastSubNode;
         std::shared_ptr<MockDreamcastPeripheral> mockDreamcastPeripheral1;
         std::shared_ptr<MockDreamcastPeripheral> mockDreamcastPeripheral2;
@@ -100,10 +100,10 @@ class SubNodeTest : public ::testing::Test
             std::vector<std::shared_ptr<DreamcastPeripheral>>& peripherals =
                 mDreamcastSubNode.getPeripherals();
             mockDreamcastPeripheral1 =
-                std::make_shared<MockDreamcastPeripheral>(0x01, mMapleBus, mPlayerData.playerIndex);
+                std::make_shared<MockDreamcastPeripheral>(0x01, mEndpointTxScheduler, mPlayerData.playerIndex);
             peripherals.push_back(mockDreamcastPeripheral1);
             mockDreamcastPeripheral2 =
-                std::make_shared<MockDreamcastPeripheral>(0x01, mMapleBus, mPlayerData.playerIndex);
+                std::make_shared<MockDreamcastPeripheral>(0x01, mEndpointTxScheduler, mPlayerData.playerIndex);
             peripherals.push_back(mockDreamcastPeripheral2);
         }
 };
@@ -120,7 +120,7 @@ TEST_F(SubNodeTest, handleDataCommandPeripheralAdded)
 {
     // The mocked factory will add a mocked peripheral
     std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
-        std::make_shared<MockDreamcastPeripheral>(0x01, mMapleBus, mPlayerData.playerIndex);
+        std::make_shared<MockDreamcastPeripheral>(0x01, mEndpointTxScheduler, mPlayerData.playerIndex);
     mDreamcastSubNode.mPeripheralsToAdd.push_back(mockedDreamcastPeripheral);
 
     EXPECT_CALL(mDreamcastSubNode, mockMethodPeripheralFactory(1234567)).Times(1);
@@ -133,7 +133,7 @@ TEST_F(SubNodeTest, handleDataCommandInvalidPayloadSize)
 {
     // The mocked factory will add a mocked peripheral
     std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
-        std::make_shared<MockDreamcastPeripheral>(0x01, mMapleBus, mPlayerData.playerIndex);
+        std::make_shared<MockDreamcastPeripheral>(0x01, mEndpointTxScheduler, mPlayerData.playerIndex);
     mDreamcastSubNode.mPeripheralsToAdd.push_back(mockedDreamcastPeripheral);
 
     EXPECT_CALL(mDreamcastSubNode, mockMethodPeripheralFactory(_)).Times(0);
@@ -171,73 +171,10 @@ TEST_F(SubNodeTest, handleDataPeripheralDataFirstHandled)
     EXPECT_TRUE(mDreamcastSubNode.handleData(3, 0xAB, payload));
 }
 
-TEST_F(SubNodeTest, taskNoPeripheralsNotConnected)
-{
-    // --- MOCKING ---
-    EXPECT_CALL(mMapleBus, write(_, _, _)).Times(0);
-
-    // --- TEST EXECUTION ---
-    mDreamcastSubNode.task(999999999);
-}
-
-TEST_F(SubNodeTest, taskNoPeripheralsConnectedNotTime)
-{
-    // --- MOCKING ---
-    EXPECT_CALL(mMapleBus, write(_, _, _)).Times(0);
-    mDreamcastSubNode.mockSetConnected(true);
-    mDreamcastSubNode.setNextCheckTime(1000000000);
-
-    // --- TEST EXECUTION ---
-    mDreamcastSubNode.task(999999999);
-}
-
-TEST_F(SubNodeTest, taskNoPeripheralsConnectedAndTimeSuccessful)
-{
-    // --- MOCKING ---
-    EXPECT_CALL(mMapleBus, write(MaplePacket((uint8_t)COMMAND_DEVICE_INFO_REQUEST,
-                                             (uint8_t)0x41,
-                                             (const uint32_t*)NULL,
-                                             (uint8_t)0),
-                                 true,
-                                 _))
-        .Times(1)
-        .WillOnce(Return(true));
-    mDreamcastSubNode.mockSetConnected(true);
-
-    // --- TEST EXECUTION ---
-    mDreamcastSubNode.task(999999999);
-
-    // --- EXPECTATIONS ---
-    // Next check will occur in 16 ms
-    EXPECT_EQ(mDreamcastSubNode.getNextCheckTime(), 1000015999);
-}
-
-TEST_F(SubNodeTest, taskNoPeripheralsConnectedAndTimeUnsuccessful)
-{
-    // --- MOCKING ---
-    EXPECT_CALL(mMapleBus, write(MaplePacket((uint8_t)COMMAND_DEVICE_INFO_REQUEST,
-                                             (uint8_t)0x41,
-                                             (const uint32_t*)NULL,
-                                             (uint8_t)0),
-                                 true,
-                                 _))
-        .Times(1)
-        .WillOnce(Return(false));
-    mDreamcastSubNode.mockSetConnected(true);
-
-    // --- TEST EXECUTION ---
-    mDreamcastSubNode.task(999999999);
-
-    // --- EXPECTATIONS ---
-    // Next check time will remain the default
-    EXPECT_EQ(mDreamcastSubNode.getNextCheckTime(), 0);
-}
-
 TEST_F(SubNodeTest, taskPeripheralsConnectedSuccessfulTask)
 {
     // --- MOCKING ---
     mDreamcastSubNode.mockSetConnected(true);
-    mDreamcastSubNode.setNextCheckTime(1000000000);
     // Add 2 mock peripherals to the sub node
     addTwoMockedPeripherals();
     // Both peripherals will successfully handle their task
@@ -248,7 +185,6 @@ TEST_F(SubNodeTest, taskPeripheralsConnectedSuccessfulTask)
     mDreamcastSubNode.task(554433);
 
     // --- EXPECTATIONS ---
-    EXPECT_EQ(mDreamcastSubNode.getNextCheckTime(), 1000000000);
     EXPECT_EQ(mDreamcastSubNode.getPeripherals().size(), 2);
 }
 
@@ -266,13 +202,13 @@ TEST_F(SubNodeTest, taskPeripheralsConnectedFailureTask)
     mDreamcastSubNode.task(554433);
 
     // --- EXPECTATIONS ---
-    EXPECT_EQ(mDreamcastSubNode.getNextCheckTime(), 554433);
     EXPECT_TRUE(mDreamcastSubNode.getPeripherals().empty());
 }
 
 TEST_F(SubNodeTest, mainPeripheralDisconnected)
 {
     // --- MOCKING ---
+    mDreamcastSubNode.mockSetConnected(true);
     // Add 2 mock peripherals to the sub node
     addTwoMockedPeripherals();
 
@@ -294,7 +230,7 @@ TEST_F(SubNodeTest, setConnectedDisconnectedToConnected)
 
     // --- EXPECTATIONS ---
     EXPECT_TRUE(mDreamcastSubNode.isConnected());
-    EXPECT_EQ(mDreamcastSubNode.getPeripherals().size(), 2);
+    EXPECT_EQ(mDreamcastSubNode.getPeripherals().size(), 0);
 }
 
 TEST_F(SubNodeTest, setConnectedConnectedToDisconnected)

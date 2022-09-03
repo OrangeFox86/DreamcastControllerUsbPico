@@ -8,9 +8,11 @@ class DreamcastSubNode : public DreamcastNode
     public:
         //! Constructor
         //! @param[in] addr  The address of this sub node
-        //! @param[in] bus  The bus on which this node communicates
+        //! @param[in] scheduler  The transmission scheduler this peripheral is to add to
         //! @param[in] playerData  The player data passed to any connected peripheral
-        DreamcastSubNode(uint8_t addr, MapleBusInterface& bus, PlayerData playerData);
+        DreamcastSubNode(uint8_t addr,
+                         std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
+                         PlayerData playerData);
 
         //! Copy constructor
         DreamcastSubNode(const DreamcastSubNode& rhs);
@@ -28,14 +30,14 @@ class DreamcastSubNode : public DreamcastNode
         virtual void mainPeripheralDisconnected();
 
         //! Called from the main node to update the connection state of peripherals on this sub node
-        virtual void setConnected(bool connected);
+        virtual void setConnected(bool connected, uint64_t currentTimeUs = 0);
 
     protected:
         //! Number of microseconds in between each info request when no peripheral is detected
         static const uint32_t US_PER_CHECK = 16000;
-        //! The clock time of the next info request when no peripheral is detected
-        uint64_t mNextCheckTime;
         //! Detected peripheral connection state
         bool mConnected;
+        //! ID of the device info request auto reload transmission this object added to the schedule
+        int64_t mScheduleId;
 
 };

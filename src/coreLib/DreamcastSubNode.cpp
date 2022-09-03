@@ -1,18 +1,20 @@
 #include "DreamcastSubNode.hpp"
 #include "dreamcast_constants.h"
+#include "utils.h"
 
-
-DreamcastSubNode::DreamcastSubNode(uint8_t addr, MapleBusInterface& bus, PlayerData playerData) :
-    DreamcastNode(addr, bus, playerData),
-    mNextCheckTime(0),
-    mConnected(false)
+DreamcastSubNode::DreamcastSubNode(uint8_t addr,
+                                   std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
+                                   PlayerData playerData) :
+    DreamcastNode(addr, scheduler, playerData),
+    mConnected(false),
+    mScheduleId(-1)
 {
 }
 
 DreamcastSubNode::DreamcastSubNode(const DreamcastSubNode& rhs) :
     DreamcastNode(rhs),
-    mNextCheckTime(rhs.mNextCheckTime),
-    mConnected(rhs.mConnected)
+    mConnected(rhs.mConnected),
+    mScheduleId(rhs.mScheduleId)
 {
 }
 
@@ -26,6 +28,15 @@ bool DreamcastSubNode::handleData(uint8_t len,
         if (len > 0)
         {
             peripheralFactory(payload[0]);
+            if (mPeripherals.size() > 0)
+            {
+                // Remove the auto reload device info request transmission from schedule
+                if (mScheduleId >= 0)
+                {
+                    mEndpointTxScheduler->cancelById(mScheduleId);
+                    mScheduleId = -1;
+                }
+            }
             return (mPeripherals.size() > 0);
         }
         else
@@ -42,51 +53,51 @@ void DreamcastSubNode::task(uint64_t currentTimeUs)
 {
     if (mConnected)
     {
-        // Request device info new device was newly attached
-        if (mPeripherals.size() <= 0)
-        {
-            if (currentTimeUs >= mNextCheckTime)
-            {
-                MaplePacket packet(
-                    COMMAND_DEVICE_INFO_REQUEST,
-                    DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr),
-                    NULL,
-                    0);
-                // This will return false if bus is busy
-                if (mBus.write(packet, true))
-                {
-                    mNextCheckTime = currentTimeUs + US_PER_CHECK;
-                }
-            }
-        }
         // Handle operations for peripherals (run task() of all peripherals)
-        else
+        if (mPeripherals.size() > 0)
         {
             // Have the connected main peripheral handle write
-            bool disconnected = !handlePeripherals(currentTimeUs);
-            if (disconnected)
-            {
-                // Peripheral(s) disconnected
-                mNextCheckTime = currentTimeUs;
-            }
+            handlePeripherals(currentTimeUs);
         }
     }
 }
 
 void DreamcastSubNode::mainPeripheralDisconnected()
 {
-    mPeripherals.clear();
+    setConnected(false);
 }
 
-void DreamcastSubNode::setConnected(bool connected)
+void DreamcastSubNode::setConnected(bool connected, uint64_t currentTimeUs)
 {
     if (mConnected != connected)
     {
         mConnected = connected;
-        if (!mConnected)
+        mPeripherals.clear();
+        mEndpointTxScheduler->cancelByRecipient(getRecipientAddress());
+        if (mConnected)
         {
-            // Once something has been disconnected, clear all peripherals
-            mPeripherals.clear();
+            DEBUG_PRINT("sub node 0x%02hX connected\n", getRecipientAddress());
+            // Keep asking for info until valid response is heard
+            MaplePacket packet(
+                COMMAND_DEVICE_INFO_REQUEST,
+                getRecipientAddress(),
+                NULL,
+                0);
+            uint64_t txTime = PrioritizedTxScheduler::TX_TIME_ASAP;
+            if (currentTimeUs > 0)
+            {
+                txTime = PrioritizedTxScheduler::computeNextTimeCadence(currentTimeUs, US_PER_CHECK);
+            }
+            mScheduleId = mEndpointTxScheduler->add(
+                txTime,
+                packet,
+                true,
+                EXPECTED_DEVICE_INFO_PAYLOAD_WORDS,
+                US_PER_CHECK);
+        }
+        else
+        {
+            DEBUG_PRINT("sub node 0x%02hX disconnected\n", getRecipientAddress());
         }
     }
 }

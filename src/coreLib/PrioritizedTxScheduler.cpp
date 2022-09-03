@@ -1,14 +1,14 @@
-#include "TransmissionScheduler.hpp"
+#include "PrioritizedTxScheduler.hpp"
 #include "utils.h"
 
 // STL
 #include <algorithm>
 
-TransmissionScheduler::TransmissionScheduler(): mNextId(0), mSchedule() {}
+PrioritizedTxScheduler::PrioritizedTxScheduler(): mNextId(1), mSchedule() {}
 
-TransmissionScheduler::~TransmissionScheduler() {}
+PrioritizedTxScheduler::~PrioritizedTxScheduler() {}
 
-uint32_t TransmissionScheduler::add(std::shared_ptr<Transmission> tx)
+uint32_t PrioritizedTxScheduler::add(std::shared_ptr<Transmission> tx)
 {
     // Keep iterating until correct position is found
     // For this to be the right position, it either needs to start and end before the next
@@ -43,7 +43,7 @@ uint32_t TransmissionScheduler::add(std::shared_ptr<Transmission> tx)
     return tx->transmissionId;
 }
 
-uint32_t TransmissionScheduler::add(uint8_t priority,
+uint32_t PrioritizedTxScheduler::add(uint8_t priority,
                                     uint64_t txTime,
                                     MaplePacket& packet,
                                     bool expectResponse,
@@ -51,12 +51,16 @@ uint32_t TransmissionScheduler::add(uint8_t priority,
                                     uint32_t autoRepeatUs,
                                     uint32_t readTimeoutUs)
 {
-    uint32_t pktDurationUs =
-        INT_DIVIDE_CEILING(
-            packet.getTxTimeNs()
-                + RX_DELAY_NS
-                + MaplePacket::getTxTimeNs(expectedResponseNumPayloadWords, RX_NS_PER_BIT),
-            1000);
+    uint32_t pktDurationNs = MAPLE_OPEN_LINE_CHECK_TIME_US + packet.getTxTimeNs();
+
+    if (expectResponse)
+    {
+        pktDurationNs += 
+            RX_DELAY_NS + MaplePacket::getTxTimeNs(expectedResponseNumPayloadWords, RX_NS_PER_BIT);
+    }
+
+    uint32_t pktDurationUs = INT_DIVIDE_CEILING(pktDurationNs, 1000);
+
     std::shared_ptr<Transmission> tx =
         std::make_shared<Transmission>(mNextId++,
                                        priority,
@@ -66,10 +70,33 @@ uint32_t TransmissionScheduler::add(uint8_t priority,
                                        pktDurationUs,
                                        txTime,
                                        std::make_shared<MaplePacket>(std::move(packet)));
+
     return add(tx);
 }
 
-std::shared_ptr<const TransmissionScheduler::Transmission> TransmissionScheduler::popNext(uint64_t time)
+uint64_t PrioritizedTxScheduler::computeNextTimeCadence(uint64_t currentTime,
+                                                        uint64_t period, 
+                                                        uint64_t offset)
+{
+    // Cover the edge case where the offset is in the future for some reason
+    if (offset > currentTime)
+    {
+        return offset;
+    }
+    else
+    {
+        // Determine how many intervals to advance past offset
+        uint32_t n = INT_DIVIDE_CEILING(currentTime - offset, period);
+        if (n == 0)
+        {
+            n = 1;
+        }
+        // Compute the next cadence
+        return offset + (period * n);
+    }
+}
+
+std::shared_ptr<const PrioritizedTxScheduler::Transmission> PrioritizedTxScheduler::popNext(uint64_t time)
 {
     std::shared_ptr<Transmission> item = nullptr;
 
@@ -109,14 +136,7 @@ std::shared_ptr<const TransmissionScheduler::Transmission> TransmissionScheduler
 
         if (item != nullptr && item->autoRepeatUs > 0)
         {
-            // Determine how many intervals to add in cast this auto reload packet has overflowed
-            uint32_t n = INT_DIVIDE_CEILING(time - item->nextTxTimeUs, item->autoRepeatUs);
-            if (n == 0)
-            {
-                n = 1;
-            }
-            // Reinsert it back into the schedule with a new time
-            item->nextTxTimeUs += (item->autoRepeatUs * n);
+            item->nextTxTimeUs = computeNextTimeCadence(time, item->autoRepeatUs, item->nextTxTimeUs);
             add(item);
         }
     }
@@ -124,7 +144,7 @@ std::shared_ptr<const TransmissionScheduler::Transmission> TransmissionScheduler
     return item;
 }
 
-uint32_t TransmissionScheduler::cancelById(uint32_t transmissionId)
+uint32_t PrioritizedTxScheduler::cancelById(uint32_t transmissionId)
 {
     uint32_t n = 0;
     std::list<std::shared_ptr<Transmission>>::iterator iter = mSchedule.begin();
@@ -143,7 +163,7 @@ uint32_t TransmissionScheduler::cancelById(uint32_t transmissionId)
     return n;
 }
 
-uint32_t TransmissionScheduler::cancelByRecipient(uint8_t recipientAddr)
+uint32_t PrioritizedTxScheduler::cancelByRecipient(uint8_t recipientAddr)
 {
     uint32_t n = 0;
     std::list<std::shared_ptr<Transmission>>::iterator iter = mSchedule.begin();
@@ -162,7 +182,7 @@ uint32_t TransmissionScheduler::cancelByRecipient(uint8_t recipientAddr)
     return n;
 }
 
-uint32_t TransmissionScheduler::cancelAll()
+uint32_t PrioritizedTxScheduler::cancelAll()
 {
     uint32_t n = mSchedule.size();
     mSchedule.clear();

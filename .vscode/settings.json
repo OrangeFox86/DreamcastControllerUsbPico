@@ -54,6 +54,13 @@
         "list": "cpp",
         "map": "cpp",
         "set": "cpp",
-        "iostream": "cpp"
-    }
+        "iostream": "cpp",
+        "cstring": "cpp",
+        "any": "cpp",
+        "forward_list": "cpp",
+        "unordered_set": "cpp",
+        "iomanip": "cpp",
+        "variant": "cpp"
+    },
+    "cmake.configureOnOpen": false
 }

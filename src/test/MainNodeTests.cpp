@@ -8,6 +8,7 @@
 #include "DreamcastSubNode.hpp"
 #include "DreamcastPeripheral.hpp"
 #include "dreamcast_constants.h"
+#include "EndpointTxScheduler.hpp"
 
 #include <memory>
 
@@ -18,12 +19,13 @@ using ::testing::_;
 using ::testing::Return;
 using ::testing::SetArgReferee;
 using ::testing::DoAll;
+using ::testing::AnyNumber;
 
 class MockedDreamcastSubNode : public DreamcastSubNode
 {
     public:
-        MockedDreamcastSubNode(uint8_t addr, MapleBusInterface& bus, PlayerData playerData) :
-            DreamcastSubNode(addr, bus, playerData)
+        MockedDreamcastSubNode(uint8_t addr, std::shared_ptr<EndpointTxSchedulerInterface> scheduler, PlayerData playerData) :
+            DreamcastSubNode(addr, scheduler, playerData)
         {}
 
         MOCK_METHOD(bool,
@@ -35,14 +37,21 @@ class MockedDreamcastSubNode : public DreamcastSubNode
 
         MOCK_METHOD(void, mainPeripheralDisconnected, (), (override));
 
-        MOCK_METHOD(void, setConnected, (bool connected), (override));
+        MOCK_METHOD(void, setConnected, (bool connected, uint64_t currentTimeUs), (override));
+
+        void setConnected(bool connected)
+        {
+            setConnected(connected, 0);
+        }
 };
 
 class DreamcastMainNodeOverride : public DreamcastMainNode
 {
     public:
-        DreamcastMainNodeOverride(MapleBusInterface& bus, PlayerData playerData) :
-            DreamcastMainNode(bus, playerData),
+        DreamcastMainNodeOverride(MapleBusInterface& bus,
+                                  PlayerData playerData,
+                                  std::shared_ptr<PrioritizedTxScheduler> scheduler) :
+            DreamcastMainNode(bus, playerData, scheduler),
             mMockedSubNodes()
         {
             // Swap out the real sub nodes with mocked sub nodes
@@ -54,7 +63,7 @@ class DreamcastMainNodeOverride : public DreamcastMainNode
             {
                 std::shared_ptr<MockedDreamcastSubNode> mockedSubNode =
                     std::make_shared<MockedDreamcastSubNode>(
-                        DreamcastPeripheral::subPeripheralMask(i), mBus, mPlayerData);
+                        DreamcastPeripheral::subPeripheralMask(i), mEndpointTxScheduler, mPlayerData);
                 mMockedSubNodes.push_back(mockedSubNode);
                 mSubNodes.push_back(mockedSubNode);
             }
@@ -71,16 +80,15 @@ class DreamcastMainNodeOverride : public DreamcastMainNode
             mockMethodPeripheralFactory(functionCode);
         }
 
-        //! Allows the test to check the value of mNextCheckTime
-        uint64_t getNextCheckTime() {return mNextCheckTime;}
-
-        //! Allows the test to initialize the value of mNextCheckTime
-        void setNextCheckTime(uint64_t t) {mNextCheckTime = t;}
-
         //! Allows the test to check what peripherals the node has
         std::vector<std::shared_ptr<DreamcastPeripheral>>& getPeripherals()
         {
             return mPeripherals;
+        }
+
+        std::shared_ptr<EndpointTxSchedulerInterface> getEndpointTxScheduler()
+        {
+            return mEndpointTxScheduler;
         }
 
         //! The mocked nodes set in the constructor
@@ -100,7 +108,8 @@ class MainNodeTest : public ::testing::Test
             mScreenData(mMutex),
             mPlayerData{0, mDreamcastControllerObserver, mScreenData},
             mMapleBus(),
-            mDreamcastMainNode(mMapleBus, mPlayerData)
+            mPrioritizedTxScheduler(std::make_shared<PrioritizedTxScheduler>()),
+            mDreamcastMainNode(mMapleBus, mPlayerData, mPrioritizedTxScheduler)
         {}
 
     protected:
@@ -109,6 +118,7 @@ class MainNodeTest : public ::testing::Test
         ScreenData mScreenData;
         PlayerData mPlayerData;
         MockMapleBus mMapleBus;
+        std::shared_ptr<PrioritizedTxScheduler> mPrioritizedTxScheduler;
         DreamcastMainNodeOverride mDreamcastMainNode;
 
         virtual void SetUp()
@@ -142,8 +152,6 @@ TEST_F(MainNodeTest, successfulInfoRequest)
     mDreamcastMainNode.task(1000000);
 
     // --- EXPECTATIONS ---
-    // Next check will occur  in 16 ms
-    EXPECT_EQ(mDreamcastMainNode.getNextCheckTime(), 1016000);
 }
 
 TEST_F(MainNodeTest, unsuccessfulInfoRequest)
@@ -170,18 +178,14 @@ TEST_F(MainNodeTest, unsuccessfulInfoRequest)
     mDreamcastMainNode.task(1000000);
 
     // --- EXPECTATIONS ---
-    // The next time task is called, it is expected to try again
-    EXPECT_LE(mDreamcastMainNode.getNextCheckTime(), 1000000);
 }
 
 TEST_F(MainNodeTest, peripheralConnect)
 {
     // --- SETUP ---
-    // The next info request is set sometime in the past
-    mDreamcastMainNode.setNextCheckTime(999999);
     // The mocked factory will add a mocked peripheral
     std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
-        std::make_shared<MockDreamcastPeripheral>(0x20, mMapleBus, mPlayerData.playerIndex);
+        std::make_shared<MockDreamcastPeripheral>(0x20, mDreamcastMainNode.getEndpointTxScheduler(), mPlayerData.playerIndex);
     mDreamcastMainNode.mPeripheralsToAdd.push_back(mockedDreamcastPeripheral);
 
     // --- MOCKING ---
@@ -195,11 +199,11 @@ TEST_F(MainNodeTest, peripheralConnect)
     // The peripheralFactory method should be called with function code 0x00000001
     EXPECT_CALL(mDreamcastMainNode, mockMethodPeripheralFactory(0x00000001)).Times(1);
     // No sub peripherals detected (addr value is 0x20 - 0 in the last 5 bits)
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], setConnected(false)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], setConnected(false)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[2], setConnected(false)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[3], setConnected(false)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[4], setConnected(false)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], setConnected(false, _)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], setConnected(false, _)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[2], setConnected(false, _)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[3], setConnected(false, _)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[4], setConnected(false, _)).Times(1);
     // The peripheral's task function will be called with the current time
     EXPECT_CALL(*mockedDreamcastPeripheral, task(1000000)).Times(1).WillOnce(Return(true));
     // All sub node's task functions will be called with the current time
@@ -215,18 +219,14 @@ TEST_F(MainNodeTest, peripheralConnect)
     mDreamcastMainNode.task(1000000);
 
     // --- EXPECTATIONS ---
-    // Next check time remains unchanged
-    EXPECT_EQ(mDreamcastMainNode.getNextCheckTime(), 999999);
 }
 
 TEST_F(MainNodeTest, peripheralDisconnect)
 {
     // --- SETUP ---
-    // The next info request is set sometime in the future
-    mDreamcastMainNode.setNextCheckTime(1016000);
     // A main peripheral is currently connected
     std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
-        std::make_shared<MockDreamcastPeripheral>(0x20, mMapleBus, mPlayerData.playerIndex);
+        std::make_shared<MockDreamcastPeripheral>(0x20, mDreamcastMainNode.getEndpointTxScheduler(), mPlayerData.playerIndex);
     mDreamcastMainNode.getPeripherals().push_back(mockedDreamcastPeripheral);
 
     // --- MOCKING ---
@@ -251,8 +251,6 @@ TEST_F(MainNodeTest, peripheralDisconnect)
     mDreamcastMainNode.task(1000000);
 
     // --- EXPECTATIONS ---
-    // Next check time should be set to current time
-    EXPECT_EQ(mDreamcastMainNode.getNextCheckTime(), 1000000);
     // All peripherals removed
     EXPECT_EQ(mDreamcastMainNode.getPeripherals().size(), 0);
 }
@@ -265,16 +263,14 @@ TEST_P(MainNodeSubPeripheralConnectTest, subPeripheralConnect)
     int idx = GetParam();
 
     // --- SETUP ---
-    // The next info request is set sometime in the future
-    mDreamcastMainNode.setNextCheckTime(1016000);
     // A main peripheral is currently connected
     std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
-        std::make_shared<MockDreamcastPeripheral>(0x01, mMapleBus, mPlayerData.playerIndex);
+        std::make_shared<MockDreamcastPeripheral>(0x01, mDreamcastMainNode.getEndpointTxScheduler(), mPlayerData.playerIndex);
     mDreamcastMainNode.getPeripherals().push_back(mockedDreamcastPeripheral);
 
     // --- MOCKING ---
     // The task should always first process events on the maple bus
-    EXPECT_CALL(mMapleBus, processEvents(1000000)).Times(1);
+    EXPECT_CALL(mMapleBus, processEvents(123)).Times(1);
     // The task will then read data from the bus, and a sub peripheral's info is returned
     uint32_t data[2] = {0x05000001U | (0x01U << (idx + 8)), 8675309};
     EXPECT_CALL(mMapleBus, getReadData(_, _))
@@ -286,20 +282,20 @@ TEST_P(MainNodeSubPeripheralConnectTest, subPeripheralConnect)
         handleData((uint8_t)1, (uint8_t)5, &data[1])
     ).Times(1).WillOnce(Return(true));
     // The peripheral's task() function will be called with the current time
-    EXPECT_CALL(*mockedDreamcastPeripheral, task(1000000)).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*mockedDreamcastPeripheral, task(123)).Times(1).WillOnce(Return(true));
     // All sub node's task functions will be called with the current time
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], task(1000000)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], task(1000000)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[2], task(1000000)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[3], task(1000000)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[4], task(1000000)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], task(123)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], task(123)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[2], task(123)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[3], task(123)).Times(1);
+    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[4], task(123)).Times(1);
+    // Don't care if bus writes
+    EXPECT_CALL(mMapleBus, write(_, _, _)).Times(AnyNumber());
 
     // --- TEST EXECUTION ---
-    mDreamcastMainNode.task(1000000);
+    mDreamcastMainNode.task(123);
 
     // --- EXPECTATIONS ---
-    // Next check time remains unchanged
-    EXPECT_EQ(mDreamcastMainNode.getNextCheckTime(), 1016000);
 }
 
 INSTANTIATE_TEST_CASE_P(

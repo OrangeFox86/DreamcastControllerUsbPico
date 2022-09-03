@@ -6,6 +6,7 @@
 #include "PlayerData.hpp"
 #include "DreamcastController.hpp"
 #include "DreamcastScreen.hpp"
+#include "EndpointTxSchedulerInterface.hpp"
 
 #include <stdint.h>
 #include <vector>
@@ -35,15 +36,17 @@ class DreamcastNode
         inline uint8_t getAddr() { return mAddr; }
 
     protected:
-        //! Main constructor
-        DreamcastNode(uint8_t addr, MapleBusInterface& bus, PlayerData playerData) :
-            mAddr(addr), mBus(bus), mPlayerData(playerData), mPeripherals()
+        //! Main constructor with scheduler
+        DreamcastNode(uint8_t addr,
+                      std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
+                      PlayerData playerData) :
+            mAddr(addr), mEndpointTxScheduler(scheduler), mPlayerData(playerData), mPeripherals()
         {}
 
         //! Copy constructor
         DreamcastNode(const DreamcastNode& rhs) :
             mAddr(rhs.mAddr),
-            mBus(rhs.mBus),
+            mEndpointTxScheduler(rhs.mEndpointTxScheduler),
             mPlayerData(rhs.mPlayerData),
             mPeripherals()
         {
@@ -102,14 +105,20 @@ class DreamcastNode
 
             if (functionCode & DEVICE_FN_CONTROLLER)
             {
-                mPeripherals.push_back(std::make_shared<DreamcastController>(mAddr, mBus, mPlayerData));
+                mPeripherals.push_back(std::make_shared<DreamcastController>(mAddr, mEndpointTxScheduler, mPlayerData));
             }
             else if (functionCode & DEVICE_FN_LCD)
             {
-                mPeripherals.push_back(std::make_shared<DreamcastScreen>(mAddr, mBus, mPlayerData));
+                mPeripherals.push_back(std::make_shared<DreamcastScreen>(mAddr, mEndpointTxScheduler, mPlayerData));
             }
             // TODO: handle other peripherals here
             // TODO: add a stub peripheral if none were created
+        }
+
+        //! @returns recipient address for this node
+        inline uint8_t getRecipientAddress()
+        {
+            return DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr);
         }
 
     private:
@@ -121,8 +130,8 @@ class DreamcastNode
         static const uint32_t MAX_NUM_PLAYERS = 4;
         //! Address of this node
         const uint8_t mAddr;
-        //! The bus that this node communicates on
-        MapleBusInterface& mBus;
+        //! Keeps all scheduled transmissions for my bus
+        const std::shared_ptr<EndpointTxSchedulerInterface> mEndpointTxScheduler;
         //! Player data on this node
         PlayerData mPlayerData;
         //! The connected peripherals addressed to this node (usually 0 to 2 items)

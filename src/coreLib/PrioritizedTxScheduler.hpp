@@ -5,14 +5,17 @@
 #include <list>
 #include <memory>
 
-class TransmissionScheduler
+class PrioritizedTxScheduler
 {
 public:
     //! Transmission definition
     struct Transmission
     {
+        //! Unique ID of this transmission
         const uint32_t transmissionId;
+        //! Priority where 0 is highest
         const uint8_t priority;
+        //! Set to true iff a response is expected
         const bool expectResponse;
         const uint32_t readTimeoutUs;
         const uint32_t autoRepeatUs;
@@ -38,6 +41,7 @@ public:
             packet(packet)
         {}
 
+        //! @returns the estimated completion time of this transmission
         uint64_t getNextCompletionTime()
         {
             return nextTxTimeUs + txDurationUs;
@@ -46,10 +50,10 @@ public:
 
 public:
     //! Default constructor
-    TransmissionScheduler();
+    PrioritizedTxScheduler();
 
     //! Virtual destructor
-    virtual ~TransmissionScheduler();
+    virtual ~PrioritizedTxScheduler();
 
     //! Add a transmission to the schedule
     //! @param[in] priority  priority of this transmission (0 is highest priority)
@@ -87,6 +91,15 @@ public:
     //! Cancels all items in the schedule
     //! @returns number of transmissions successfully canceled
     uint32_t cancelAll();
+
+    //! Computes the next time on a cadence
+    //! @param[in] currentTime  The current time
+    //! @param[in] period  The period at which this item is scheduled (must be > 0)
+    //! @param[in] offset  The offset that this item began or previously executed at
+    //! @returns the next time in the future which is confined to period and offset
+    static uint64_t computeNextTimeCadence(uint64_t currentTime,
+                                           uint64_t period, 
+                                           uint64_t offset = 0);
 
 protected:
     //! Add a transmission to the schedule

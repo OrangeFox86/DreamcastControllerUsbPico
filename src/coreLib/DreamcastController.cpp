@@ -3,12 +3,13 @@
 #include <string.h>
 
 
-DreamcastController::DreamcastController(uint8_t addr, MapleBusInterface& bus, PlayerData playerData) :
-    DreamcastPeripheral(addr, bus, playerData.playerIndex),
+DreamcastController::DreamcastController(uint8_t addr, std::shared_ptr<EndpointTxSchedulerInterface> scheduler, PlayerData playerData) :
+    DreamcastPeripheral(addr, scheduler, playerData.playerIndex),
     mGamepad(playerData.gamepad),
     mNextCheckTime(0),
     mWaitingForData(false),
-    mNoDataCount(0)
+    mNoDataCount(0),
+    mFirstTask(true)
 {
     mGamepad.controllerConnected();
 }
@@ -43,6 +44,14 @@ bool DreamcastController::handleData(uint8_t len,
 
 bool DreamcastController::task(uint64_t currentTimeUs)
 {
+    if (mFirstTask)
+    {
+        mFirstTask = false;
+        MaplePacket packet(COMMAND_GET_CONDITION, getRecipientAddress(), DEVICE_FN_CONTROLLER);
+        uint64_t txTime = PrioritizedTxScheduler::computeNextTimeCadence(currentTimeUs, US_PER_CHECK);
+        mEndpointTxScheduler->add(txTime, packet, true, 3, US_PER_CHECK);
+    }
+
     bool connected = (mNoDataCount < NO_DATA_DISCONNECT_COUNT);
     if (currentTimeUs > mNextCheckTime)
     {
@@ -56,13 +65,8 @@ bool DreamcastController::task(uint64_t currentTimeUs)
 
         if (connected)
         {
-            // Get controller status
-            MaplePacket packet(COMMAND_GET_CONDITION, getRecipientAddress(), DEVICE_FN_CONTROLLER);
-            if (mBus.write(packet, true))
-            {
-                mWaitingForData = true;
-                mNextCheckTime = currentTimeUs + US_PER_CHECK;
-            }
+            mWaitingForData = true;
+            mNextCheckTime = currentTimeUs + US_PER_CHECK;
         }
     }
     return connected;
