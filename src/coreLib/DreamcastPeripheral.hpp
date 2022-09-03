@@ -12,14 +12,14 @@ class DreamcastPeripheral
         //! @param[in] addr  This peripheral's address (mask bit)
         //! @param[in] scheduler  The transmission scheduler this peripheral is to add to
         //! @param[in] playerIndex  Player index of this peripheral [0,3]
-        DreamcastPeripheral(uint8_t addr, 
-                            std::shared_ptr<EndpointTxSchedulerInterface> scheduler, 
+        DreamcastPeripheral(uint8_t addr,
+                            std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                             uint32_t playerIndex) :
             mEndpointTxScheduler(scheduler), mPlayerIndex(playerIndex), mAddr(addr)
         {}
 
         //! Virtual destructor
-        virtual ~DreamcastPeripheral() 
+        virtual ~DreamcastPeripheral()
         {}
 
         //! Handles incoming data destined for this device
@@ -69,6 +69,10 @@ class DreamcastPeripheral
         //! @param[in] currentTimeUs  The current time in microseconds
         //! @returns true iff still connected
         virtual bool task(uint64_t currentTimeUs) = 0;
+
+        //! Called when transmission has been sent
+        //! @param[in] tx  The transmission that was sent
+        virtual inline void txSent(std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) {}
 
     public:
         //! The maximum number of sub peripherals that a main peripheral can handle

@@ -5,9 +5,9 @@ TransmissionTimeliner::TransmissionTimeliner(MapleBusInterface& bus, std::shared
     mBus(bus), mSchedule(schedule), mNextTx(nullptr)
 {}
 
-std::shared_ptr<const MaplePacket> TransmissionTimeliner::task(uint64_t time)
+std::shared_ptr<const PrioritizedTxScheduler::Transmission> TransmissionTimeliner::task(uint64_t time)
 {
-    std::shared_ptr<const MaplePacket> pkt = nullptr;
+    std::shared_ptr<const PrioritizedTxScheduler::Transmission> sentTx = nullptr;
 
     if (mNextTx == nullptr && !mBus.isBusy())
     {
@@ -19,10 +19,10 @@ std::shared_ptr<const MaplePacket> TransmissionTimeliner::task(uint64_t time)
         assert(mNextTx->packet->isValid());
         if (mBus.write(*mNextTx->packet, mNextTx->expectResponse, mNextTx->readTimeoutUs))
         {
-            pkt = mNextTx->packet;
+            sentTx = mNextTx;
             mNextTx = nullptr;
         }
     }
 
-    return pkt;
+    return sentTx;
 }

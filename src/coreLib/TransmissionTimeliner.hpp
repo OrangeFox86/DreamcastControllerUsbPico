@@ -15,8 +15,8 @@ public:
 
     //! Timeliner task - called periodically to process timeliner events
     //! @param[in] time  The current time task is run
-    //! @returns the packet that started transmission or nullptr if nothing was transmitted
-    std::shared_ptr<const MaplePacket> task(uint64_t time);
+    //! @returns the transmission that started or nullptr if nothing was transmitted
+    std::shared_ptr<const PrioritizedTxScheduler::Transmission> task(uint64_t time);
 
 protected:
     //! The maple bus that scheduled transmissions are written to

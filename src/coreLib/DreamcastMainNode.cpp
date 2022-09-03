@@ -10,12 +10,12 @@ const uint8_t DreamcastMainNode::SUB_TRANSMISSION_PRIORITY = 1;
 DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus,
                                      PlayerData playerData,
                                      std::shared_ptr<PrioritizedTxScheduler> prioritizedTxScheduler) :
-    DreamcastNode(DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK, 
+    DreamcastNode(DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK,
                   std::make_shared<EndpointTxScheduler>(
                     prioritizedTxScheduler,
                     MAIN_TRANSMISSION_PRIORITY
                   ),
-                  playerData), 
+                  playerData),
     mBus(bus),
     mSubNodes(),
     mTransmissionTimeliner(bus, prioritizedTxScheduler),
@@ -26,7 +26,7 @@ DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus,
     for (uint32_t i = 0; i < DreamcastPeripheral::MAX_SUB_PERIPHERALS; ++i)
     {
         mSubNodes.push_back(std::make_shared<DreamcastSubNode>(
-            DreamcastPeripheral::subPeripheralMask(i), 
+            DreamcastPeripheral::subPeripheralMask(i),
             std::make_shared<EndpointTxScheduler>(prioritizedTxScheduler, SUB_TRANSMISSION_PRIORITY),
             mPlayerData));
     }
@@ -53,6 +53,7 @@ bool DreamcastMainNode::handleData(uint8_t len,
                     mEndpointTxScheduler->cancelById(mScheduleId);
                     mScheduleId = -1;
                 }
+                DEBUG_PRINT("Main peripheral connected\n");
             }
             return (mPeripherals.size() > 0);
         }
@@ -134,11 +135,36 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
                 (*iter)->mainPeripheralDisconnected();
             }
             addInfoRequestToSchedule(currentTimeUs);
+            DEBUG_PRINT("Main peripheral disconnected\n");
         }
     }
 
-    std::shared_ptr<const MaplePacket> handledPacket = mTransmissionTimeliner.task(currentTimeUs);
-    // TODO: let peripheral know this packet was sent
+    // Handle transmission
+    std::shared_ptr<const PrioritizedTxScheduler::Transmission> sentTx =
+        mTransmissionTimeliner.task(currentTimeUs);
+
+    if (sentTx != nullptr && sentTx->packet != nullptr)
+    {
+        // Let peripheral know this packet was sent
+        uint8_t recipientAddr = sentTx->packet->getFrameRecipientAddr();
+        if (recipientAddr == getRecipientAddress())
+        {
+            txSent(sentTx);
+        }
+        else
+        {
+            for (std::vector<std::shared_ptr<DreamcastSubNode>>::iterator iter = mSubNodes.begin();
+                 iter != mSubNodes.end();
+                 ++iter)
+            {
+                if (recipientAddr == (*iter)->getRecipientAddress())
+                {
+                    (*iter)->txSent(sentTx);
+                    break;
+                }
+            }
+        }
+    }
 }
 
 void DreamcastMainNode::addInfoRequestToSchedule(uint64_t currentTimeUs)

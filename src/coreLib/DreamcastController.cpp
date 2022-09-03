@@ -6,10 +6,10 @@
 DreamcastController::DreamcastController(uint8_t addr, std::shared_ptr<EndpointTxSchedulerInterface> scheduler, PlayerData playerData) :
     DreamcastPeripheral(addr, scheduler, playerData.playerIndex),
     mGamepad(playerData.gamepad),
-    mNextCheckTime(0),
+    mNextConditionTime(0),
     mWaitingForData(false),
-    mNoDataCount(0),
-    mFirstTask(true)
+    mFirstTask(true),
+    mConditionTxId(0)
 {
     mGamepad.controllerConnected();
 }
@@ -19,6 +19,18 @@ DreamcastController::~DreamcastController()
     mGamepad.controllerDisconnected();
 }
 
+void DreamcastController::txSent(std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
+{
+    if (tx->packet != nullptr)
+    {
+        if (mConditionTxId != 0 && tx->transmissionId == mConditionTxId)
+        {
+            mNextConditionTime = tx->nextTxTimeUs;
+            mWaitingForData = true;
+        }
+    }
+}
+
 bool DreamcastController::handleData(uint8_t len,
                                      uint8_t cmd,
                                      const uint32_t *payload)
@@ -26,7 +38,6 @@ bool DreamcastController::handleData(uint8_t len,
     if (mWaitingForData)
     {
         mWaitingForData = false;
-        mNoDataCount = 0;
 
         if (cmd == COMMAND_RESPONSE_DATA_XFER && len >= 3 && payload[0] == 1)
         {
@@ -49,25 +60,8 @@ bool DreamcastController::task(uint64_t currentTimeUs)
         mFirstTask = false;
         MaplePacket packet(COMMAND_GET_CONDITION, getRecipientAddress(), DEVICE_FN_CONTROLLER);
         uint64_t txTime = PrioritizedTxScheduler::computeNextTimeCadence(currentTimeUs, US_PER_CHECK);
-        mEndpointTxScheduler->add(txTime, packet, true, 3, US_PER_CHECK);
+        mConditionTxId = mEndpointTxScheduler->add(txTime, packet, true, 3, US_PER_CHECK);
     }
 
-    bool connected = (mNoDataCount < NO_DATA_DISCONNECT_COUNT);
-    if (currentTimeUs > mNextCheckTime)
-    {
-        // Increment count if we are still waiting for response from the last communication attempt
-        if (mWaitingForData)
-        {
-            ++mNoDataCount;
-            mWaitingForData = false;
-            connected = (mNoDataCount < NO_DATA_DISCONNECT_COUNT);
-        }
-
-        if (connected)
-        {
-            mWaitingForData = true;
-            mNextCheckTime = currentTimeUs + US_PER_CHECK;
-        }
-    }
-    return connected;
+    return !mWaitingForData || currentTimeUs < mNextConditionTime;
 }

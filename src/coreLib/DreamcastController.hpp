@@ -26,20 +26,20 @@ class DreamcastController : public DreamcastPeripheral
         //! Inherited from DreamcastPeripheral
         virtual bool task(uint64_t currentTimeUs) final;
 
+        //! Inherited from DreamcastPeripheral
+        virtual void txSent(std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) final;
+
     private:
-        //! Number of times failed communication occurs before determining that the controller is
-        //! disconnected
-        static const uint32_t NO_DATA_DISCONNECT_COUNT = 5;
         //! Time between each controller state poll (in microseconds)
         static const uint32_t US_PER_CHECK = 16000;
         //! The gamepad to write button presses to
         DreamcastControllerObserver& mGamepad;
         //! Time which the next controller state poll will occur
-        uint64_t mNextCheckTime;
+        uint64_t mNextConditionTime;
         //! True iff the controller is waiting for data
         bool mWaitingForData;
-        //! Number of consecutive times no data was received
-        uint32_t mNoDataCount;
         //! Initialized to true and set to false in task()
         bool mFirstTask;
+        //! ID of the get condition transmission
+        uint32_t mConditionTxId;
 };

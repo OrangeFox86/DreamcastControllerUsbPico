@@ -35,6 +35,24 @@ class DreamcastNode
         //! @returns this node's address
         inline uint8_t getAddr() { return mAddr; }
 
+        //! @returns recipient address for this node
+        inline uint8_t getRecipientAddress()
+        {
+            return DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr);
+        }
+
+        //! Called when transmission has been sent
+        //! @param[in] tx  The transmission that was sent
+        virtual inline void txSent(std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
+        {
+            for (std::vector<std::shared_ptr<DreamcastPeripheral>>::iterator iter = mPeripherals.begin();
+                 iter != mPeripherals.end();
+                 ++iter)
+            {
+                (*iter)->txSent(tx);
+            }
+        }
+
     protected:
         //! Main constructor with scheduler
         DreamcastNode(uint8_t addr,
@@ -113,12 +131,6 @@ class DreamcastNode
             }
             // TODO: handle other peripherals here
             // TODO: add a stub peripheral if none were created
-        }
-
-        //! @returns recipient address for this node
-        inline uint8_t getRecipientAddress()
-        {
-            return DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr);
         }
 
     private:
