@@ -19,11 +19,11 @@ class DreamcastNode
         //! Virtual destructor
         virtual ~DreamcastNode() {}
 
-        //! Handles incoming data destined for this node
-        //! @param[in] packet  The packet received
+        //! Called when a transmission is complete
+        //! @param[in] packet  The packet received or nullptr if this was write only transmission
         //! @param[in] tx  The transmission that triggered this data
         //! @returns true iff the data was handled
-        virtual bool handleData(std::shared_ptr<const MaplePacket> packet,
+        virtual bool txComplete(std::shared_ptr<const MaplePacket> packet,
                                 std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) = 0;
 
         //! Called periodically for this node to execute tasks for the given point in time
@@ -109,7 +109,7 @@ class DreamcastNode
                  iter != mPeripherals.end() && !handled;
                  ++iter)
             {
-                handled = (*iter)->handleData(packet, tx);
+                handled = (*iter)->txComplete(packet, tx);
             }
             return handled;
         }

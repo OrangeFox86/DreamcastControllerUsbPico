@@ -118,7 +118,7 @@ TEST_F(SubNodeTest, handleDataCommandNoPeripheralsAdded)
         std::make_shared<PrioritizedTxScheduler::Transmission>(0, 0, true, 100, 0, 123, 0, txPacket);
 
     // --- TEST EXECUTION ---
-    EXPECT_FALSE(mDreamcastSubNode.handleData(packet, tx));
+    EXPECT_FALSE(mDreamcastSubNode.txComplete(packet, tx));
 
     // --- EXPECTATIONS ---
     EXPECT_TRUE(mDreamcastSubNode.getPeripherals().empty());
@@ -138,7 +138,7 @@ TEST_F(SubNodeTest, handleDataCommandPeripheralAdded)
         std::make_shared<PrioritizedTxScheduler::Transmission>(0, 0, true, 100, 0, 123, 0, txPacket);
 
     // --- TEST EXECUTION ---
-    EXPECT_TRUE(mDreamcastSubNode.handleData(packet, tx));
+    EXPECT_TRUE(mDreamcastSubNode.txComplete(packet, tx));
 
     // --- EXPECTATIONS ---
     EXPECT_EQ(mDreamcastSubNode.getPeripherals().size(), 1);
@@ -158,7 +158,7 @@ TEST_F(SubNodeTest, handleDataCommandInvalidPayloadSize)
     EXPECT_CALL(mDreamcastSubNode, mockMethodPeripheralFactory(_)).Times(0);
 
     // --- TEST EXECUTION ---
-    EXPECT_FALSE(mDreamcastSubNode.handleData(packet, tx));
+    EXPECT_FALSE(mDreamcastSubNode.txComplete(packet, tx));
 
     // --- EXPECTATIONS ---
     EXPECT_TRUE(mDreamcastSubNode.getPeripherals().empty());
@@ -176,11 +176,11 @@ TEST_F(SubNodeTest, handleDataPeripheralDataNoneHandled)
     std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx =
         std::make_shared<PrioritizedTxScheduler::Transmission>(0, 0, true, 100, 0, 123, 0, txPacket);
     // Neither of the peripherals will handle data
-    EXPECT_CALL(*mockDreamcastPeripheral1, handleData(_, _)).Times(1).WillOnce(Return(false));
-    EXPECT_CALL(*mockDreamcastPeripheral2, handleData(_, _)).Times(1).WillOnce(Return(false));
+    EXPECT_CALL(*mockDreamcastPeripheral1, txComplete(_, _)).Times(1).WillOnce(Return(false));
+    EXPECT_CALL(*mockDreamcastPeripheral2, txComplete(_, _)).Times(1).WillOnce(Return(false));
 
     // --- TEST EXECUTION ---
-    EXPECT_FALSE(mDreamcastSubNode.handleData(packet, tx));
+    EXPECT_FALSE(mDreamcastSubNode.txComplete(packet, tx));
 }
 
 TEST_F(SubNodeTest, handleDataPeripheralDataFirstHandled)
@@ -195,11 +195,11 @@ TEST_F(SubNodeTest, handleDataPeripheralDataFirstHandled)
     std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx =
         std::make_shared<PrioritizedTxScheduler::Transmission>(0, 0, true, 100, 0, 123, 0, txPacket);
     // The first peripheral will handle data
-    EXPECT_CALL(*mockDreamcastPeripheral1, handleData(_, _)).Times(1).WillOnce(Return(true));
-    EXPECT_CALL(*mockDreamcastPeripheral2, handleData(_, _)).Times(0);
+    EXPECT_CALL(*mockDreamcastPeripheral1, txComplete(_, _)).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*mockDreamcastPeripheral2, txComplete(_, _)).Times(0);
 
     // --- TEST EXECUTION ---
-    EXPECT_TRUE(mDreamcastSubNode.handleData(packet, tx));
+    EXPECT_TRUE(mDreamcastSubNode.txComplete(packet, tx));
 }
 
 TEST_F(SubNodeTest, taskPeripheralsConnectedSuccessfulTask)

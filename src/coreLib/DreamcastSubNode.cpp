@@ -18,7 +18,7 @@ DreamcastSubNode::DreamcastSubNode(const DreamcastSubNode& rhs) :
 {
 }
 
-bool DreamcastSubNode::handleData(std::shared_ptr<const MaplePacket> packet,
+bool DreamcastSubNode::txComplete(std::shared_ptr<const MaplePacket> packet,
                                   std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
 {
     // If device info received, add the sub peripheral

@@ -14,16 +14,13 @@ public:
         std::shared_ptr<const PrioritizedTxScheduler::Transmission> transmission;
         //! Set to received packet or nullptr if nothing received
         std::shared_ptr<const MaplePacket> received;
-        //! Set to true iff transmission failed
-        bool lastTxFailed;
-        //! Set to true iff read failed
-        bool lastRxFailed;
+        //! The phase of the maple bus
+        MapleBusInterface::Phase busPhase;
 
         ReadStatus() :
             transmission(nullptr),
             received(nullptr),
-            lastTxFailed(false),
-            lastRxFailed(false)
+            busPhase(MapleBusInterface::Phase::INVALID)
         {}
     };
 

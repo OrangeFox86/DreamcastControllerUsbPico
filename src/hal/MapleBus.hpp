@@ -21,23 +21,6 @@
 //! @warning this class is not "thread safe" - it should only be used by 1 core.
 class MapleBus : public MapleBusInterface
 {
-    private:
-        // TODO: use this phase instead of multiple booleans (better for atomic write/read)
-        //! Enumerates the current phase in the state machine
-        enum Phase
-        {
-            //! Initialized phase and phase after completion and events are processed
-            IDLE = 0,
-            //! Write is currently in progress
-            WRITE_IN_PROGRESS,
-            //! Write completed and no read was expected
-            WRITE_COMPLETE,
-            //! Currently waiting for response
-            READ_IN_PROGRESS,
-            //! Write and read cycle completed
-            READ_COMPLETE
-        };
-
     public:
         //! Maple Bus constructor
         //! @param[in] pinA  GPIO index for pin A. The very next GPIO will be designated as pin B.
@@ -66,7 +49,7 @@ class MapleBus : public MapleBusInterface
         Status processEvents(uint64_t currentTimeUs);
 
         //! @returns true iff the bus is currently busy reading or writing.
-        inline bool isBusy() { return mWriteInProgress || mReadInProgress; }
+        inline bool isBusy() { return mCurrentPhase != Phase::IDLE; }
 
     private:
         //! Ensures that the bus is open and starts the write PIO state machine.
@@ -117,16 +100,12 @@ class MapleBus : public MapleBusInterface
         volatile uint32_t mWriteBuffer[258];
         //! The input word buffer - 256 + 1 extra word for CRC
         volatile uint32_t mReadBuffer[257];
-        //! Holds the last know valid read buffer (no CRC - that was validated)
-        uint32_t mLastValidRead[256];
-        //! True iff mReadBuffer was updated since last call to updateLastValidReadBuffer()
-        volatile bool mReadUpdated;
-        //! True when write is currently in progress
-        volatile bool mWriteInProgress;
+        //! Persistent storage for external use after processEvents call
+        uint32_t mLastRead[256];
+        //! Current phase of the state machine
+        Phase mCurrentPhase;
         //! True if read should be started immediately after write has completed
         bool mExpectingResponse;
-        //! True when read is currently in progress
-        volatile bool mReadInProgress;
         //! The time at which the next timeout will occur
         volatile uint64_t mProcKillTime;
         //! True once receive is detected

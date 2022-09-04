@@ -15,7 +15,7 @@ class MockDreamcastPeripheral : public DreamcastPeripheral
         {}
 
         MOCK_METHOD(bool,
-                    handleData,
+                    txComplete,
                     (std::shared_ptr<const MaplePacket> packet,
                         std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx),
                     (override));

@@ -24,6 +24,7 @@ This is a work in progress. Current progress:
     - C and Z buttons on arcade stick also work
   - Screen interface is working (the "V" in "VMU")
     - Currently just a default screen is sent on connection
+- Added transmission timeliner so that any peripheral addition is scalable without worrying much about how peripherals may interfere with each other
 
 ## Why the RP2040 is a Game Changer
 

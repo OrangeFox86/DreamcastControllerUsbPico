@@ -18,7 +18,7 @@ class DreamcastSubNode : public DreamcastNode
         DreamcastSubNode(const DreamcastSubNode& rhs);
 
         //! Inherited from DreamcastNode
-        virtual bool handleData(std::shared_ptr<const MaplePacket> packet,
+        virtual bool txComplete(std::shared_ptr<const MaplePacket> packet,
                                 std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx);
 
         //! Inherited from DreamcastNode

@@ -19,7 +19,7 @@ class DreamcastController : public DreamcastPeripheral
         virtual ~DreamcastController();
 
         //! Inherited from DreamcastPeripheral
-        virtual bool handleData(std::shared_ptr<const MaplePacket> packet,
+        virtual bool txComplete(std::shared_ptr<const MaplePacket> packet,
                                 std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) final;
 
         //! Inherited from DreamcastPeripheral

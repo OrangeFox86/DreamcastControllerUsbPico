@@ -22,11 +22,11 @@ class DreamcastPeripheral
         virtual ~DreamcastPeripheral()
         {}
 
-        //! Handles incoming data destined for this device
-        //! @param[in] packet  The packet received
+        //! Called when a transmission is complete
+        //! @param[in] packet  The packet received or nullptr if this was write only transmission
         //! @param[in] tx  The transmission that triggered this data
         //! @returns true iff the data was handled
-        virtual bool handleData(std::shared_ptr<const MaplePacket> packet,
+        virtual bool txComplete(std::shared_ptr<const MaplePacket> packet,
                                 std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) = 0;
 
         //! @param[in] subPeripheralIndex  Sub peripheral index [0,4]

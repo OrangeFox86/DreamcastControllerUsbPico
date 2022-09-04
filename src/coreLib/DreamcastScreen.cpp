@@ -15,7 +15,7 @@ DreamcastScreen::DreamcastScreen(uint8_t addr,
 DreamcastScreen::~DreamcastScreen()
 {}
 
-bool DreamcastScreen::handleData(std::shared_ptr<const MaplePacket> packet,
+bool DreamcastScreen::txComplete(std::shared_ptr<const MaplePacket> packet,
                                  std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
 {
     if (mWaitingForData)

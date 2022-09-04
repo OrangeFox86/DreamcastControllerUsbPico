@@ -29,7 +29,7 @@ class MockedDreamcastSubNode : public DreamcastSubNode
         {}
 
         MOCK_METHOD(bool,
-                    handleData,
+                    txComplete,
                     (std::shared_ptr<const MaplePacket> packet,
                         std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx),
                     (override));
@@ -201,6 +201,7 @@ TEST_F(MainNodeTest, peripheralConnect)
     MapleBusInterface::Status status;
     status.readBuffer = data;
     status.readBufferLen = 2;
+    status.phase = MapleBusInterface::Phase::READ_COMPLETE;
     EXPECT_CALL(mMapleBus, processEvents(1000000))
         .Times(1)
         .WillOnce(Return(status));
@@ -246,7 +247,7 @@ TEST_F(MainNodeTest, peripheralDisconnect)
     // --- MOCKING ---
     // The task will process events, and it will return read failure
     MapleBusInterface::Status status;
-    status.readFail = true;
+    status.phase = MapleBusInterface::Phase::READ_FAILED;
     EXPECT_CALL(mMapleBus, processEvents(1000000))
         .Times(1)
         .WillOnce(Return(status));
@@ -285,6 +286,7 @@ TEST_P(MainNodeSubPeripheralConnectTest, subPeripheralConnect)
     MapleBusInterface::Status status;
     status.readBuffer = data;
     status.readBufferLen = 2;
+    status.phase = MapleBusInterface::Phase::READ_COMPLETE;
     EXPECT_CALL(mMapleBus, processEvents(123))
         .Times(1)
         .WillOnce(Return(status));
@@ -292,7 +294,7 @@ TEST_P(MainNodeSubPeripheralConnectTest, subPeripheralConnect)
     std::shared_ptr<const MaplePacket> packet = std::make_shared<MaplePacket>(data, 2);
     EXPECT_CALL(
         *mDreamcastMainNode.mMockedSubNodes[idx],
-        handleData(_, _)
+        txComplete(_, _)
     ).Times(1).WillOnce(Return(true));
     // The peripheral's task() function will be called with the current time
     EXPECT_CALL(*mockedDreamcastPeripheral, task(123)).Times(1);

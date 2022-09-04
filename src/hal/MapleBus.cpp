@@ -103,11 +103,9 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     mDmaReadChannel(dma_claim_unused_channel(true)),
     mWriteBuffer(),
     mReadBuffer(),
-    mLastValidRead(),
-    mReadUpdated(false),
-    mWriteInProgress(false),
+    mLastRead(),
+    mCurrentPhase(MapleBus::Phase::IDLE),
     mExpectingResponse(false),
-    mReadInProgress(false),
     mProcKillTime(0xFFFFFFFFFFFFFFFFULL),
     mRxDetected(false),
     mReadTimeoutUs(0)
@@ -157,8 +155,7 @@ inline void MapleBus::readIsr()
     else
     {
         mSmIn.stop();
-        mReadUpdated = true;
-        mReadInProgress = false;
+        mCurrentPhase = Phase::READ_COMPLETE;
     }
 }
 
@@ -169,9 +166,12 @@ inline void MapleBus::writeIsr()
     {
         mSmIn.start();
         mProcKillTime = time_us_64() + MAPLE_RESPONSE_TIMEOUT_US;
-        mReadInProgress = true;
+        mCurrentPhase = Phase::READ_IN_PROGRESS;
     }
-    mWriteInProgress = false;
+    else
+    {
+        mCurrentPhase = Phase::WRITE_COMPLETE;
+    }
 }
 
 bool MapleBus::writeInit()
@@ -230,7 +230,7 @@ bool MapleBus::write(const MaplePacket& packet,
         {
             // Update flags before beginning to write
             mExpectingResponse = expectResponse;
-            mWriteInProgress = true;
+            mCurrentPhase = Phase::WRITE_IN_PROGRESS;
 
             if (expectResponse)
             {
@@ -258,30 +258,13 @@ bool MapleBus::write(const MaplePacket& packet,
 MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
 {
     Status status;
+    // The state machine may still be running, so it is important to store the current phase and
+    // fully process it at "this" moment in time i.e. the below must check against status.phase, not
+    // mCurrentPhase.
+    status.phase = mCurrentPhase;
 
-    if (isBusy())
+    if (status.phase == Phase::READ_COMPLETE)
     {
-        if (currentTimeUs > mProcKillTime)
-        {
-            if (mWriteInProgress)
-            {
-                mSmOut.stop();
-                mWriteInProgress = false;
-                status.writeFail = true;
-            }
-            if (mReadInProgress)
-            {
-                mSmIn.stop();
-                mReadInProgress = false;
-                status.readFail = true;
-            }
-        }
-    }
-
-    if (mReadUpdated)
-    {
-        mReadUpdated = false;
-
         // Wait up to 1 ms for the RX FIFO to become empty (automatically drained by the read DMA)
         uint64_t timeoutTime = time_us_64() + 1000;
         while (!pio_sm_is_rx_fifo_empty(mSmIn.mProgram.mPio, mSmIn.mSmIdx)
@@ -294,7 +277,6 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
         // Should have at least frame and CRC words
         if (dmaWordsRead > 1)
         {
-            uint32_t buffer[256];
             // The frame word always contains how many proceeding words there are [0,255]
             uint32_t len = mReadBuffer[0] >> 24;
             if (len == (dmaWordsRead - 2))
@@ -304,25 +286,63 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
                 // This means we need to byte swap (compute crc while we're at it)
                 for (uint32_t i = 0; i < len + 1; ++i)
                 {
-                    swapByteOrder(buffer[i], mReadBuffer[i], crc);
+                    swapByteOrder(mLastRead[i], mReadBuffer[i], crc);
                 }
                 // crc in the last word does not need to be byte swapped
                 // Data is only valid if the CRC is correct and first word has something in it (cmd 0 is invalid)
-                if (crc == mReadBuffer[len + 1] && mReadBuffer[0] != 0)
+                if (crc == mReadBuffer[len + 1])
                 {
-                    memcpy(mLastValidRead, buffer, (len + 1) * 4);
-                    status.readBuffer = mLastValidRead;
+                    status.readBuffer = mLastRead;
                     status.readBufferLen = len + 1;
+                }
+                else
+                {
+                    // Read failed because CRC was invalid
+                    status.phase = Phase::READ_FAILED;
                 }
             }
             else
             {
-                status.readFail = true;
+                // Read failed because the packet length in package didn't match number of DMA words
+                status.phase = Phase::READ_FAILED;
             }
         }
         else
         {
-            status.readFail = true;
+            // Read failed because nothing was sent through DMA
+            status.phase = Phase::READ_FAILED;
+        }
+
+        // We processed the read, so the machine can go back to idle
+        mCurrentPhase = Phase::IDLE;
+    }
+    else if (status.phase == Phase::WRITE_COMPLETE)
+    {
+        // Nothing to do here
+
+        // We processed the write, so the machine can go back to idle
+        mCurrentPhase = Phase::IDLE;
+    }
+    else if (status.phase != Phase::IDLE && currentTimeUs > mProcKillTime)
+    {
+        // The state machine is not idle, and it blew past a timeout - check what needs to be killed
+
+        if (status.phase == Phase::READ_IN_PROGRESS)
+        {
+            mSmIn.stop();
+            // READ_FAILED is an impulse phase. Then the state machine goes back to IDLE.
+            status.phase = Phase::READ_FAILED;
+            mCurrentPhase = Phase::IDLE;
+        }
+        else // status.phase == Phase::WRITE_IN_PROGRESS - but also catches any other edge case
+        {
+            // Stopping both out and in just in case there was a race condition (state machine could
+            // have *just* transitioned to READ_IN_PROGESS as we were processing this timeout)
+            mSmOut.stop();
+            mSmIn.stop();
+            // WRITE_FAILED is an impulse phase. Then the state machine goes back to IDLE.
+            status.phase = Phase::WRITE_FAILED;
+            mCurrentPhase = Phase::IDLE;
         }
     }
 

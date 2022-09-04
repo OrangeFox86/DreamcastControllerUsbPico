@@ -11,16 +11,17 @@ TransmissionTimeliner::ReadStatus TransmissionTimeliner::readTask(uint64_t curre
 
     // Process bus events and get any data received
     MapleBusInterface::Status busStatus = mBus.processEvents(currentTimeUs);
-    status.lastRxFailed = busStatus.readFail;
-    status.lastTxFailed = busStatus.writeFail;
-    if (busStatus.readBuffer != nullptr)
+    status.busPhase = busStatus.phase;
+    if (status.busPhase == MapleBusInterface::Phase::READ_COMPLETE)
     {
         status.received = std::make_shared<MaplePacket>(busStatus.readBuffer,
                                                         busStatus.readBufferLen);
         status.transmission = mCurrentTx;
         mCurrentTx = nullptr;
     }
-    else if (status.lastRxFailed || status.lastTxFailed)
+    else if (status.busPhase == MapleBusInterface::Phase::WRITE_COMPLETE
+             || status.busPhase == MapleBusInterface::Phase::READ_FAILED
+             || status.busPhase == MapleBusInterface::Phase::WRITE_FAILED)
     {
         status.transmission = mCurrentTx;
         mCurrentTx = nullptr;

@@ -36,7 +36,7 @@ void DreamcastController::txFailed(bool writeFailed,
     }
 }
 
-bool DreamcastController::handleData(std::shared_ptr<const MaplePacket> packet,
+bool DreamcastController::txComplete(std::shared_ptr<const MaplePacket> packet,
                                      std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
 {
     if (mWaitingForData)

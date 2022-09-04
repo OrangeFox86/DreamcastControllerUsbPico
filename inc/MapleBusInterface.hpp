@@ -10,23 +10,41 @@
 class MapleBusInterface
 {
     public:
+        //! Enumerates the phase in the state machine
+        enum class Phase
+        {
+            //! Initialized phase and phase after completion and events are processed
+            IDLE,
+            //! Write is currently in progress
+            WRITE_IN_PROGRESS,
+            //! Write has failed
+            WRITE_FAILED,
+            //! Write completed and no read was expected
+            WRITE_COMPLETE,
+            //! Currently waiting for response
+            READ_IN_PROGRESS,
+            //! Read has failed
+            READ_FAILED,
+            //! Write and read cycle completed
+            READ_COMPLETE,
+            //! Initialized value
+            INVALID
+        };
+
         //! Status due to processing events (see MapleBusInterface::processEvents)
         struct Status
         {
+            //! The phase of the state machine
+            Phase phase;
             //! A pointer to the bytes read or nullptr if no new data available
             const uint32_t* readBuffer;
             //! The number of words received or 0 if no new data available
             uint32_t readBufferLen;
-            //! Set to true iff a write failed since the last call
-            bool writeFail;
-            //! Set to true iff a read failed since the last call
-            bool readFail;
 
             Status() :
+                phase(Phase::INVALID),
                 readBuffer(nullptr),
-                readBufferLen(0),
-                writeFail(false),
-                readFail(false)
+                readBufferLen(0)
             {}
         };
 

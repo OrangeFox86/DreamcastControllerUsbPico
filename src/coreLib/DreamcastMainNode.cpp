@@ -34,11 +34,11 @@ DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus,
 DreamcastMainNode::~DreamcastMainNode()
 {}
 
-bool DreamcastMainNode::handleData(std::shared_ptr<const MaplePacket> packet,
+bool DreamcastMainNode::txComplete(std::shared_ptr<const MaplePacket> packet,
                                    std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
 {
     // Handle device info from main peripheral
-    if (packet->getFrameCommand() == COMMAND_RESPONSE_DEVICE_INFO)
+    if (packet != nullptr && packet->getFrameCommand() == COMMAND_RESPONSE_DEVICE_INFO)
     {
         if (packet->payload.size() > 0)
         {
@@ -84,7 +84,7 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
     TransmissionTimeliner::ReadStatus readStatus = mTransmissionTimeliner.readTask(currentTimeUs);
 
     // See if there is anything to receive
-    if (readStatus.received != nullptr)
+    if (readStatus.busPhase == MapleBusInterface::Phase::READ_COMPLETE)
     {
         uint8_t sendAddr = readStatus.received->getFrameSenderAddr();
         uint8_t recAddr = readStatus.received->getFrameRecipientAddr();
@@ -105,19 +105,36 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
                 }
 
                 // Have the device handle the data
-                handleData(readStatus.received, readStatus.transmission);
+                txComplete(readStatus.received, readStatus.transmission);
             }
             else
             {
                 int32_t idx = DreamcastPeripheral::subPeripheralIndex(sendAddr);
                 if (idx >= 0 && (uint32_t)idx < mSubNodes.size())
                 {
-                    mSubNodes[idx]->handleData(readStatus.received, readStatus.transmission);
+                    mSubNodes[idx]->txComplete(readStatus.received, readStatus.transmission);
                 }
             }
         }
     }
-    else if (readStatus.lastTxFailed || readStatus.lastRxFailed)
+    else if (readStatus.busPhase == MapleBusInterface::Phase::WRITE_COMPLETE)
+    {
+        uint8_t recAddr = readStatus.transmission->packet->getFrameRecipientAddr();
+        if (recAddr & mAddr)
+        {
+            txComplete(readStatus.received, readStatus.transmission);
+        }
+        else
+        {
+            int32_t idx = DreamcastPeripheral::subPeripheralIndex(recAddr);
+            if (idx >= 0 && (uint32_t)idx < mSubNodes.size())
+            {
+                mSubNodes[idx]->txComplete(readStatus.received, readStatus.transmission);
+            }
+        }
+    }
+    else if (readStatus.busPhase == MapleBusInterface::Phase::READ_FAILED
+             || readStatus.busPhase == MapleBusInterface::Phase::WRITE_FAILED)
     {
         // Let peripheral know this packet was sent
         uint8_t recipientAddr = readStatus.transmission->packet->getFrameRecipientAddr();
@@ -136,8 +153,8 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
 
             if (idx >= 0 && (uint32_t)idx < mSubNodes.size())
             {
-                mSubNodes[idx]->txFailed(readStatus.lastTxFailed,
-                                         readStatus.lastRxFailed,
+                mSubNodes[idx]->txFailed(readStatus.busPhase == MapleBusInterface::Phase::WRITE_FAILED,
+                                         readStatus.busPhase == MapleBusInterface::Phase::READ_FAILED,
                                          readStatus.transmission);
             }
         }
