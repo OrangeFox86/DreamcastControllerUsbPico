@@ -76,7 +76,9 @@ void DreamcastSubNode::setConnected(bool connected, uint64_t currentTimeUs)
         mEndpointTxScheduler->cancelByRecipient(getRecipientAddress());
         if (mConnected)
         {
-            DEBUG_PRINT("sub node 0x%02hX connected\n", getRecipientAddress());
+            DEBUG_PRINT("Player %lu sub node 0x%02hX connected\n",
+                        mPlayerData.playerIndex + 1,
+                        getRecipientAddress());
             // Keep asking for info until valid response is heard
             MaplePacket packet(
                 COMMAND_DEVICE_INFO_REQUEST,
@@ -97,7 +99,9 @@ void DreamcastSubNode::setConnected(bool connected, uint64_t currentTimeUs)
         }
         else
         {
-            DEBUG_PRINT("sub node 0x%02hX disconnected\n", getRecipientAddress());
+            DEBUG_PRINT("Player %lu sub node 0x%02hX disconnected\n",
+                        mPlayerData.playerIndex + 1,
+                        getRecipientAddress());
         }
     }
 }

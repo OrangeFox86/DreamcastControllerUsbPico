@@ -5,24 +5,43 @@ TransmissionTimeliner::TransmissionTimeliner(MapleBusInterface& bus, std::shared
     mBus(bus), mSchedule(schedule), mNextTx(nullptr)
 {}
 
-std::shared_ptr<const PrioritizedTxScheduler::Transmission> TransmissionTimeliner::task(uint64_t time)
+TransmissionTimeliner::ReadStatus TransmissionTimeliner::readTask(uint64_t currentTimeUs)
 {
-    std::shared_ptr<const PrioritizedTxScheduler::Transmission> sentTx = nullptr;
+    ReadStatus status;
 
-    if (mNextTx == nullptr && !mBus.isBusy())
+    // Process bus events and get any data received
+    MapleBusInterface::Status busStatus = mBus.processEvents(currentTimeUs);
+    status.lastRxFailed = busStatus.readFail;
+    status.lastTxFailed = busStatus.writeFail;
+    if (busStatus.readBuffer != nullptr)
     {
-        mNextTx = mSchedule->popNext(time);
+        status.received = std::make_shared<MaplePacket>(busStatus.readBuffer,
+                                                        busStatus.readBufferLen);
     }
 
+    return status;
+}
+
+std::shared_ptr<const PrioritizedTxScheduler::Transmission> TransmissionTimeliner::writeTask(uint64_t currentTimeUs)
+{
+    std::shared_ptr<const PrioritizedTxScheduler::Transmission> txSent = nullptr;
+
+    // Get next transmission
+    if (mNextTx == nullptr && !mBus.isBusy())
+    {
+        mNextTx = mSchedule->popNext(currentTimeUs);
+    }
+
+    // Transmit
     if (mNextTx != nullptr)
     {
         assert(mNextTx->packet->isValid());
         if (mBus.write(*mNextTx->packet, mNextTx->expectResponse, mNextTx->readTimeoutUs))
         {
-            sentTx = mNextTx;
+            txSent = mNextTx;
             mNextTx = nullptr;
         }
     }
 
-    return sentTx;
+    return txSent;
 }

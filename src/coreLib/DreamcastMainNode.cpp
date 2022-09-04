@@ -16,7 +16,6 @@ DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus,
                     MAIN_TRANSMISSION_PRIORITY
                   ),
                   playerData),
-    mBus(bus),
     mSubNodes(),
     mTransmissionTimeliner(bus, prioritizedTxScheduler),
     mScheduleId(-1)
@@ -53,7 +52,7 @@ bool DreamcastMainNode::handleData(uint8_t len,
                     mEndpointTxScheduler->cancelById(mScheduleId);
                     mScheduleId = -1;
                 }
-                DEBUG_PRINT("Main peripheral connected\n");
+                DEBUG_PRINT("Player %lu main peripheral connected\n", mPlayerData.playerIndex + 1);
             }
             return (mPeripherals.size() > 0);
         }
@@ -68,16 +67,15 @@ bool DreamcastMainNode::handleData(uint8_t len,
 
 void DreamcastMainNode::task(uint64_t currentTimeUs)
 {
-    MapleBusInterface::Status busStatus = mBus.processEvents(currentTimeUs);
+    TransmissionTimeliner::ReadStatus readStatus = mTransmissionTimeliner.readTask(currentTimeUs);
 
     // See if there is anything to receive
-    if (busStatus.readBuffer != nullptr)
+    if (readStatus.received != nullptr)
     {
-        uint8_t sendAddr = *busStatus.readBuffer >> 8 & 0xFF;
-        uint8_t recAddr = *busStatus.readBuffer >> 16 & 0xFF;
-        uint8_t cmd = *busStatus.readBuffer >> 24;
-        const uint32_t* payload = busStatus.readBuffer + 1;
-        --busStatus.readBufferLen;
+        uint8_t sendAddr = readStatus.received->getFrameSenderAddr();
+        uint8_t recAddr = readStatus.received->getFrameRecipientAddr();
+        uint8_t cmd = readStatus.received->getFrameCommand();
+        const uint32_t* payload = readStatus.received->payload.data();
 
         if (recAddr == 0x00)
         {
@@ -95,20 +93,20 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
                 }
 
                 // Have the device handle the data
-                handleData(busStatus.readBufferLen, cmd, payload);
+                handleData(readStatus.received->payload.size(), cmd, payload);
             }
             else
             {
                 int32_t idx = DreamcastPeripheral::subPeripheralIndex(sendAddr);
                 if (idx >= 0 && (uint32_t)idx < mSubNodes.size())
                 {
-                    mSubNodes[idx]->handleData(busStatus.readBufferLen, cmd, payload);
+                    mSubNodes[idx]->handleData(readStatus.received->payload.size(), cmd, payload);
                 }
             }
         }
     }
 
-    // See if there is something that needs to write
+    // Allow peripherals and subnodes to handle time-dependent tasks
     if (mPeripherals.size() > 0)
     {
         // Have the connected main peripheral handle write
@@ -132,13 +130,13 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
                 (*iter)->mainPeripheralDisconnected();
             }
             addInfoRequestToSchedule(currentTimeUs);
-            DEBUG_PRINT("Main peripheral disconnected\n");
+            DEBUG_PRINT("Player %lu main peripheral disconnected\n", mPlayerData.playerIndex + 1);
         }
     }
 
     // Handle transmission
     std::shared_ptr<const PrioritizedTxScheduler::Transmission> sentTx =
-        mTransmissionTimeliner.task(currentTimeUs);
+        mTransmissionTimeliner.writeTask(currentTimeUs);
 
     if (sentTx != nullptr && sentTx->packet != nullptr)
     {

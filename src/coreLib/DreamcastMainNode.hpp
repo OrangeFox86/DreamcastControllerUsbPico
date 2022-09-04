@@ -46,8 +46,6 @@ class DreamcastMainNode : public DreamcastNode
         static const uint8_t SUB_TRANSMISSION_PRIORITY;
 
     protected:
-        //! The bus on which this node communicates
-        MapleBusInterface& mBus;
         //! The sub nodes under this node
         std::vector<std::shared_ptr<DreamcastSubNode>> mSubNodes;
         //! Executes transmissions from the schedule
