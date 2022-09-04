@@ -10,7 +10,7 @@ class EndpointTxScheduler : public EndpointTxSchedulerInterface
 {
 public:
     //! Default constructor
-    EndpointTxScheduler(std::shared_ptr<PrioritizedTxScheduler> prioritizedScheduler, 
+    EndpointTxScheduler(std::shared_ptr<PrioritizedTxScheduler> prioritizedScheduler,
                         uint8_t fixedPriority);
 
     //! Virtual destructor
@@ -40,6 +40,11 @@ public:
     //! @param[in] recipientAddr  The recipient address of the transmissions to cancel
     //! @returns number of transmissions successfully canceled
     virtual uint32_t cancelByRecipient(uint8_t recipientAddr) final;
+
+    //! Count how many scheduled transmissions have a given recipient address
+    //! @param[in] recipientAddr  The recipient address
+    //! @returns the number of transmissions have the given recipient address
+    virtual uint32_t countRecipients(uint8_t recipientAddr) final;
 
     //! Cancels all items in the schedule
     //! @returns number of transmissions successfully canceled

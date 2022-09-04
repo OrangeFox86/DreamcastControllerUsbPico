@@ -32,6 +32,10 @@ class DreamcastMainNode : public DreamcastNode
         virtual bool handleData(std::shared_ptr<const MaplePacket> packet,
                                 std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) final;
 
+        //! Called when the main peripheral needs to be disconnected
+        //! @param[in] currentTimeUs  The current time as number of microseconds
+        void disconnectMainPeripheral(uint64_t currentTimeUs);
+
     private:
         //! Adds an auto reload info request to the transmission schedule
         void addInfoRequestToSchedule(uint64_t currentTimeUs = 0);

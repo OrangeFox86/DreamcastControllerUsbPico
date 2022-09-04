@@ -208,7 +208,7 @@ TEST_F(MainNodeTest, peripheralConnect)
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[3], setConnected(false, _)).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[4], setConnected(false, _)).Times(1);
     // The peripheral's task function will be called with the current time
-    EXPECT_CALL(*mockedDreamcastPeripheral, task(1000000)).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*mockedDreamcastPeripheral, task(1000000)).Times(1);
     // All sub node's task functions will be called with the current time
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], task(1000000)).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], task(1000000)).Times(1);
@@ -234,15 +234,13 @@ TEST_F(MainNodeTest, peripheralDisconnect)
     mDreamcastMainNode.getPeripherals().push_back(mockedDreamcastPeripheral);
 
     // --- MOCKING ---
-    // The task will process events, and nothing meaningful will be returned
+    // The task will process events, and it will return read failure
     MapleBusInterface::Status status;
+    status.readFail = true;
     EXPECT_CALL(mMapleBus, processEvents(1000000))
         .Times(1)
         .WillOnce(Return(status));
-    // The peripheral's task() function will be called with the current time, and it will return
-    // false, signifying that communication has failed too many times. The peripheral must
-    // be disconnected.
-    EXPECT_CALL(*mockedDreamcastPeripheral, task(1000000)).Times(1).WillOnce(Return(false));
+    EXPECT_CALL(*mockedDreamcastPeripheral, task(1000000)).Times(1);
     // All sub node's task functions will be called with the current time
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], mainPeripheralDisconnected()).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], mainPeripheralDisconnected()).Times(1);
@@ -288,7 +286,7 @@ TEST_P(MainNodeSubPeripheralConnectTest, subPeripheralConnect)
         handleData(_, _)
     ).Times(1).WillOnce(Return(true));
     // The peripheral's task() function will be called with the current time
-    EXPECT_CALL(*mockedDreamcastPeripheral, task(123)).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*mockedDreamcastPeripheral, task(123)).Times(1);
     // All sub node's task functions will be called with the current time
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], task(123)).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], task(123)).Times(1);

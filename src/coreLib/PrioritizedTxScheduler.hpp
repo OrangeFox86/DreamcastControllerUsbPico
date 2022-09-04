@@ -88,6 +88,11 @@ public:
     //! @returns number of transmissions successfully canceled
     uint32_t cancelByRecipient(uint8_t recipientAddr);
 
+    //! Count how many scheduled transmissions have a given recipient address
+    //! @param[in] recipientAddr  The recipient address
+    //! @returns the number of transmissions have the given recipient address
+    uint32_t countRecipients(uint8_t recipientAddr);
+
     //! Cancels all items in the schedule
     //! @returns number of transmissions successfully canceled
     uint32_t cancelAll();
