@@ -53,6 +53,22 @@ class DreamcastNode
             }
         }
 
+        //! Called when transmission failed
+        //! @param[in] writeFailed  Set to true iff TX failed because write failed
+        //! @param[in] readFailed  Set to true iff TX failed because read failed
+        //! @param[in] tx  The transmission that failed
+        virtual inline void txFailed(bool writeFailed,
+                                     bool readFailed,
+                                     std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
+        {
+            for (std::vector<std::shared_ptr<DreamcastPeripheral>>::iterator iter = mPeripherals.begin();
+                 iter != mPeripherals.end();
+                 ++iter)
+            {
+                (*iter)->txFailed(writeFailed, readFailed, tx);
+            }
+        }
+
     protected:
         //! Main constructor with scheduler
         DreamcastNode(uint8_t addr,

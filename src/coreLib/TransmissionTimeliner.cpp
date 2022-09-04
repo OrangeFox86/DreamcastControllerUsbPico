@@ -2,7 +2,7 @@
 #include <assert.h>
 
 TransmissionTimeliner::TransmissionTimeliner(MapleBusInterface& bus, std::shared_ptr<PrioritizedTxScheduler> schedule):
-    mBus(bus), mSchedule(schedule), mNextTx(nullptr)
+    mBus(bus), mSchedule(schedule), mCurrentTx(nullptr), mNextTx(nullptr)
 {}
 
 TransmissionTimeliner::ReadStatus TransmissionTimeliner::readTask(uint64_t currentTimeUs)
@@ -17,6 +17,13 @@ TransmissionTimeliner::ReadStatus TransmissionTimeliner::readTask(uint64_t curre
     {
         status.received = std::make_shared<MaplePacket>(busStatus.readBuffer,
                                                         busStatus.readBufferLen);
+        status.transmission = mCurrentTx;
+        mCurrentTx = nullptr;
+    }
+    else if (status.lastRxFailed || status.lastTxFailed)
+    {
+        status.transmission = mCurrentTx;
+        mCurrentTx = nullptr;
     }
 
     return status;
@@ -38,7 +45,7 @@ std::shared_ptr<const PrioritizedTxScheduler::Transmission> TransmissionTimeline
         assert(mNextTx->packet->isValid());
         if (mBus.write(*mNextTx->packet, mNextTx->expectResponse, mNextTx->readTimeoutUs))
         {
-            txSent = mNextTx;
+            mCurrentTx = txSent = mNextTx;
             mNextTx = nullptr;
         }
     }

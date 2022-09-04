@@ -10,6 +10,8 @@ public:
     //! Status of the task
     struct ReadStatus
     {
+        //! The transmission associated with the data below
+        std::shared_ptr<const PrioritizedTxScheduler::Transmission> transmission;
         //! Set to received packet or nullptr if nothing received
         std::shared_ptr<const MaplePacket> received;
         //! Set to true iff transmission failed
@@ -17,7 +19,11 @@ public:
         //! Set to true iff read failed
         bool lastRxFailed;
 
-        ReadStatus() : received(nullptr), lastTxFailed(false), lastRxFailed(false)
+        ReadStatus() :
+            transmission(nullptr),
+            received(nullptr),
+            lastTxFailed(false),
+            lastRxFailed(false)
         {}
     };
 
@@ -42,6 +48,8 @@ protected:
     MapleBusInterface& mBus;
     //! The schedule that transmissions are popped from
     std::shared_ptr<PrioritizedTxScheduler> mSchedule;
+    //! The currently sending transmission
+    std::shared_ptr<const PrioritizedTxScheduler::Transmission> mCurrentTx;
     //! Recently popped transmission that is waiting to be sent
     std::shared_ptr<const PrioritizedTxScheduler::Transmission> mNextTx;
 };

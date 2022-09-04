@@ -74,6 +74,15 @@ class DreamcastPeripheral
         //! @param[in] tx  The transmission that was sent
         virtual inline void txSent(std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) {}
 
+        //! Called when transmission failed
+        //! @param[in] writeFailed  Set to true iff TX failed because write failed
+        //! @param[in] readFailed  Set to true iff TX failed because read failed
+        //! @param[in] tx  The transmission that failed
+        virtual inline void txFailed(bool writeFailed,
+                                     bool readFailed,
+                                     std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
+        {}
+
     public:
         //! The maximum number of sub peripherals that a main peripheral can handle
         static const uint32_t MAX_SUB_PERIPHERALS = 5;

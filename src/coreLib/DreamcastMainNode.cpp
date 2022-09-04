@@ -105,6 +105,27 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
             }
         }
     }
+    else if (readStatus.lastTxFailed || readStatus.lastRxFailed)
+    {
+        // Let peripheral know this packet was sent
+        uint8_t recipientAddr = readStatus.transmission->packet->getFrameRecipientAddr();
+        if (recipientAddr == getRecipientAddress())
+        {
+            txFailed(readStatus.lastTxFailed, readStatus.lastRxFailed, readStatus.transmission);
+        }
+        else
+        {
+            int32_t idx = DreamcastPeripheral::subPeripheralIndex(
+                readStatus.transmission->packet->getFrameRecipientAddr());
+
+            if (idx >= 0 && (uint32_t)idx < mSubNodes.size())
+            {
+                mSubNodes[idx]->txFailed(readStatus.lastTxFailed,
+                                         readStatus.lastRxFailed,
+                                         readStatus.transmission);
+            }
+        }
+    }
 
     // Allow peripherals and subnodes to handle time-dependent tasks
     if (mPeripherals.size() > 0)
@@ -148,15 +169,10 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
         }
         else
         {
-            for (std::vector<std::shared_ptr<DreamcastSubNode>>::iterator iter = mSubNodes.begin();
-                 iter != mSubNodes.end();
-                 ++iter)
+            int32_t idx = DreamcastPeripheral::subPeripheralIndex(sentTx->packet->getFrameRecipientAddr());
+            if (idx >= 0 && (uint32_t)idx < mSubNodes.size())
             {
-                if (recipientAddr == (*iter)->getRecipientAddress())
-                {
-                    (*iter)->txSent(sentTx);
-                    break;
-                }
+                mSubNodes[idx]->txSent(sentTx);
             }
         }
     }
