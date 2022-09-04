@@ -23,7 +23,7 @@ class DreamcastController : public DreamcastPeripheral
                                 std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) final;
 
         //! Inherited from DreamcastPeripheral
-        virtual bool task(uint64_t currentTimeUs) final;
+        virtual void task(uint64_t currentTimeUs) final;
 
         //! Inherited from DreamcastPeripheral
         virtual void txSent(std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) final;
@@ -38,8 +38,6 @@ class DreamcastController : public DreamcastPeripheral
         static const uint32_t US_PER_CHECK = 16000;
         //! The gamepad to write button presses to
         DreamcastControllerObserver& mGamepad;
-        //! Initialized to true and set to false when transmission fails
-        bool mIsConnected;
         //! True iff the controller is waiting for data
         bool mWaitingForData;
         //! Initialized to true and set to false in task()

@@ -7,7 +7,6 @@ DreamcastScreen::DreamcastScreen(uint8_t addr,
     DreamcastPeripheral(addr, scheduler, playerData.playerIndex),
     mNextCheckTime(0),
     mWaitingForData(false),
-    mNoDataCount(0),
     mUpdateRequired(true),
     mScreenData(playerData.screenData),
     mTransmissionId(0)
@@ -22,7 +21,7 @@ bool DreamcastScreen::handleData(std::shared_ptr<const MaplePacket> packet,
     if (mWaitingForData)
     {
         mWaitingForData = false;
-        mNoDataCount = 0;
+        mTransmissionId = 0;
 
         // TODO: return code is ignored for now; in the future, try to resend on failure
 
@@ -31,20 +30,11 @@ bool DreamcastScreen::handleData(std::shared_ptr<const MaplePacket> packet,
     return false;
 }
 
-bool DreamcastScreen::task(uint64_t currentTimeUs)
+void DreamcastScreen::task(uint64_t currentTimeUs)
 {
-    bool connected = (mNoDataCount < NO_DATA_DISCONNECT_COUNT);
     if (currentTimeUs > mNextCheckTime)
     {
-        // Increment count if we are still waiting for response from the last communication attempt
-        if (mWaitingForData)
-        {
-            ++mNoDataCount;
-            mWaitingForData = false;
-            connected = (mNoDataCount < NO_DATA_DISCONNECT_COUNT);
-        }
-
-        if (connected && (mScreenData.isNewDataAvailable() || mUpdateRequired))
+        if (mScreenData.isNewDataAvailable() || mUpdateRequired)
         {
             // Write screen data
             static const uint8_t partitionNum = 0; // Always 0
@@ -55,16 +45,37 @@ bool DreamcastScreen::task(uint64_t currentTimeUs)
             uint32_t payload[numPayloadWords] = {DEVICE_FN_LCD, writeAddrWord, 0};
             mScreenData.readData(&payload[2]);
 
-            // Workaround: make sure previous tx is canceled in case it hasn't gone out yet
-            mEndpointTxScheduler->cancelById(mTransmissionId);
+            if (mTransmissionId > 0 && !mWaitingForData)
+            {
+                // Make sure previous tx is canceled in case it hasn't gone out yet
+                mEndpointTxScheduler->cancelById(mTransmissionId);
+            }
 
             MaplePacket packet(COMMAND_BLOCK_WRITE, getRecipientAddress(), payload, numPayloadWords);
             mTransmissionId = mEndpointTxScheduler->add(PrioritizedTxScheduler::TX_TIME_ASAP, packet, true, 0);
-            mWaitingForData = true;
             mNextCheckTime = currentTimeUs + US_PER_CHECK;
 
             mUpdateRequired = false;
         }
     }
-    return true;
+}
+
+void DreamcastScreen::txSent(std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
+{
+    if (mTransmissionId > 0 && mTransmissionId == tx->transmissionId)
+    {
+        mWaitingForData = true;
+    }
+}
+
+void DreamcastScreen::txFailed(bool writeFailed,
+                               bool readFailed,
+                               std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
+{
+    if (mTransmissionId > 0 && mTransmissionId == tx->transmissionId)
+    {
+        mWaitingForData = false;
+        mTransmissionId = 0;
+        // TODO: in the future, try to resend on failure
+    }
 }

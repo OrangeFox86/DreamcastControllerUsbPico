@@ -65,12 +65,12 @@ class DreamcastPeripheral
 
         //! The task that DreamcastNode yields control to after this peripheral is detected
         //! @param[in] currentTimeUs  The current time in microseconds
-        //! @returns true iff still connected
-        virtual bool task(uint64_t currentTimeUs) = 0;
+        virtual void task(uint64_t currentTimeUs) = 0;
 
         //! Called when transmission has been sent
         //! @param[in] tx  The transmission that was sent
-        virtual inline void txSent(std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) {}
+        virtual inline void txSent(std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
+        {}
 
         //! Called when transmission failed
         //! @param[in] writeFailed  Set to true iff TX failed because write failed

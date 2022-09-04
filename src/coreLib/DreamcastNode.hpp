@@ -87,27 +87,14 @@ class DreamcastNode
 
         //! Run all peripheral tasks
         //! @param[in] currentTimeUs  The current time in microseconds
-        //! @return true if all peripherals connected; false if all have disconnected
-        bool handlePeripherals(uint64_t currentTimeUs)
+        void handlePeripherals(uint64_t currentTimeUs)
         {
-            bool connected = true;
             for (std::vector<std::shared_ptr<DreamcastPeripheral>>::iterator iter = mPeripherals.begin();
-                 iter != mPeripherals.end() && connected;
+                 iter != mPeripherals.end();
                  ++iter)
             {
-                if (!(*iter)->task(currentTimeUs))
-                {
-                    connected = false;
-                }
+                (*iter)->task(currentTimeUs);
             }
-
-            if (!connected)
-            {
-                // One peripheral is no longer responding, so remove all
-                mPeripherals.clear();
-            }
-
-            return connected;
         }
 
         //! Try to get peripherals to handle the given data

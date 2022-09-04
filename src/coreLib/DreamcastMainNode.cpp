@@ -64,6 +64,21 @@ bool DreamcastMainNode::handleData(std::shared_ptr<const MaplePacket> packet,
     return handlePeripheralData(packet, tx);
 }
 
+
+void DreamcastMainNode::disconnectMainPeripheral(uint64_t currentTimeUs)
+{
+    mPeripherals.clear();
+    mEndpointTxScheduler->cancelByRecipient(getRecipientAddress());
+    for (std::vector<std::shared_ptr<DreamcastSubNode>>::iterator iter = mSubNodes.begin();
+            iter != mSubNodes.end();
+            ++iter)
+    {
+        (*iter)->mainPeripheralDisconnected();
+    }
+    addInfoRequestToSchedule(currentTimeUs);
+    DEBUG_PRINT("Player %lu main peripheral disconnected\n", mPlayerData.playerIndex + 1);
+}
+
 void DreamcastMainNode::task(uint64_t currentTimeUs)
 {
     TransmissionTimeliner::ReadStatus readStatus = mTransmissionTimeliner.readTask(currentTimeUs);
@@ -108,7 +123,11 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
         uint8_t recipientAddr = readStatus.transmission->packet->getFrameRecipientAddr();
         if (recipientAddr == getRecipientAddress())
         {
-            txFailed(readStatus.lastTxFailed, readStatus.lastRxFailed, readStatus.transmission);
+            // A transmission failure on a main node must cause peripheral disconnect
+            if (mPeripherals.size() > 0)
+            {
+                disconnectMainPeripheral(currentTimeUs);
+            }
         }
         else
         {
@@ -127,28 +146,23 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
     // Allow peripherals and subnodes to handle time-dependent tasks
     if (mPeripherals.size() > 0)
     {
-        // Have the connected main peripheral handle write
-        if (handlePeripherals(currentTimeUs))
+        // Have the connected main peripheral and sub nodes handle their tasks
+        handlePeripherals(currentTimeUs);
+        for (std::vector<std::shared_ptr<DreamcastSubNode>>::iterator iter = mSubNodes.begin();
+             iter != mSubNodes.end();
+             ++iter)
         {
-            for (std::vector<std::shared_ptr<DreamcastSubNode>>::iterator iter = mSubNodes.begin();
-                 iter != mSubNodes.end();
-                 ++iter)
-            {
-                (*iter)->task(currentTimeUs);
-            }
+            (*iter)->task(currentTimeUs);
         }
-        else
+        // The main node MUST have a recurring transmission in order to test for heartbeat
+        if (mEndpointTxScheduler->countRecipients(getRecipientAddress()) == 0)
         {
-            // Main peripheral disconnected
-            mEndpointTxScheduler->cancelByRecipient(getRecipientAddress());
-            for (std::vector<std::shared_ptr<DreamcastSubNode>>::iterator iter = mSubNodes.begin();
-                 iter != mSubNodes.end();
-                 ++iter)
-            {
-                (*iter)->mainPeripheralDisconnected();
-            }
-            addInfoRequestToSchedule(currentTimeUs);
-            DEBUG_PRINT("Player %lu main peripheral disconnected\n", mPlayerData.playerIndex + 1);
+            uint64_t txTime = PrioritizedTxScheduler::computeNextTimeCadence(currentTimeUs, US_PER_CHECK);
+            MaplePacket packet(COMMAND_DEVICE_INFO_REQUEST,
+                               DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr),
+                               NULL,
+                               0);
+            mEndpointTxScheduler->add(txTime, packet, true, EXPECTED_DEVICE_INFO_PAYLOAD_WORDS);
         }
     }
 

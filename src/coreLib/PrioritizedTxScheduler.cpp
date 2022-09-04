@@ -55,7 +55,7 @@ uint32_t PrioritizedTxScheduler::add(uint8_t priority,
 
     if (expectResponse)
     {
-        pktDurationNs += 
+        pktDurationNs +=
             RX_DELAY_NS + MaplePacket::getTxTimeNs(expectedResponseNumPayloadWords, RX_NS_PER_BIT);
     }
 
@@ -75,7 +75,7 @@ uint32_t PrioritizedTxScheduler::add(uint8_t priority,
 }
 
 uint64_t PrioritizedTxScheduler::computeNextTimeCadence(uint64_t currentTime,
-                                                        uint64_t period, 
+                                                        uint64_t period,
                                                         uint64_t offset)
 {
     // Cover the edge case where the offset is in the future for some reason
@@ -179,6 +179,23 @@ uint32_t PrioritizedTxScheduler::cancelByRecipient(uint8_t recipientAddr)
             ++iter;
         }
     }
+    return n;
+}
+
+uint32_t PrioritizedTxScheduler::countRecipients(uint8_t recipientAddr)
+{
+    uint32_t n = 0;
+
+    for (std::list<std::shared_ptr<Transmission>>::iterator iter = mSchedule.begin();
+         iter != mSchedule.end();
+         ++iter)
+    {
+        if ((*iter)->packet->getFrameRecipientAddr() == recipientAddr)
+        {
+            ++n;
+        }
+    }
+
     return n;
 }
 

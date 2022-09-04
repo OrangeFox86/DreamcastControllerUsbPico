@@ -209,31 +209,14 @@ TEST_F(SubNodeTest, taskPeripheralsConnectedSuccessfulTask)
     // Add 2 mock peripherals to the sub node
     addTwoMockedPeripherals();
     // Both peripherals will successfully handle their task
-    EXPECT_CALL(*mockDreamcastPeripheral1, task(554433)).Times(1).WillOnce(Return(true));
-    EXPECT_CALL(*mockDreamcastPeripheral2, task(554433)).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*mockDreamcastPeripheral1, task(554433)).Times(1);
+    EXPECT_CALL(*mockDreamcastPeripheral2, task(554433)).Times(1);
 
     // --- TEST EXECUTION ---
     mDreamcastSubNode.task(554433);
 
     // --- EXPECTATIONS ---
     EXPECT_EQ(mDreamcastSubNode.getPeripherals().size(), 2);
-}
-
-TEST_F(SubNodeTest, taskPeripheralsConnectedFailureTask)
-{
-    // --- MOCKING ---
-    mDreamcastSubNode.mockSetConnected(true);
-    // Add 2 mock peripherals to the sub node
-    addTwoMockedPeripherals();
-    // Both peripherals will successfully handle their task
-    EXPECT_CALL(*mockDreamcastPeripheral1, task(554433)).Times(1).WillOnce(Return(false));
-    EXPECT_CALL(*mockDreamcastPeripheral2, task(_)).Times(0);
-
-    // --- TEST EXECUTION ---
-    mDreamcastSubNode.task(554433);
-
-    // --- EXPECTATIONS ---
-    EXPECT_TRUE(mDreamcastSubNode.getPeripherals().empty());
 }
 
 TEST_F(SubNodeTest, mainPeripheralDisconnected)

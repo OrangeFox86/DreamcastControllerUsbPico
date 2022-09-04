@@ -92,6 +92,11 @@ class DreamcastMainNodeOverride : public DreamcastMainNode
             return mEndpointTxScheduler;
         }
 
+        TransmissionTimeliner& getTransmissionTimeliner()
+        {
+            return mTransmissionTimeliner;
+        }
+
         //! The mocked nodes set in the constructor
         std::vector<std::shared_ptr<MockedDreamcastSubNode>> mMockedSubNodes;
 
@@ -208,7 +213,7 @@ TEST_F(MainNodeTest, peripheralConnect)
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[3], setConnected(false, _)).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[4], setConnected(false, _)).Times(1);
     // The peripheral's task function will be called with the current time
-    EXPECT_CALL(*mockedDreamcastPeripheral, task(1000000)).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*mockedDreamcastPeripheral, task(1000000)).Times(1);
     // All sub node's task functions will be called with the current time
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], task(1000000)).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], task(1000000)).Times(1);
@@ -232,17 +237,19 @@ TEST_F(MainNodeTest, peripheralDisconnect)
     std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
         std::make_shared<MockDreamcastPeripheral>(0x20, mDreamcastMainNode.getEndpointTxScheduler(), mPlayerData.playerIndex);
     mDreamcastMainNode.getPeripherals().push_back(mockedDreamcastPeripheral);
+    // This is a bad way to do it, but I need mCurrentTx in TransmissionTimeliner to be set to something
+    EXPECT_CALL(mMapleBus, write(_, _, _)).Times(AnyNumber()).WillRepeatedly(Return(true));
+    MaplePacket sentPacket(123, mDreamcastMainNode.getRecipientAddress(), (uint32_t*)nullptr, 0);
+    mDreamcastMainNode.getEndpointTxScheduler()->add(0, sentPacket, true);
+    mDreamcastMainNode.getTransmissionTimeliner().writeTask(0);
 
     // --- MOCKING ---
-    // The task will process events, and nothing meaningful will be returned
+    // The task will process events, and it will return read failure
     MapleBusInterface::Status status;
+    status.readFail = true;
     EXPECT_CALL(mMapleBus, processEvents(1000000))
         .Times(1)
         .WillOnce(Return(status));
-    // The peripheral's task() function will be called with the current time, and it will return
-    // false, signifying that communication has failed too many times. The peripheral must
-    // be disconnected.
-    EXPECT_CALL(*mockedDreamcastPeripheral, task(1000000)).Times(1).WillOnce(Return(false));
     // All sub node's task functions will be called with the current time
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], mainPeripheralDisconnected()).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], mainPeripheralDisconnected()).Times(1);
@@ -288,7 +295,7 @@ TEST_P(MainNodeSubPeripheralConnectTest, subPeripheralConnect)
         handleData(_, _)
     ).Times(1).WillOnce(Return(true));
     // The peripheral's task() function will be called with the current time
-    EXPECT_CALL(*mockedDreamcastPeripheral, task(123)).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*mockedDreamcastPeripheral, task(123)).Times(1);
     // All sub node's task functions will be called with the current time
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], task(123)).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], task(123)).Times(1);

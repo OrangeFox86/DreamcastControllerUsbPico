@@ -6,7 +6,6 @@
 DreamcastController::DreamcastController(uint8_t addr, std::shared_ptr<EndpointTxSchedulerInterface> scheduler, PlayerData playerData) :
     DreamcastPeripheral(addr, scheduler, playerData.playerIndex),
     mGamepad(playerData.gamepad),
-    mIsConnected(true),
     mWaitingForData(false),
     mFirstTask(true),
     mConditionTxId(0)
@@ -33,7 +32,6 @@ void DreamcastController::txFailed(bool writeFailed,
 {
     if (mConditionTxId != 0 && tx->transmissionId == mConditionTxId)
     {
-        mIsConnected = false;
         mWaitingForData = false;
     }
 }
@@ -61,15 +59,13 @@ bool DreamcastController::handleData(std::shared_ptr<const MaplePacket> packet,
     return false;
 }
 
-bool DreamcastController::task(uint64_t currentTimeUs)
+void DreamcastController::task(uint64_t currentTimeUs)
 {
-    if (mFirstTask && mIsConnected)
+    if (mFirstTask)
     {
         mFirstTask = false;
         MaplePacket packet(COMMAND_GET_CONDITION, getRecipientAddress(), DEVICE_FN_CONTROLLER);
         uint64_t txTime = PrioritizedTxScheduler::computeNextTimeCadence(currentTimeUs, US_PER_CHECK);
         mConditionTxId = mEndpointTxScheduler->add(txTime, packet, true, 3, US_PER_CHECK);
     }
-
-    return mIsConnected;
 }
