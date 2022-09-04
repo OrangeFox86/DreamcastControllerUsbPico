@@ -29,9 +29,8 @@ class DreamcastMainNode : public DreamcastNode
         virtual void task(uint64_t currentTimeUs) final;
 
         //! Inherited from DreamcastNode
-        virtual bool handleData(uint8_t len,
-                                uint8_t cmd,
-                                const uint32_t *payload) final;
+        virtual bool handleData(std::shared_ptr<const MaplePacket> packet,
+                                std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) final;
 
     private:
         //! Adds an auto reload info request to the transmission schedule

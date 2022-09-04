@@ -24,7 +24,7 @@ public:
         std::shared_ptr<const MaplePacket> packet;
 
         Transmission(uint32_t transmissionId,
-                     bool priority,
+                     uint8_t priority,
                      bool expectResponse,
                      uint32_t readTimeoutUs,
                      uint32_t autoRepeatUs,
@@ -98,7 +98,7 @@ public:
     //! @param[in] offset  The offset that this item began or previously executed at
     //! @returns the next time in the future which is confined to period and offset
     static uint64_t computeNextTimeCadence(uint64_t currentTime,
-                                           uint64_t period, 
+                                           uint64_t period,
                                            uint64_t offset = 0);
 
 protected:

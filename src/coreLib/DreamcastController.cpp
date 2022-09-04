@@ -38,19 +38,20 @@ void DreamcastController::txFailed(bool writeFailed,
     }
 }
 
-bool DreamcastController::handleData(uint8_t len,
-                                     uint8_t cmd,
-                                     const uint32_t *payload)
+bool DreamcastController::handleData(std::shared_ptr<const MaplePacket> packet,
+                                     std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
 {
     if (mWaitingForData)
     {
         mWaitingForData = false;
 
-        if (cmd == COMMAND_RESPONSE_DATA_XFER && len >= 3 && payload[0] == 1)
+        if (packet->getFrameCommand() == COMMAND_RESPONSE_DATA_XFER
+            && packet->payload.size() >= 3
+            && packet->payload[0] == 1)
         {
             // Handle condition data
             DreamcastControllerObserver::ControllerCondition controllerCondition;
-            memcpy(&controllerCondition, &payload[1], 8);
+            memcpy(&controllerCondition, &packet->payload[1], 8);
             mGamepad.setControllerCondition(controllerCondition);
 
             return true;

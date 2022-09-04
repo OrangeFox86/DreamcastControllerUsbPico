@@ -18,16 +18,15 @@ DreamcastSubNode::DreamcastSubNode(const DreamcastSubNode& rhs) :
 {
 }
 
-bool DreamcastSubNode::handleData(uint8_t len,
-                        uint8_t cmd,
-                        const uint32_t *payload)
+bool DreamcastSubNode::handleData(std::shared_ptr<const MaplePacket> packet,
+                                  std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
 {
     // If device info received, add the sub peripheral
-    if (cmd == COMMAND_RESPONSE_DEVICE_INFO)
+    if (packet->getFrameCommand() == COMMAND_RESPONSE_DEVICE_INFO)
     {
-        if (len > 0)
+        if (packet->payload.size() > 0)
         {
-            peripheralFactory(payload[0]);
+            peripheralFactory(packet->payload[0]);
             if (mPeripherals.size() > 0)
             {
                 // Remove the auto reload device info request transmission from schedule
@@ -36,6 +35,9 @@ bool DreamcastSubNode::handleData(uint8_t len,
                     mEndpointTxScheduler->cancelById(mScheduleId);
                     mScheduleId = -1;
                 }
+                DEBUG_PRINT("Player %lu sub node 0x%02hX connected\n",
+                            mPlayerData.playerIndex + 1,
+                            getRecipientAddress());
             }
             return (mPeripherals.size() > 0);
         }
@@ -46,7 +48,7 @@ bool DreamcastSubNode::handleData(uint8_t len,
     }
 
     // Pass data to sub peripheral
-    return handlePeripheralData(len, cmd, payload);
+    return handlePeripheralData(packet, tx);
 }
 
 void DreamcastSubNode::task(uint64_t currentTimeUs)
@@ -76,9 +78,6 @@ void DreamcastSubNode::setConnected(bool connected, uint64_t currentTimeUs)
         mEndpointTxScheduler->cancelByRecipient(getRecipientAddress());
         if (mConnected)
         {
-            DEBUG_PRINT("Player %lu sub node 0x%02hX connected\n",
-                        mPlayerData.playerIndex + 1,
-                        getRecipientAddress());
             // Keep asking for info until valid response is heard
             MaplePacket packet(
                 COMMAND_DEVICE_INFO_REQUEST,

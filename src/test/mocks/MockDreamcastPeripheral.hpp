@@ -8,15 +8,16 @@
 class MockDreamcastPeripheral : public DreamcastPeripheral
 {
     public:
-        MockDreamcastPeripheral(uint8_t addr, 
-                                std::shared_ptr<EndpointTxSchedulerInterface> scheduler, 
+        MockDreamcastPeripheral(uint8_t addr,
+                                std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                                 uint32_t playerIndex) :
             DreamcastPeripheral(addr, scheduler, playerIndex)
         {}
 
         MOCK_METHOD(bool,
                     handleData,
-                    (uint8_t len, uint8_t cmd, const uint32_t *payload),
+                    (std::shared_ptr<const MaplePacket> packet,
+                        std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx),
                     (override));
 
         MOCK_METHOD(bool, task, (uint64_t currentTimeUs), (override));

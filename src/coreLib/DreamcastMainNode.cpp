@@ -34,16 +34,15 @@ DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus,
 DreamcastMainNode::~DreamcastMainNode()
 {}
 
-bool DreamcastMainNode::handleData(uint8_t len,
-                                   uint8_t cmd,
-                                   const uint32_t *payload)
+bool DreamcastMainNode::handleData(std::shared_ptr<const MaplePacket> packet,
+                                   std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
 {
     // Handle device info from main peripheral
-    if (cmd == COMMAND_RESPONSE_DEVICE_INFO)
+    if (packet->getFrameCommand() == COMMAND_RESPONSE_DEVICE_INFO)
     {
-        if (len > 0)
+        if (packet->payload.size() > 0)
         {
-            peripheralFactory(payload[0]);
+            peripheralFactory(packet->payload[0]);
             if (mPeripherals.size() > 0)
             {
                 // Remove the auto reload device info request transmission from schedule
@@ -62,7 +61,7 @@ bool DreamcastMainNode::handleData(uint8_t len,
         }
     }
 
-    return handlePeripheralData(len, cmd, payload);
+    return handlePeripheralData(packet, tx);
 }
 
 void DreamcastMainNode::task(uint64_t currentTimeUs)
@@ -74,8 +73,6 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
     {
         uint8_t sendAddr = readStatus.received->getFrameSenderAddr();
         uint8_t recAddr = readStatus.received->getFrameRecipientAddr();
-        uint8_t cmd = readStatus.received->getFrameCommand();
-        const uint32_t* payload = readStatus.received->payload.data();
 
         if (recAddr == 0x00)
         {
@@ -93,14 +90,14 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
                 }
 
                 // Have the device handle the data
-                handleData(readStatus.received->payload.size(), cmd, payload);
+                handleData(readStatus.received, readStatus.transmission);
             }
             else
             {
                 int32_t idx = DreamcastPeripheral::subPeripheralIndex(sendAddr);
                 if (idx >= 0 && (uint32_t)idx < mSubNodes.size())
                 {
-                    mSubNodes[idx]->handleData(readStatus.received->payload.size(), cmd, payload);
+                    mSubNodes[idx]->handleData(readStatus.received, readStatus.transmission);
                 }
             }
         }

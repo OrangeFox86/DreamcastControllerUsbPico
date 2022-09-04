@@ -25,14 +25,7 @@ class MockMapleBus : public MapleBusInterface
             return write(packet, expectResponse, DEFAULT_MAPLE_READ_TIMEOUT_US);
         }
 
-        MOCK_METHOD(const uint32_t*, getReadData, (uint32_t& len, bool& newData), (override));
-
-        MOCK_METHOD(void, processEvents, (uint64_t currentTimeUs), (override));
-
-        void processEvents()
-        {
-            processEvents(0);
-        }
+        MOCK_METHOD(Status, processEvents, (uint64_t currentTimeUs), (override));
 
         MOCK_METHOD(bool, isBusy, (), (override));
 };

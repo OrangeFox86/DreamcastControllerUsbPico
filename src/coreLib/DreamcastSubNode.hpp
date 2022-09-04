@@ -18,9 +18,8 @@ class DreamcastSubNode : public DreamcastNode
         DreamcastSubNode(const DreamcastSubNode& rhs);
 
         //! Inherited from DreamcastNode
-        virtual bool handleData(uint8_t len,
-                                uint8_t cmd,
-                                const uint32_t *payload);
+        virtual bool handleData(std::shared_ptr<const MaplePacket> packet,
+                                std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx);
 
         //! Inherited from DreamcastNode
         virtual void task(uint64_t currentTimeUs);

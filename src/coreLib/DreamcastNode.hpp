@@ -20,13 +20,11 @@ class DreamcastNode
         virtual ~DreamcastNode() {}
 
         //! Handles incoming data destined for this node
-        //! @param[in] len  Number of words in payload
-        //! @param[in] cmd  The received command
-        //! @param[in] payload  Payload data associated with the command
+        //! @param[in] packet  The packet received
+        //! @param[in] tx  The transmission that triggered this data
         //! @returns true iff the data was handled
-        virtual bool handleData(uint8_t len,
-                                uint8_t cmd,
-                                const uint32_t *payload) = 0;
+        virtual bool handleData(std::shared_ptr<const MaplePacket> packet,
+                                std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) = 0;
 
         //! Called periodically for this node to execute tasks for the given point in time
         //! @param[in] currentTimeUs  The current time in microseconds
@@ -113,20 +111,18 @@ class DreamcastNode
         }
 
         //! Try to get peripherals to handle the given data
-        //! @param[in] len  Number of words in payload
-        //! @param[in] cmd  The received command
-        //! @param[in] payload  Payload data associated with the command
+        //! @param[in] packet  The packet received
+        //! @param[in] tx  The transmission that triggered this data
         //! @returns true iff the data was handled
-        bool handlePeripheralData(uint8_t len,
-                                  uint8_t cmd,
-                                  const uint32_t *payload)
+        bool handlePeripheralData(std::shared_ptr<const MaplePacket> packet,
+                                  std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
         {
             bool handled = false;
             for (std::vector<std::shared_ptr<DreamcastPeripheral>>::iterator iter = mPeripherals.begin();
                  iter != mPeripherals.end() && !handled;
                  ++iter)
             {
-                handled = (*iter)->handleData(len, cmd, payload);
+                handled = (*iter)->handleData(packet, tx);
             }
             return handled;
         }

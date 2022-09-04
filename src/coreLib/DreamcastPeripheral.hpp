@@ -23,13 +23,11 @@ class DreamcastPeripheral
         {}
 
         //! Handles incoming data destined for this device
-        //! @param[in] len  Number of words in payload
-        //! @param[in] cmd  The received command
-        //! @param[in] payload  Payload data associated with the command
+        //! @param[in] packet  The packet received
+        //! @param[in] tx  The transmission that triggered this data
         //! @returns true iff the data was handled
-        virtual bool handleData(uint8_t len,
-                                uint8_t cmd,
-                                const uint32_t *payload) = 0;
+        virtual bool handleData(std::shared_ptr<const MaplePacket> packet,
+                                std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) = 0;
 
         //! @param[in] subPeripheralIndex  Sub peripheral index [0,4]
         //! @returns the sub peripheral mask for the given sub peripheral index

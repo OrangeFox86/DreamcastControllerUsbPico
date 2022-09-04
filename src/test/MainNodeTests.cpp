@@ -30,7 +30,8 @@ class MockedDreamcastSubNode : public DreamcastSubNode
 
         MOCK_METHOD(bool,
                     handleData,
-                    (uint8_t len, uint8_t cmd, const uint32_t *payload),
+                    (std::shared_ptr<const MaplePacket> packet,
+                        std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx),
                     (override));
 
         MOCK_METHOD(void, task, (uint64_t currentTimeUs), (override));
@@ -131,12 +132,12 @@ class MainNodeTest : public ::testing::Test
 TEST_F(MainNodeTest, successfulInfoRequest)
 {
     // --- MOCKING ---
-    // The task should always first process events on the maple bus
-    EXPECT_CALL(mMapleBus, processEvents(1000000)).Times(1);
-    // The task will then read data from the bus, and nothing will be returned
-    EXPECT_CALL(mMapleBus, getReadData(_, _))
+    EXPECT_CALL(mMapleBus, isBusy).Times(AnyNumber()).WillRepeatedly(Return(false));
+    // The task will process events, and nothing meaningful will be returned
+    MapleBusInterface::Status status;
+    EXPECT_CALL(mMapleBus, processEvents(1000000))
         .Times(1)
-        .WillOnce(DoAll(SetArgReferee<0>((uint32_t)0), SetArgReferee<1>(false), Return((const uint32_t*)NULL)));
+        .WillOnce(Return(status));
     // Since no peripherals are detected, the main node should do a info request, and it will be successful
     EXPECT_CALL(mMapleBus,
                 write(MaplePacket((uint8_t)COMMAND_DEVICE_INFO_REQUEST,
@@ -157,12 +158,12 @@ TEST_F(MainNodeTest, successfulInfoRequest)
 TEST_F(MainNodeTest, unsuccessfulInfoRequest)
 {
     // --- MOCKING ---
-    // The task should always first process events on the maple bus
-    EXPECT_CALL(mMapleBus, processEvents(1000000)).Times(1);
-    // The task will then read data from the bus, and nothing will be returned
-    EXPECT_CALL(mMapleBus, getReadData(_, _))
+    EXPECT_CALL(mMapleBus, isBusy).Times(AnyNumber()).WillRepeatedly(Return(false));
+    // The task will process events, and nothing meaningful will be returned
+    MapleBusInterface::Status status;
+    EXPECT_CALL(mMapleBus, processEvents(1000000))
         .Times(1)
-        .WillOnce(DoAll(SetArgReferee<0>((uint32_t)0), SetArgReferee<1>(false), Return((const uint32_t*)NULL)));
+        .WillOnce(Return(status));
     // Since no peripherals are detected, the main node should do a info request, and it will be unsuccessful
     EXPECT_CALL(mMapleBus,
                 write(MaplePacket((uint8_t)COMMAND_DEVICE_INFO_REQUEST,
@@ -183,19 +184,21 @@ TEST_F(MainNodeTest, unsuccessfulInfoRequest)
 TEST_F(MainNodeTest, peripheralConnect)
 {
     // --- SETUP ---
+    EXPECT_CALL(mMapleBus, isBusy).Times(AnyNumber()).WillRepeatedly(Return(false));
     // The mocked factory will add a mocked peripheral
     std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
         std::make_shared<MockDreamcastPeripheral>(0x20, mDreamcastMainNode.getEndpointTxScheduler(), mPlayerData.playerIndex);
     mDreamcastMainNode.mPeripheralsToAdd.push_back(mockedDreamcastPeripheral);
 
     // --- MOCKING ---
-    // The task should always first process events on the maple bus
-    EXPECT_CALL(mMapleBus, processEvents(1000000)).Times(1);
-    // The task will then read data from the bus, and peripheral status will be returned
+    // The task will process events, and status will be returned
     uint32_t data[2] = {0x05002001, 0x00000001};
-    EXPECT_CALL(mMapleBus, getReadData(_, _))
+    MapleBusInterface::Status status;
+    status.readBuffer = data;
+    status.readBufferLen = 2;
+    EXPECT_CALL(mMapleBus, processEvents(1000000))
         .Times(1)
-        .WillOnce(DoAll(SetArgReferee<0>((uint32_t)2), SetArgReferee<1>(true), Return((const uint32_t*)data)));
+        .WillOnce(Return(status));
     // The peripheralFactory method should be called with function code 0x00000001
     EXPECT_CALL(mDreamcastMainNode, mockMethodPeripheralFactory(0x00000001)).Times(1);
     // No sub peripherals detected (addr value is 0x20 - 0 in the last 5 bits)
@@ -224,18 +227,18 @@ TEST_F(MainNodeTest, peripheralConnect)
 TEST_F(MainNodeTest, peripheralDisconnect)
 {
     // --- SETUP ---
+    EXPECT_CALL(mMapleBus, isBusy).Times(AnyNumber()).WillRepeatedly(Return(false));
     // A main peripheral is currently connected
     std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
         std::make_shared<MockDreamcastPeripheral>(0x20, mDreamcastMainNode.getEndpointTxScheduler(), mPlayerData.playerIndex);
     mDreamcastMainNode.getPeripherals().push_back(mockedDreamcastPeripheral);
 
     // --- MOCKING ---
-    // The task should always first process events on the maple bus
-    EXPECT_CALL(mMapleBus, processEvents(1000000)).Times(1);
-    // The task will then read data from the bus, and nothing will be returned
-    EXPECT_CALL(mMapleBus, getReadData(_, _))
+    // The task will process events, and nothing meaningful will be returned
+    MapleBusInterface::Status status;
+    EXPECT_CALL(mMapleBus, processEvents(1000000))
         .Times(1)
-        .WillOnce(DoAll(SetArgReferee<0>((uint32_t)0), SetArgReferee<1>(false), Return((const uint32_t*)NULL)));
+        .WillOnce(Return(status));
     // The peripheral's task() function will be called with the current time, and it will return
     // false, signifying that communication has failed too many times. The peripheral must
     // be disconnected.
@@ -263,23 +266,26 @@ TEST_P(MainNodeSubPeripheralConnectTest, subPeripheralConnect)
     int idx = GetParam();
 
     // --- SETUP ---
+    EXPECT_CALL(mMapleBus, isBusy).Times(AnyNumber()).WillRepeatedly(Return(false));
     // A main peripheral is currently connected
     std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
         std::make_shared<MockDreamcastPeripheral>(0x01, mDreamcastMainNode.getEndpointTxScheduler(), mPlayerData.playerIndex);
     mDreamcastMainNode.getPeripherals().push_back(mockedDreamcastPeripheral);
 
     // --- MOCKING ---
-    // The task should always first process events on the maple bus
-    EXPECT_CALL(mMapleBus, processEvents(123)).Times(1);
-    // The task will then read data from the bus, and a sub peripheral's info is returned
+    // The task will process events, and a sub peripheral's info is returned
     uint32_t data[2] = {0x05000001U | (0x01U << (idx + 8)), 8675309};
-    EXPECT_CALL(mMapleBus, getReadData(_, _))
+    MapleBusInterface::Status status;
+    status.readBuffer = data;
+    status.readBufferLen = 2;
+    EXPECT_CALL(mMapleBus, processEvents(123))
         .Times(1)
-        .WillOnce(DoAll(SetArgReferee<0>((uint32_t)2), SetArgReferee<1>(true), Return((const uint32_t*)data)));
+        .WillOnce(Return(status));
     // The sub node that data is addressed to (0x01) should handle the info
+    std::shared_ptr<const MaplePacket> packet = std::make_shared<MaplePacket>(data, 2);
     EXPECT_CALL(
         *mDreamcastMainNode.mMockedSubNodes[idx],
-        handleData((uint8_t)1, (uint8_t)5, &data[1])
+        handleData(_, _)
     ).Times(1).WillOnce(Return(true));
     // The peripheral's task() function will be called with the current time
     EXPECT_CALL(*mockedDreamcastPeripheral, task(123)).Times(1).WillOnce(Return(true));

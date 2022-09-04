@@ -1,8 +1,8 @@
 #include "DreamcastScreen.hpp"
 #include "dreamcast_constants.h"
 
-DreamcastScreen::DreamcastScreen(uint8_t addr, 
-                                 std::shared_ptr<EndpointTxSchedulerInterface> scheduler, 
+DreamcastScreen::DreamcastScreen(uint8_t addr,
+                                 std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                                  PlayerData playerData) :
     DreamcastPeripheral(addr, scheduler, playerData.playerIndex),
     mNextCheckTime(0),
@@ -16,9 +16,8 @@ DreamcastScreen::DreamcastScreen(uint8_t addr,
 DreamcastScreen::~DreamcastScreen()
 {}
 
-bool DreamcastScreen::handleData(uint8_t len,
-                        uint8_t cmd,
-                        const uint32_t *payload)
+bool DreamcastScreen::handleData(std::shared_ptr<const MaplePacket> packet,
+                                 std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
 {
     if (mWaitingForData)
     {
