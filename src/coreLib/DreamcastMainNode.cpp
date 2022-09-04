@@ -79,7 +79,7 @@ void DreamcastMainNode::disconnectMainPeripheral(uint64_t currentTimeUs)
     DEBUG_PRINT("Player %lu main peripheral disconnected\n", mPlayerData.playerIndex + 1);
 }
 
-void DreamcastMainNode::task(uint64_t currentTimeUs)
+void DreamcastMainNode::readTask(uint64_t currentTimeUs)
 {
     TransmissionTimeliner::ReadStatus readStatus = mTransmissionTimeliner.readTask(currentTimeUs);
 
@@ -159,7 +159,10 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
             }
         }
     }
+}
 
+void DreamcastMainNode::runDependentTasks(uint64_t currentTimeUs)
+{
     // Allow peripherals and subnodes to handle time-dependent tasks
     if (mPeripherals.size() > 0)
     {
@@ -171,7 +174,8 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
         {
             (*iter)->task(currentTimeUs);
         }
-        // The main node MUST have a recurring transmission in order to test for heartbeat
+
+        // The main node peripheral MUST have a recurring transmission in order to test for heartbeat
         if (mEndpointTxScheduler->countRecipients(getRecipientAddress()) == 0)
         {
             uint64_t txTime = PrioritizedTxScheduler::computeNextTimeCadence(currentTimeUs, US_PER_CHECK);
@@ -182,7 +186,10 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
             mEndpointTxScheduler->add(txTime, packet, true, EXPECTED_DEVICE_INFO_PAYLOAD_WORDS);
         }
     }
+}
 
+void DreamcastMainNode::writeTask(uint64_t currentTimeUs)
+{
     // Handle transmission
     std::shared_ptr<const PrioritizedTxScheduler::Transmission> sentTx =
         mTransmissionTimeliner.writeTask(currentTimeUs);
@@ -204,6 +211,13 @@ void DreamcastMainNode::task(uint64_t currentTimeUs)
             }
         }
     }
+}
+
+void DreamcastMainNode::task(uint64_t currentTimeUs)
+{
+    readTask(currentTimeUs);
+    runDependentTasks(currentTimeUs);
+    writeTask(currentTimeUs);
 }
 
 void DreamcastMainNode::addInfoRequestToSchedule(uint64_t currentTimeUs)

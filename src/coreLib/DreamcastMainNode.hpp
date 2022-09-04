@@ -37,6 +37,18 @@ class DreamcastMainNode : public DreamcastNode
         void disconnectMainPeripheral(uint64_t currentTimeUs);
 
     private:
+        //! Execute and process read task from the timeliner
+        //! @param[in] currentTimeUs  The current time in microseconds
+        void readTask(uint64_t currentTimeUs);
+
+        //! Run task of all of my dependents
+        //! @param[in] currentTimeUs  The current time in microseconds
+        void runDependentTasks(uint64_t currentTimeUs);
+
+        //! Execute and process write task from the timeliner
+        //! @param[in] currentTimeUs  The current time in microseconds
+        void writeTask(uint64_t currentTimeUs);
+
         //! Adds an auto reload info request to the transmission schedule
         void addInfoRequestToSchedule(uint64_t currentTimeUs = 0);
 

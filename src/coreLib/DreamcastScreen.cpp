@@ -18,7 +18,7 @@ DreamcastScreen::~DreamcastScreen()
 bool DreamcastScreen::txComplete(std::shared_ptr<const MaplePacket> packet,
                                  std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
 {
-    if (mWaitingForData)
+    if (mWaitingForData && packet != nullptr)
     {
         mWaitingForData = false;
         mTransmissionId = 0;
