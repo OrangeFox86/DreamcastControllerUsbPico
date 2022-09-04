@@ -196,7 +196,7 @@ uint32_t PrioritizedTxScheduler::cancelByRecipient(uint8_t recipientAddr)
     std::list<std::shared_ptr<Transmission>>::iterator iter = mSchedule.begin();
     while (iter != mSchedule.end())
     {
-        if ((*iter)->packet->getFrameRecipientAddr() == recipientAddr)
+        if ((*iter)->packet != nullptr && (*iter)->packet->getFrameRecipientAddr() == recipientAddr)
         {
             iter = mSchedule.erase(iter);
             ++n;
