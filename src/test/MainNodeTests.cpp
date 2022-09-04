@@ -92,6 +92,11 @@ class DreamcastMainNodeOverride : public DreamcastMainNode
             return mEndpointTxScheduler;
         }
 
+        TransmissionTimeliner& getTransmissionTimeliner()
+        {
+            return mTransmissionTimeliner;
+        }
+
         //! The mocked nodes set in the constructor
         std::vector<std::shared_ptr<MockedDreamcastSubNode>> mMockedSubNodes;
 
@@ -232,6 +237,11 @@ TEST_F(MainNodeTest, peripheralDisconnect)
     std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
         std::make_shared<MockDreamcastPeripheral>(0x20, mDreamcastMainNode.getEndpointTxScheduler(), mPlayerData.playerIndex);
     mDreamcastMainNode.getPeripherals().push_back(mockedDreamcastPeripheral);
+    // This is a bad way to do it, but I need mCurrentTx in TransmissionTimeliner to be set to something
+    EXPECT_CALL(mMapleBus, write(_, _, _)).Times(AnyNumber()).WillRepeatedly(Return(true));
+    MaplePacket sentPacket(123, mDreamcastMainNode.getRecipientAddress(), (uint32_t*)nullptr, 0);
+    mDreamcastMainNode.getEndpointTxScheduler()->add(0, sentPacket, true);
+    mDreamcastMainNode.getTransmissionTimeliner().writeTask(0);
 
     // --- MOCKING ---
     // The task will process events, and it will return read failure
@@ -240,7 +250,6 @@ TEST_F(MainNodeTest, peripheralDisconnect)
     EXPECT_CALL(mMapleBus, processEvents(1000000))
         .Times(1)
         .WillOnce(Return(status));
-    EXPECT_CALL(*mockedDreamcastPeripheral, task(1000000)).Times(1);
     // All sub node's task functions will be called with the current time
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], mainPeripheralDisconnected()).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], mainPeripheralDisconnected()).Times(1);
