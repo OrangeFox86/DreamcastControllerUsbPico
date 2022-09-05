@@ -196,8 +196,7 @@ TEST_F(MainNodeTest, peripheralConnect)
     mDreamcastMainNode.mPeripheralsToAdd.push_back(mockedDreamcastPeripheral);
     // This is a bad way to do it, but I need mCurrentTx in TransmissionTimeliner to be set to something
     EXPECT_CALL(mMapleBus, write(_, _, _)).Times(AnyNumber()).WillRepeatedly(Return(true));
-    MaplePacket sentPacket(123, mDreamcastMainNode.getRecipientAddress(), (uint32_t*)nullptr, 0);
-    mDreamcastMainNode.getEndpointTxScheduler()->add(0, &mDreamcastMainNode, sentPacket, true);
+    mDreamcastMainNode.getEndpointTxScheduler()->add(0, &mDreamcastMainNode, 123, (uint32_t*)nullptr, 0, true);
     mDreamcastMainNode.getTransmissionTimeliner().writeTask(0);
 
     // --- MOCKING ---
@@ -245,8 +244,7 @@ TEST_F(MainNodeTest, peripheralDisconnect)
     mDreamcastMainNode.getPeripherals().push_back(mockedDreamcastPeripheral);
     // This is a bad way to do it, but I need mCurrentTx in TransmissionTimeliner to be set to something
     EXPECT_CALL(mMapleBus, write(_, _, _)).Times(AnyNumber()).WillRepeatedly(Return(true));
-    MaplePacket sentPacket(123, mDreamcastMainNode.getRecipientAddress(), (uint32_t*)nullptr, 0);
-    mDreamcastMainNode.getEndpointTxScheduler()->add(0, &mDreamcastMainNode, sentPacket, true);
+    mDreamcastMainNode.getEndpointTxScheduler()->add(0, &mDreamcastMainNode, 123, (uint32_t*)nullptr, 0, true);
     mDreamcastMainNode.getTransmissionTimeliner().writeTask(0);
 
     // --- MOCKING ---

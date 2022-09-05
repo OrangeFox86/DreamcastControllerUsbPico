@@ -74,7 +74,8 @@ class SubNodeTest : public ::testing::Test
             mScreenData(mMutex),
             mPlayerData{1, mDreamcastControllerObserver, mScreenData},
             mPrioritizedTxScheduler(std::make_shared<PrioritizedTxScheduler>()),
-            mEndpointTxScheduler(std::make_shared<EndpointTxScheduler>(mPrioritizedTxScheduler, 0)),
+            mEndpointTxScheduler(std::make_shared<EndpointTxScheduler>(
+                mPrioritizedTxScheduler, 0, DreamcastPeripheral::getRecipientAddress(1, 0x01))),
             mDreamcastSubNode(0x01, mEndpointTxScheduler, mPlayerData)
         {}
 

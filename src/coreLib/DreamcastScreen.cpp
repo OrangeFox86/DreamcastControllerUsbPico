@@ -48,8 +48,14 @@ void DreamcastScreen::task(uint64_t currentTimeUs)
                 mEndpointTxScheduler->cancelById(mTransmissionId);
             }
 
-            MaplePacket packet(COMMAND_BLOCK_WRITE, getRecipientAddress(), payload, numPayloadWords);
-            mTransmissionId = mEndpointTxScheduler->add(PrioritizedTxScheduler::TX_TIME_ASAP, this, packet, true, 0);
+            mTransmissionId = mEndpointTxScheduler->add(
+                PrioritizedTxScheduler::TX_TIME_ASAP,
+                this,
+                COMMAND_BLOCK_WRITE,
+                payload,
+                numPayloadWords,
+                true,
+                0);
             mNextCheckTime = currentTimeUs + US_PER_CHECK;
 
             mUpdateRequired = false;

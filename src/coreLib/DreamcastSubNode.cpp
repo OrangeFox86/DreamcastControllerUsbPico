@@ -71,11 +71,6 @@ void DreamcastSubNode::setConnected(bool connected, uint64_t currentTimeUs)
         if (mConnected)
         {
             // Keep asking for info until valid response is heard
-            MaplePacket packet(
-                COMMAND_DEVICE_INFO_REQUEST,
-                getRecipientAddress(),
-                NULL,
-                0);
             uint64_t txTime = PrioritizedTxScheduler::TX_TIME_ASAP;
             if (currentTimeUs > 0)
             {
@@ -84,7 +79,9 @@ void DreamcastSubNode::setConnected(bool connected, uint64_t currentTimeUs)
             mScheduleId = mEndpointTxScheduler->add(
                 txTime,
                 this,
-                packet,
+                COMMAND_DEVICE_INFO_REQUEST,
+                nullptr,
+                0,
                 true,
                 EXPECTED_DEVICE_INFO_PAYLOAD_WORDS,
                 US_PER_CHECK);

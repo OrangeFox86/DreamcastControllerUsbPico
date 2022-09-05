@@ -13,7 +13,9 @@ DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus,
     DreamcastNode(DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK,
                   std::make_shared<EndpointTxScheduler>(
                     prioritizedTxScheduler,
-                    MAIN_TRANSMISSION_PRIORITY
+                    MAIN_TRANSMISSION_PRIORITY,
+                    DreamcastPeripheral::getRecipientAddress(
+                        playerData.playerIndex, DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK)
                   ),
                   playerData),
     mSubNodes(),
@@ -24,9 +26,13 @@ DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus,
     mSubNodes.reserve(DreamcastPeripheral::MAX_SUB_PERIPHERALS);
     for (uint32_t i = 0; i < DreamcastPeripheral::MAX_SUB_PERIPHERALS; ++i)
     {
+        uint8_t addr = DreamcastPeripheral::subPeripheralMask(i);
         mSubNodes.push_back(std::make_shared<DreamcastSubNode>(
-            DreamcastPeripheral::subPeripheralMask(i),
-            std::make_shared<EndpointTxScheduler>(prioritizedTxScheduler, SUB_TRANSMISSION_PRIORITY),
+            addr,
+            std::make_shared<EndpointTxScheduler>(
+                prioritizedTxScheduler,
+                SUB_TRANSMISSION_PRIORITY,
+                DreamcastPeripheral::getRecipientAddress(playerData.playerIndex, addr)),
             mPlayerData));
     }
 }
@@ -158,11 +164,14 @@ void DreamcastMainNode::runDependentTasks(uint64_t currentTimeUs)
         if (mEndpointTxScheduler->countRecipients(getRecipientAddress()) == 0)
         {
             uint64_t txTime = PrioritizedTxScheduler::computeNextTimeCadence(currentTimeUs, US_PER_CHECK);
-            MaplePacket packet(COMMAND_DEVICE_INFO_REQUEST,
-                               DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr),
-                               NULL,
-                               0);
-            mEndpointTxScheduler->add(txTime, this, packet, true, EXPECTED_DEVICE_INFO_PAYLOAD_WORDS);
+            mEndpointTxScheduler->add(
+                txTime,
+                this,
+                COMMAND_DEVICE_INFO_REQUEST,
+                nullptr,
+                0,
+                true,
+                EXPECTED_DEVICE_INFO_PAYLOAD_WORDS);
         }
     }
 }
@@ -205,7 +214,9 @@ void DreamcastMainNode::addInfoRequestToSchedule(uint64_t currentTimeUs)
     mScheduleId = mEndpointTxScheduler->add(
         txTime,
         this,
-        packet,
+        COMMAND_DEVICE_INFO_REQUEST,
+        nullptr,
+        0,
         true,
         EXPECTED_DEVICE_INFO_PAYLOAD_WORDS,
         US_PER_CHECK);

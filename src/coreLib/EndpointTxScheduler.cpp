@@ -2,9 +2,11 @@
 
 EndpointTxScheduler::EndpointTxScheduler(
     std::shared_ptr<PrioritizedTxScheduler> prioritizedScheduler,
-    uint8_t fixedPriority):
+    uint8_t fixedPriority,
+    uint8_t recipientAddr):
         mPrioritizedScheduler(prioritizedScheduler),
-        mFixedPriority(fixedPriority)
+        mFixedPriority(fixedPriority),
+        mRecipientAddr(recipientAddr)
 {}
 
 EndpointTxScheduler::~EndpointTxScheduler()
@@ -12,11 +14,14 @@ EndpointTxScheduler::~EndpointTxScheduler()
 
 uint32_t EndpointTxScheduler::add(uint64_t txTime,
                                   Transmitter* transmitter,
-                                  MaplePacket& packet,
+                                  uint8_t command,
+                                  uint32_t* payload,
+                                  uint8_t payloadLen,
                                   bool expectResponse,
                                   uint32_t expectedResponseNumPayloadWords,
                                   uint32_t autoRepeatUs)
 {
+    MaplePacket packet(command, mRecipientAddr, payload, payloadLen);
     return mPrioritizedScheduler->add(mFixedPriority,
                                       txTime,
                                       transmitter,

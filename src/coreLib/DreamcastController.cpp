@@ -60,8 +60,16 @@ void DreamcastController::task(uint64_t currentTimeUs)
     if (mFirstTask)
     {
         mFirstTask = false;
-        MaplePacket packet(COMMAND_GET_CONDITION, getRecipientAddress(), DEVICE_FN_CONTROLLER);
+        uint32_t payload[] = {DEVICE_FN_CONTROLLER};
         uint64_t txTime = PrioritizedTxScheduler::computeNextTimeCadence(currentTimeUs, US_PER_CHECK);
-        mConditionTxId = mEndpointTxScheduler->add(txTime, this, packet, true, 3, US_PER_CHECK);
+        mConditionTxId = mEndpointTxScheduler->add(
+            txTime,
+            this,
+            COMMAND_GET_CONDITION,
+            payload,
+            1,
+            true,
+            3,
+            US_PER_CHECK);
     }
 }
