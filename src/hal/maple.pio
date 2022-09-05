@@ -172,8 +172,8 @@ class MapleOutStateMachine
             // Reset the pins' function to standard I/O, transitioning back HIGH before setting to input
             gpio_set_mask(mMaskAB);
             gpio_set_dir_out_masked(mMaskAB);
-            gpio_set_function(mPinA, GPIO_FUNC_SIO);
             gpio_set_function(mPinB, GPIO_FUNC_SIO);
+            gpio_set_function(mPinA, GPIO_FUNC_SIO);
             gpio_set_dir_in_masked(mMaskAB);
         }
 
