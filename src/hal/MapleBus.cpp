@@ -107,8 +107,8 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     mCurrentPhase(MapleBus::Phase::IDLE),
     mExpectingResponse(false),
     mProcKillTime(0xFFFFFFFFFFFFFFFFULL),
-    mRxDetected(false),
-    mReadTimeoutUs(0)
+    mLastReceivedWordTimeUs(0),
+    mLastReadTransferCount(0)
 {
     mapleWriteIsr[mSmOut.mSmIdx] = this;
     mapleReadIsr[mSmIn.mSmIdx] = this;
@@ -147,10 +147,14 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
 
 inline void MapleBus::readIsr()
 {
-    if (!mRxDetected)
+    // This ISR gets called twice within a read cycle:
+    // - The first time tells us that start sequence was received
+    // - The second time tells us that end sequence was received after completion
+
+    if (mCurrentPhase == Phase::WAITING_FOR_READ_START)
     {
-        mRxDetected = true;
-        mProcKillTime = time_us_64() + mReadTimeoutUs;
+        mCurrentPhase = Phase::READ_IN_PROGRESS;
+        mLastReceivedWordTimeUs = time_us_64();
     }
     else
     {
@@ -166,7 +170,7 @@ inline void MapleBus::writeIsr()
     {
         mSmIn.start();
         mProcKillTime = time_us_64() + MAPLE_RESPONSE_TIMEOUT_US;
-        mCurrentPhase = Phase::READ_IN_PROGRESS;
+        mCurrentPhase = Phase::WAITING_FOR_READ_START;
     }
     else
     {
@@ -194,8 +198,7 @@ bool MapleBus::writeInit()
 }
 
 bool MapleBus::write(const MaplePacket& packet,
-                     bool expectResponse,
-                     uint32_t readTimeoutUs)
+                     bool expectResponse)
 {
     bool rv = false;
 
@@ -204,9 +207,6 @@ bool MapleBus::write(const MaplePacket& packet,
         // Make sure previous DMA instances are killed
         dma_channel_abort(mDmaWriteChannel);
         dma_channel_abort(mDmaReadChannel);
-
-        mRxDetected = false;
-        mReadTimeoutUs = readTimeoutUs;
 
         // First 32 bits sent to the state machine is how many bits to output.
         uint8_t len = packet.payload.size();
@@ -235,8 +235,9 @@ bool MapleBus::write(const MaplePacket& packet,
             if (expectResponse)
             {
                 // Start reading
+                mLastReadTransferCount = sizeof(mReadBuffer) / sizeof(mReadBuffer[0]);
                 dma_channel_transfer_to_buffer_now(
-                    mDmaReadChannel, mReadBuffer, sizeof(mReadBuffer) / sizeof(mReadBuffer[0]));
+                    mDmaReadChannel, mReadBuffer, mLastReadTransferCount);
             }
 
             // Start writing
@@ -323,11 +324,33 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
         // We processed the write, so the machine can go back to idle
         mCurrentPhase = Phase::IDLE;
     }
-    else if (status.phase != Phase::IDLE && currentTimeUs > mProcKillTime)
+    else if (status.phase == Phase::READ_IN_PROGRESS)
+    {
+        // Check for inter-word timeout
+        uint32_t transferCount = dma_channel_hw_addr(mDmaReadChannel)->transfer_count;
+        if (mLastReadTransferCount == transferCount)
+        {
+            if ((currentTimeUs - mLastReceivedWordTimeUs) >= MAPLE_INTER_WORD_READ_TIMEOUT_US)
+            {
+                mSmIn.stop();
+                // READ_FAILED is an impulse phase. Then the state machine goes back to IDLE.
+                status.phase = Phase::READ_FAILED;
+                mCurrentPhase = Phase::IDLE;
+            }
+        }
+        else
+        {
+            mLastReadTransferCount = transferCount;
+            mLastReceivedWordTimeUs = currentTimeUs;
+        }
+
+        // (mProcKillTime is ignored while actively reading)
+    }
+    else if (status.phase != Phase::IDLE && currentTimeUs >= mProcKillTime)
     {
         // The state machine is not idle, and it blew past a timeout - check what needs to be killed
 
-        if (status.phase == Phase::READ_IN_PROGRESS)
+        if (status.phase == Phase::WAITING_FOR_READ_START)
         {
             mSmIn.stop();
             // READ_FAILED is an impulse phase. Then the state machine goes back to IDLE.

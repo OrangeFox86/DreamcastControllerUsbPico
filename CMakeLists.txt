@@ -17,6 +17,8 @@ if(NOT DREAMCAST_CONTROLLER_USB_PICO_TEST)
   include("${PICO_SDK_PATH}/external/pico_sdk_import.cmake")
 
   pico_sdk_init()
+else()
+  add_definitions(-DUNITTEST)
 endif()
 
 project(DreamcastControllerUsbPico)

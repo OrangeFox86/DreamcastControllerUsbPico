@@ -14,16 +14,10 @@ class MockMapleBus : public MapleBusInterface
             write,
             (
                 const MaplePacket& packet,
-                bool expectResponse,
-                uint32_t readTimeoutUs
+                bool expectResponse
             ),
             (override)
         );
-
-        bool write(const MaplePacket& packet, bool expectResponse)
-        {
-            return write(packet, expectResponse, 0);
-        }
 
         MOCK_METHOD(Status, processEvents, (uint64_t currentTimeUs), (override));
 

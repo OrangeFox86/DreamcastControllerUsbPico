@@ -14,7 +14,6 @@ struct Transmission
     const uint8_t priority;
     //! Set to true iff a response is expected
     const bool expectResponse;
-    const uint32_t readTimeoutUs;
     const uint32_t autoRepeatUs;
     const uint32_t txDurationUs;
     uint64_t nextTxTimeUs;
@@ -24,7 +23,6 @@ struct Transmission
     Transmission(uint32_t transmissionId,
                  uint8_t priority,
                  bool expectResponse,
-                 uint32_t readTimeoutUs,
                  uint32_t autoRepeatUs,
                  uint32_t txDurationUs,
                  uint64_t nextTxTimeUs,
@@ -33,7 +31,6 @@ struct Transmission
         transmissionId(transmissionId),
         priority(priority),
         expectResponse(expectResponse),
-        readTimeoutUs(readTimeoutUs),
         autoRepeatUs(autoRepeatUs),
         txDurationUs(txDurationUs),
         nextTxTimeUs(nextTxTimeUs),

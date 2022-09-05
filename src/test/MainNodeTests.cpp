@@ -149,8 +149,7 @@ TEST_F(MainNodeTest, successfulInfoRequest)
                                   (uint8_t)0x20,
                                   (const uint32_t*)NULL,
                                   (uint8_t)0),
-                      true,
-                      _))
+                      true))
         .Times(1)
         .WillOnce(Return(true));
     // All sub node's task functions will be called with the current time
@@ -181,8 +180,7 @@ TEST_F(MainNodeTest, unsuccessfulInfoRequest)
                                   (uint8_t)0x20,
                                   (const uint32_t*)NULL,
                                   (uint8_t)0),
-                      true,
-                      _))
+                      true))
         .Times(1)
         .WillOnce(Return(false));
     // All sub node's task functions will be called with the current time
@@ -207,7 +205,7 @@ TEST_F(MainNodeTest, peripheralConnect)
         std::make_shared<MockDreamcastPeripheral>(0x20, mDreamcastMainNode.getEndpointTxScheduler(), mPlayerData.playerIndex);
     mDreamcastMainNode.mPeripheralsToAdd.push_back(mockedDreamcastPeripheral);
     // This is a bad way to do it, but I need mCurrentTx in TransmissionTimeliner to be set to something
-    EXPECT_CALL(mMapleBus, write(_, _, _)).Times(AnyNumber()).WillRepeatedly(Return(true));
+    EXPECT_CALL(mMapleBus, write(_, _)).Times(AnyNumber()).WillRepeatedly(Return(true));
     mDreamcastMainNode.getEndpointTxScheduler()->add(0, &mDreamcastMainNode, 123, (uint32_t*)nullptr, 0, true);
     mDreamcastMainNode.getTransmissionTimeliner().writeTask(0);
 
@@ -238,7 +236,7 @@ TEST_F(MainNodeTest, peripheralConnect)
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[3], task(1000000)).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[4], task(1000000)).Times(1);
     // Don't care if write is called
-    EXPECT_CALL(mMapleBus, write(_, _, _)).Times(AnyNumber());
+    EXPECT_CALL(mMapleBus, write(_, _)).Times(AnyNumber());
 
     // --- TEST EXECUTION ---
     mDreamcastMainNode.task(1000000);
@@ -255,7 +253,7 @@ TEST_F(MainNodeTest, peripheralDisconnect)
         std::make_shared<MockDreamcastPeripheral>(0x20, mDreamcastMainNode.getEndpointTxScheduler(), mPlayerData.playerIndex);
     mDreamcastMainNode.getPeripherals().push_back(mockedDreamcastPeripheral);
     // This is a bad way to do it, but I need mCurrentTx in TransmissionTimeliner to be set to something
-    EXPECT_CALL(mMapleBus, write(_, _, _)).Times(AnyNumber()).WillRepeatedly(Return(true));
+    EXPECT_CALL(mMapleBus, write(_, _)).Times(AnyNumber()).WillRepeatedly(Return(true));
     mDreamcastMainNode.getEndpointTxScheduler()->add(0, &mDreamcastMainNode, 123, (uint32_t*)nullptr, 0, true);
     mDreamcastMainNode.getTransmissionTimeliner().writeTask(0);
 

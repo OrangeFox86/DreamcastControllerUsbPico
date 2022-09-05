@@ -1,10 +1,10 @@
 #ifndef __CONFIGURATION_H__
 #define __CONFIGURATION_H__
 
-// true to setup and show debug messages
+// true to setup and print debug messages over UART0 (pin 1, 115200 8N1)
 #define SHOW_DEBUG_MESSAGES false
 
-// Adjust the CPU clock frequency here
+// Adjust the CPU clock frequency here (133 MHz is maximum documented stable frequency)
 #define CPU_FREQ_KHZ 133000
 
 // The minimum amount of time we check for an open line before taking control of it
@@ -14,20 +14,21 @@
 // 480 ns achieves just over 2 mbps, just as the Dreamcast does
 #define MAPLE_NS_PER_BIT 480
 
-// Added percentage on top of the expected write completion time
+// Added percentage on top of the expected write completion duration to use for timeout
 #define MAPLE_WRITE_TIMEOUT_EXTRA_PERCENT 20
+
+// Estimated nanoseconds before peripheral responds - this is used for scheduling only
+#define MAPLE_RESPONSE_DELAY_NS 50
 
 // Maximum amount of time waiting for the beginning of a response when one is expected
 #define MAPLE_RESPONSE_TIMEOUT_US 500
 
-// Estimated nanoseconds before peripheral responds
-#define MAPLE_RX_DELAY_NS 50
+// Estimated nanoseconds per bit to receive data - this is used for scheduling only
+// 1750 was selected based on the average time it takes a Dreamcast controller to transmit each bit
+#define MAPLE_RESPONSE_NS_PER_BIT 1750
 
-// Estimated nanoseconds per bit to receive data
-#define MAPLE_RX_NS_PER_BIT 1500
-
-// Added percentage on top of the expected read completion time
-#define MAPLE_READ_TIMEOUT_EXTRA_PERCENT 50
+// Maximum amount of time in microseconds to pass in between received words before read is canceled
+#define MAPLE_INTER_WORD_READ_TIMEOUT_US 300
 
 // The start pin of the two-pin bus for each player
 #define P1_BUS_START_PIN 10

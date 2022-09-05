@@ -53,13 +53,11 @@ uint32_t PrioritizedTxScheduler::add(uint8_t priority,
                                     uint32_t autoRepeatUs)
 {
     uint32_t pktDurationNs = MAPLE_OPEN_LINE_CHECK_TIME_US + packet.getTxTimeNs();
-    uint32_t readTimeoutUs = 0;
 
     if (expectResponse)
     {
-        uint32_t expectedReadDurationUs = MaplePacket::getTxTimeNs(expectedResponseNumPayloadWords, MAPLE_RX_NS_PER_BIT);
-        pktDurationNs += MAPLE_RX_DELAY_NS + expectedReadDurationUs;
-        readTimeoutUs = expectedReadDurationUs * (1.0 + (MAPLE_READ_TIMEOUT_EXTRA_PERCENT / 100.0));
+        uint32_t expectedReadDurationUs = MaplePacket::getTxTimeNs(expectedResponseNumPayloadWords, MAPLE_RESPONSE_NS_PER_BIT);
+        pktDurationNs += MAPLE_RESPONSE_DELAY_NS + expectedReadDurationUs;
     }
 
     uint32_t pktDurationUs = INT_DIVIDE_CEILING(pktDurationNs, 1000);
@@ -68,7 +66,6 @@ uint32_t PrioritizedTxScheduler::add(uint8_t priority,
         std::make_shared<Transmission>(mNextId++,
                                        priority,
                                        expectResponse,
-                                       readTimeoutUs,
                                        autoRepeatUs,
                                        pktDurationUs,
                                        txTime,

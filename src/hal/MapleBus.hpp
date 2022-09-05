@@ -30,11 +30,9 @@ class MapleBus : public MapleBusInterface
         //! Writes a packet to the maple bus
         //! @param[in] packet  The packet to send (sender address will be overloaded)
         //! @param[in] expectResponse  Set to true in order to start receive after send is complete
-        //! @param[in] readTimeoutUs  When response is expected, the receive timeout in microseconds
         //! @returns true iff the bus was "open" and send has started
         bool write(const MaplePacket& packet,
-                   bool expectResponse,
-                   uint32_t readTimeoutUs=0);
+                   bool expectResponse);
 
         //! Called from a PIO ISR when read has completed for this sender.
         void readIsr();
@@ -108,10 +106,10 @@ class MapleBus : public MapleBusInterface
         bool mExpectingResponse;
         //! The time at which the next timeout will occur
         volatile uint64_t mProcKillTime;
-        //! True once receive is detected
-        volatile bool mRxDetected;
-        //! Receive timeout for the current expected response
-        uint32_t mReadTimeoutUs;
+        //! The last time which number of received words changed
+        uint64_t mLastReceivedWordTimeUs;
+        //! The last sampled read word transfer count
+        uint32_t mLastReadTransferCount;
 };
 
 #endif // __MAPLE_BUS_H__

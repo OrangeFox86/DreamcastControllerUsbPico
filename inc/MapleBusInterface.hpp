@@ -21,6 +21,8 @@ class MapleBusInterface
             WRITE_FAILED,
             //! Write completed and no read was expected
             WRITE_COMPLETE,
+            //! Write completed, waiting for start sequence from device
+            WAITING_FOR_READ_START,
             //! Currently waiting for response
             READ_IN_PROGRESS,
             //! Read has failed
@@ -55,11 +57,9 @@ class MapleBusInterface
         //! Writes a packet to the maple bus
         //! @param[in] packet  The packet to send (sender address will be overloaded)
         //! @param[in] expectResponse  Set to true in order to start receive after send is complete
-        //! @param[in] readTimeoutUs  When response is expected, the receive timeout in microseconds
         //! @returns true iff the bus was "open" and send has started
         virtual bool write(const MaplePacket& packet,
-                           bool expectResponse,
-                           uint32_t readTimeoutUs=0) = 0;
+                           bool expectResponse) = 0;
 
         //! Processes timing events for the current time. This should be called before any write
         //! call in order to check timeouts and clear out any used resources.
