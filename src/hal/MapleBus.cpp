@@ -330,7 +330,8 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
         uint32_t transferCount = dma_channel_hw_addr(mDmaReadChannel)->transfer_count;
         if (mLastReadTransferCount == transferCount)
         {
-            if ((currentTimeUs - mLastReceivedWordTimeUs) >= MAPLE_INTER_WORD_READ_TIMEOUT_US)
+            if (currentTimeUs > mLastReceivedWordTimeUs
+                && (currentTimeUs - mLastReceivedWordTimeUs) >= MAPLE_INTER_WORD_READ_TIMEOUT_US)
             {
                 mSmIn.stop();
                 // READ_FAILED is an impulse phase. Then the state machine goes back to IDLE.

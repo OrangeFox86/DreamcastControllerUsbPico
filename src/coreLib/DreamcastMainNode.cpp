@@ -131,7 +131,7 @@ void DreamcastMainNode::readTask(uint64_t currentTimeUs)
              || readStatus.busPhase == MapleBusInterface::Phase::WRITE_FAILED)
     {
         uint8_t recipientAddr = readStatus.transmission->packet->getFrameRecipientAddr();
-        if (recipientAddr == getRecipientAddress())
+        if (recipientAddr & mAddr)
         {
             // A transmission failure on a main node must cause peripheral disconnect
             if (mPeripherals.size() > 0)
