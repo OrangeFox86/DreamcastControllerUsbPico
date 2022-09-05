@@ -28,6 +28,7 @@
 #define MAPLE_RESPONSE_NS_PER_BIT 1750
 
 // Maximum amount of time in microseconds to pass in between received words before read is canceled
+// Dreamcast controllers sometimes have a ~180 us gap between words, so 300 us accommodates for that
 #define MAPLE_INTER_WORD_READ_TIMEOUT_US 300
 
 // The start pin of the two-pin bus for each player
