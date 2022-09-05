@@ -18,18 +18,18 @@ class DreamcastSubNode : public DreamcastNode
         DreamcastSubNode(const DreamcastSubNode& rhs);
 
         //! Inherited from DreamcastNode
-        virtual inline void txStarted(std::shared_ptr<const Transmission> tx) final
+        virtual inline void txStarted(std::shared_ptr<const Transmission> tx)
         {}
 
         //! Inherited from DreamcastNode
         virtual inline void txFailed(bool writeFailed,
                                      bool readFailed,
-                                     std::shared_ptr<const Transmission> tx) final
+                                     std::shared_ptr<const Transmission> tx)
         {}
 
         //! Inherited from DreamcastNode
         virtual void txComplete(std::shared_ptr<const MaplePacket> packet,
-                                std::shared_ptr<const Transmission> tx) final;
+                                std::shared_ptr<const Transmission> tx);
 
         //! Inherited from DreamcastNode
         virtual void task(uint64_t currentTimeUs);

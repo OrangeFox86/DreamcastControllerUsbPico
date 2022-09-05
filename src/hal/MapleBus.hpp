@@ -34,7 +34,7 @@ class MapleBus : public MapleBusInterface
         //! @returns true iff the bus was "open" and send has started
         bool write(const MaplePacket& packet,
                    bool expectResponse,
-                   uint32_t readTimeoutUs=DEFAULT_MAPLE_READ_TIMEOUT_US);
+                   uint32_t readTimeoutUs=0);
 
         //! Called from a PIO ISR when read has completed for this sender.
         void readIsr();

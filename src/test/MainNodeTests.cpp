@@ -28,7 +28,7 @@ class MockedDreamcastSubNode : public DreamcastSubNode
             DreamcastSubNode(addr, scheduler, playerData)
         {}
 
-        MOCK_METHOD(bool,
+        MOCK_METHOD(void,
                     txComplete,
                     (std::shared_ptr<const MaplePacket> packet,
                         std::shared_ptr<const Transmission> tx),
@@ -194,6 +194,11 @@ TEST_F(MainNodeTest, peripheralConnect)
     std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
         std::make_shared<MockDreamcastPeripheral>(0x20, mDreamcastMainNode.getEndpointTxScheduler(), mPlayerData.playerIndex);
     mDreamcastMainNode.mPeripheralsToAdd.push_back(mockedDreamcastPeripheral);
+    // This is a bad way to do it, but I need mCurrentTx in TransmissionTimeliner to be set to something
+    EXPECT_CALL(mMapleBus, write(_, _, _)).Times(AnyNumber()).WillRepeatedly(Return(true));
+    MaplePacket sentPacket(123, mDreamcastMainNode.getRecipientAddress(), (uint32_t*)nullptr, 0);
+    mDreamcastMainNode.getEndpointTxScheduler()->add(0, &mDreamcastMainNode, sentPacket, true);
+    mDreamcastMainNode.getTransmissionTimeliner().writeTask(0);
 
     // --- MOCKING ---
     // The task will process events, and status will be returned
@@ -221,8 +226,8 @@ TEST_F(MainNodeTest, peripheralConnect)
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[2], task(1000000)).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[3], task(1000000)).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[4], task(1000000)).Times(1);
-    // No write operation should be called but the main node
-    EXPECT_CALL(mMapleBus, write(_, _, _)).Times(0);
+    // Don't care if write is called
+    EXPECT_CALL(mMapleBus, write(_, _, _)).Times(AnyNumber());
 
     // --- TEST EXECUTION ---
     mDreamcastMainNode.task(1000000);
@@ -265,55 +270,3 @@ TEST_F(MainNodeTest, peripheralDisconnect)
     // All peripherals removed
     EXPECT_EQ(mDreamcastMainNode.getPeripherals().size(), 0);
 }
-
-class MainNodeSubPeripheralConnectTest : public MainNodeTest, public ::testing::WithParamInterface<int>
-{};
-
-TEST_P(MainNodeSubPeripheralConnectTest, subPeripheralConnect)
-{
-    int idx = GetParam();
-
-    // --- SETUP ---
-    EXPECT_CALL(mMapleBus, isBusy).Times(AnyNumber()).WillRepeatedly(Return(false));
-    // A main peripheral is currently connected
-    std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
-        std::make_shared<MockDreamcastPeripheral>(0x01, mDreamcastMainNode.getEndpointTxScheduler(), mPlayerData.playerIndex);
-    mDreamcastMainNode.getPeripherals().push_back(mockedDreamcastPeripheral);
-
-    // --- MOCKING ---
-    // The task will process events, and a sub peripheral's info is returned
-    uint32_t data[2] = {0x05000001U | (0x01U << (idx + 8)), 8675309};
-    MapleBusInterface::Status status;
-    status.readBuffer = data;
-    status.readBufferLen = 2;
-    status.phase = MapleBusInterface::Phase::READ_COMPLETE;
-    EXPECT_CALL(mMapleBus, processEvents(123))
-        .Times(1)
-        .WillOnce(Return(status));
-    // The sub node that data is addressed to (0x01) should handle the info
-    std::shared_ptr<const MaplePacket> packet = std::make_shared<MaplePacket>(data, 2);
-    EXPECT_CALL(
-        *mDreamcastMainNode.mMockedSubNodes[idx],
-        txComplete(_, _)
-    ).Times(1).WillOnce(Return(true));
-    // The peripheral's task() function will be called with the current time
-    EXPECT_CALL(*mockedDreamcastPeripheral, task(123)).Times(1);
-    // All sub node's task functions will be called with the current time
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], task(123)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], task(123)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[2], task(123)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[3], task(123)).Times(1);
-    EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[4], task(123)).Times(1);
-    // Don't care if bus writes
-    EXPECT_CALL(mMapleBus, write(_, _, _)).Times(AnyNumber());
-
-    // --- TEST EXECUTION ---
-    mDreamcastMainNode.task(123);
-
-    // --- EXPECTATIONS ---
-}
-
-INSTANTIATE_TEST_CASE_P(
-        MainNodeSubPeripheralConnectTests,
-        MainNodeSubPeripheralConnectTest,
-        ::testing::Values(0, 1, 2, 3, 4));

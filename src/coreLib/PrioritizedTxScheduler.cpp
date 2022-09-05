@@ -1,4 +1,5 @@
 #include "PrioritizedTxScheduler.hpp"
+#include "configuration.h"
 #include "utils.h"
 
 // STL
@@ -49,15 +50,16 @@ uint32_t PrioritizedTxScheduler::add(uint8_t priority,
                                     MaplePacket& packet,
                                     bool expectResponse,
                                     uint32_t expectedResponseNumPayloadWords,
-                                    uint32_t autoRepeatUs,
-                                    uint32_t readTimeoutUs)
+                                    uint32_t autoRepeatUs)
 {
     uint32_t pktDurationNs = MAPLE_OPEN_LINE_CHECK_TIME_US + packet.getTxTimeNs();
+    uint32_t readTimeoutUs = 0;
 
     if (expectResponse)
     {
-        pktDurationNs +=
-            RX_DELAY_NS + MaplePacket::getTxTimeNs(expectedResponseNumPayloadWords, RX_NS_PER_BIT);
+        uint32_t expectedReadDurationUs = MaplePacket::getTxTimeNs(expectedResponseNumPayloadWords, RX_NS_PER_BIT);
+        pktDurationNs += RX_DELAY_NS + expectedReadDurationUs;
+        readTimeoutUs = expectedReadDurationUs * (1.0 + (MAPLE_READ_TIMEOUT_EXTRA_PERCENT / 100.0));
     }
 
     uint32_t pktDurationUs = INT_DIVIDE_CEILING(pktDurationNs, 1000);

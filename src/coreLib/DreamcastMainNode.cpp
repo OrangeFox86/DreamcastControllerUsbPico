@@ -142,18 +142,18 @@ void DreamcastMainNode::readTask(uint64_t currentTimeUs)
 
 void DreamcastMainNode::runDependentTasks(uint64_t currentTimeUs)
 {
-    // Allow peripherals and subnodes to handle time-dependent tasks
+    // Have the connected main peripheral and sub nodes handle their tasks
+    handlePeripherals(currentTimeUs);
+
+    for (std::vector<std::shared_ptr<DreamcastSubNode>>::iterator iter = mSubNodes.begin();
+            iter != mSubNodes.end();
+            ++iter)
+    {
+        (*iter)->task(currentTimeUs);
+    }
+
     if (mPeripherals.size() > 0)
     {
-        // Have the connected main peripheral and sub nodes handle their tasks
-        handlePeripherals(currentTimeUs);
-        for (std::vector<std::shared_ptr<DreamcastSubNode>>::iterator iter = mSubNodes.begin();
-             iter != mSubNodes.end();
-             ++iter)
-        {
-            (*iter)->task(currentTimeUs);
-        }
-
         // The main node peripheral MUST have a recurring transmission in order to test for heartbeat
         if (mEndpointTxScheduler->countRecipients(getRecipientAddress()) == 0)
         {

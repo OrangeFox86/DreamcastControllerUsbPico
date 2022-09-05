@@ -14,7 +14,16 @@ class MockDreamcastPeripheral : public DreamcastPeripheral
             DreamcastPeripheral(addr, scheduler, playerIndex)
         {}
 
-        MOCK_METHOD(bool,
+        MOCK_METHOD(void, txStarted, (std::shared_ptr<const Transmission> tx), (override));
+
+        MOCK_METHOD(void,
+                    txFailed,
+                    (bool writeFailed,
+                          bool readFailed,
+                          std::shared_ptr<const Transmission> tx),
+                    (override));
+
+        MOCK_METHOD(void,
                     txComplete,
                     (std::shared_ptr<const MaplePacket> packet,
                         std::shared_ptr<const Transmission> tx),

@@ -22,7 +22,7 @@ class MockMapleBus : public MapleBusInterface
 
         bool write(const MaplePacket& packet, bool expectResponse)
         {
-            return write(packet, expectResponse, DEFAULT_MAPLE_READ_TIMEOUT_US);
+            return write(packet, expectResponse, 0);
         }
 
         MOCK_METHOD(Status, processEvents, (uint64_t currentTimeUs), (override));

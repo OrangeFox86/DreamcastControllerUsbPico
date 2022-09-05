@@ -59,7 +59,7 @@ class MapleBusInterface
         //! @returns true iff the bus was "open" and send has started
         virtual bool write(const MaplePacket& packet,
                            bool expectResponse,
-                           uint32_t readTimeoutUs=DEFAULT_MAPLE_READ_TIMEOUT_US) = 0;
+                           uint32_t readTimeoutUs=0) = 0;
 
         //! Processes timing events for the current time. This should be called before any write
         //! call in order to check timeouts and clear out any used resources.

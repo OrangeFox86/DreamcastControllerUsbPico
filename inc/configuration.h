@@ -20,9 +20,14 @@
 // Maximum amount of time waiting for the beginning of a response when one is expected
 #define MAPLE_RESPONSE_TIMEOUT_US 500
 
-// Default maximum amount of time to spend trying to read on the maple bus
-// 4000 us accommodates the maximum number of words (256) at 2 mbps
-#define DEFAULT_MAPLE_READ_TIMEOUT_US 4000
+// Estimated nanoseconds before peripheral responds
+#define RX_DELAY_NS 50
+
+// Estimated nanoseconds per bit to receive data
+#define RX_NS_PER_BIT 1500
+
+// Added percentage on top of the expected read completion time
+#define MAPLE_READ_TIMEOUT_EXTRA_PERCENT 50
 
 // The start pin of the two-pin bus for each player
 #define P1_BUS_START_PIN 10

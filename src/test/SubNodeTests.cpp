@@ -115,10 +115,10 @@ TEST_F(SubNodeTest, handleDataCommandNoPeripheralsAdded)
     std::shared_ptr<MaplePacket> packet = std::make_shared<MaplePacket>(5, 0, 1234567);
     std::shared_ptr<MaplePacket> txPacket = std::make_shared<MaplePacket>(4, 1, 7654321);
     std::shared_ptr<const Transmission> tx =
-        std::make_shared<Transmission>(0, 0, true, 100, 0, 123, 0, txPacket);
+        std::make_shared<Transmission>(0, 0, true, 100, 0, 123, 0, txPacket, nullptr);
 
     // --- TEST EXECUTION ---
-    EXPECT_FALSE(mDreamcastSubNode.txComplete(packet, tx));
+    mDreamcastSubNode.txComplete(packet, tx);
 
     // --- EXPECTATIONS ---
     EXPECT_TRUE(mDreamcastSubNode.getPeripherals().empty());
@@ -135,10 +135,10 @@ TEST_F(SubNodeTest, handleDataCommandPeripheralAdded)
     std::shared_ptr<MaplePacket> packet = std::make_shared<MaplePacket>(5, 0, 1234567);
     std::shared_ptr<MaplePacket> txPacket = std::make_shared<MaplePacket>(4, 1, 7654321);
     std::shared_ptr<const Transmission> tx =
-        std::make_shared<Transmission>(0, 0, true, 100, 0, 123, 0, txPacket);
+        std::make_shared<Transmission>(0, 0, true, 100, 0, 123, 0, txPacket, nullptr);
 
     // --- TEST EXECUTION ---
-    EXPECT_TRUE(mDreamcastSubNode.txComplete(packet, tx));
+    mDreamcastSubNode.txComplete(packet, tx);
 
     // --- EXPECTATIONS ---
     EXPECT_EQ(mDreamcastSubNode.getPeripherals().size(), 1);
@@ -154,52 +154,14 @@ TEST_F(SubNodeTest, handleDataCommandInvalidPayloadSize)
     std::shared_ptr<MaplePacket> packet = std::make_shared<MaplePacket>(5, 0, (uint32_t*)NULL, 0);
     std::shared_ptr<MaplePacket> txPacket = std::make_shared<MaplePacket>(4, 1, 7654321);
     std::shared_ptr<const Transmission> tx =
-        std::make_shared<Transmission>(0, 0, true, 100, 0, 123, 0, txPacket);
+        std::make_shared<Transmission>(0, 0, true, 100, 0, 123, 0, txPacket, nullptr);
     EXPECT_CALL(mDreamcastSubNode, mockMethodPeripheralFactory(_)).Times(0);
 
     // --- TEST EXECUTION ---
-    EXPECT_FALSE(mDreamcastSubNode.txComplete(packet, tx));
+    mDreamcastSubNode.txComplete(packet, tx);
 
     // --- EXPECTATIONS ---
     EXPECT_TRUE(mDreamcastSubNode.getPeripherals().empty());
-}
-
-TEST_F(SubNodeTest, handleDataPeripheralDataNoneHandled)
-{
-    // --- MOCKING ---
-    // Add 2 mock peripherals to the sub node
-    addTwoMockedPeripherals();
-    // Setup the payload
-    uint32_t payload[3] = {1234567, 987654, 8088};
-    std::shared_ptr<const MaplePacket> packet = std::make_shared<MaplePacket>(100, 0, payload, 3);
-    std::shared_ptr<MaplePacket> txPacket = std::make_shared<MaplePacket>(101, 1, 7654321);
-    std::shared_ptr<const Transmission> tx =
-        std::make_shared<Transmission>(0, 0, true, 100, 0, 123, 0, txPacket);
-    // Neither of the peripherals will handle data
-    EXPECT_CALL(*mockDreamcastPeripheral1, txComplete(_, _)).Times(1).WillOnce(Return(false));
-    EXPECT_CALL(*mockDreamcastPeripheral2, txComplete(_, _)).Times(1).WillOnce(Return(false));
-
-    // --- TEST EXECUTION ---
-    EXPECT_FALSE(mDreamcastSubNode.txComplete(packet, tx));
-}
-
-TEST_F(SubNodeTest, handleDataPeripheralDataFirstHandled)
-{
-    // --- MOCKING ---
-    // Add 2 mock peripherals to the sub node
-    addTwoMockedPeripherals();
-    // Setup the payload
-    uint32_t payload[3] = {1234567, 987654, 8088};
-    std::shared_ptr<const MaplePacket> packet = std::make_shared<MaplePacket>(100, 0, payload, 3);
-    std::shared_ptr<MaplePacket> txPacket = std::make_shared<MaplePacket>(101, 1, 7654321);
-    std::shared_ptr<const Transmission> tx =
-        std::make_shared<Transmission>(0, 0, true, 100, 0, 123, 0, txPacket);
-    // The first peripheral will handle data
-    EXPECT_CALL(*mockDreamcastPeripheral1, txComplete(_, _)).Times(1).WillOnce(Return(true));
-    EXPECT_CALL(*mockDreamcastPeripheral2, txComplete(_, _)).Times(0);
-
-    // --- TEST EXECUTION ---
-    EXPECT_TRUE(mDreamcastSubNode.txComplete(packet, tx));
 }
 
 TEST_F(SubNodeTest, taskPeripheralsConnectedSuccessfulTask)

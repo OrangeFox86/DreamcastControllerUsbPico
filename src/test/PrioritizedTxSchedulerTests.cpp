@@ -43,14 +43,13 @@ TEST_F(TransmissionScheduleTest, multiAdd)
     bool expectResponse = true;
     uint32_t expectedResponseNumPayloadWords = 3;
     uint32_t autoRepeatUs = 16000;
-    uint32_t readTimeoutUs = 8675309;
     uint32_t id1 = scheduler.add(priority,
                                  txTime,
+                                 nullptr,
                                  packet1,
                                  expectResponse,
                                  expectedResponseNumPayloadWords,
-                                 autoRepeatUs,
-                                 readTimeoutUs);
+                                 autoRepeatUs);
     EXPECT_EQ(id1, 1);
 
     // 4
@@ -58,11 +57,11 @@ TEST_F(TransmissionScheduleTest, multiAdd)
     MaplePacket packet2(0x01, 0x10, 0x11223344);
     uint32_t id2 = scheduler.add(priority,
                                  txTime,
+                                 nullptr,
                                  packet2,
                                  expectResponse,
                                  expectedResponseNumPayloadWords,
-                                 autoRepeatUs,
-                                 readTimeoutUs);
+                                 autoRepeatUs);
     EXPECT_EQ(id2, 2);
 
     // 1
@@ -73,11 +72,11 @@ TEST_F(TransmissionScheduleTest, multiAdd)
     MaplePacket packet3(0x12, 0x34, 0x56789012);
     uint32_t id3 = scheduler.add(priority,
                                  txTime,
+                                 nullptr,
                                  packet3,
                                  expectResponse,
                                  expectedResponseNumPayloadWords,
-                                 autoRepeatUs,
-                                 readTimeoutUs);
+                                 autoRepeatUs);
     EXPECT_EQ(id3, 3);
 
     // 2
@@ -86,11 +85,11 @@ TEST_F(TransmissionScheduleTest, multiAdd)
     MaplePacket packet4(0x35, 0x79, 0x11111111);
     uint32_t id4 = scheduler.add(priority,
                                  txTime,
+                                 nullptr,
                                  packet4,
                                  expectResponse,
                                  expectedResponseNumPayloadWords,
-                                 autoRepeatUs,
-                                 readTimeoutUs);
+                                 autoRepeatUs);
     EXPECT_EQ(id4, 4);
 
     const std::list<std::shared_ptr<Transmission>> schedule = scheduler.getSchedule();
@@ -111,25 +110,24 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary1)
     bool expectResponse = true;
     uint32_t expectedResponseNumPayloadWords = 3; // 267 us
     uint32_t autoRepeatUs = 16000;
-    uint32_t readTimeoutUs = 8675309;
     uint32_t id1 = scheduler.add(priority,
                                  txTime,
+                                 nullptr,
                                  packet1,
                                  expectResponse,
                                  expectedResponseNumPayloadWords,
-                                 autoRepeatUs,
-                                 readTimeoutUs);
+                                 autoRepeatUs);
     EXPECT_EQ(id1, 1);
 
     txTime = 124;
     MaplePacket packet2(0x33, 0xAA, 0x99887766);
     uint32_t id2 = scheduler.add(priority,
                                  txTime,
+                                 nullptr,
                                  packet2,
                                  expectResponse,
                                  expectedResponseNumPayloadWords,
-                                 autoRepeatUs,
-                                 readTimeoutUs);
+                                 autoRepeatUs);
     EXPECT_EQ(id2, 2);
 
     priority = 0;
@@ -137,11 +135,11 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary1)
     MaplePacket packet3(0x22, 0xAA, 0x99887766);
     uint32_t id3 = scheduler.add(priority,
                                  txTime,
+                                 nullptr,
                                  packet3,
                                  expectResponse,
                                  expectedResponseNumPayloadWords,
-                                 autoRepeatUs,
-                                 readTimeoutUs);
+                                 autoRepeatUs);
     EXPECT_EQ(id3, 3);
 
     const std::list<std::shared_ptr<Transmission>> schedule = scheduler.getSchedule();
@@ -161,14 +159,13 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary2)
     bool expectResponse = true;
     uint32_t expectedResponseNumPayloadWords = 3; // 267 us
     uint32_t autoRepeatUs = 16000;
-    uint32_t readTimeoutUs = 8675309;
     uint32_t id1 = scheduler.add(priority,
                                  txTime,
+                                 nullptr,
                                  packet1,
                                  expectResponse,
                                  expectedResponseNumPayloadWords,
-                                 autoRepeatUs,
-                                 readTimeoutUs);
+                                 autoRepeatUs);
     EXPECT_EQ(id1, 1);
 
     priority = 255;
@@ -176,22 +173,22 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary2)
     MaplePacket packet2(0x11, 0xAA, 0x99887766);
     uint32_t id2 = scheduler.add(priority,
                                  txTime,
+                                 nullptr,
                                  packet2,
                                  expectResponse,
                                  expectedResponseNumPayloadWords,
-                                 autoRepeatUs,
-                                 readTimeoutUs);
+                                 autoRepeatUs);
     EXPECT_EQ(id2, 2);
 
     txTime = 124;
     MaplePacket packet3(0x33, 0xAA, 0x99887766);
     uint32_t id3 = scheduler.add(priority,
                                  txTime,
+                                 nullptr,
                                  packet3,
                                  expectResponse,
                                  expectedResponseNumPayloadWords,
-                                 autoRepeatUs,
-                                 readTimeoutUs);
+                                 autoRepeatUs);
     EXPECT_EQ(id3, 3);
 
     const std::list<std::shared_ptr<Transmission>> schedule = scheduler.getSchedule();
@@ -211,14 +208,13 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary3)
     bool expectResponse = true;
     uint32_t expectedResponseNumPayloadWords = 10;
     uint32_t autoRepeatUs = 0;
-    uint32_t readTimeoutUs = 8675309;
     uint32_t id1 = scheduler.add(priority,
                     txTime,
+                    nullptr,
                     packet1,
                     expectResponse,
                     expectedResponseNumPayloadWords,
-                    autoRepeatUs,
-                    readTimeoutUs);
+                    autoRepeatUs);
     EXPECT_EQ(id1, 1);
 
     txTime = 2;
@@ -226,11 +222,11 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary3)
     MaplePacket packet2(0x22, 0x02, 0x99887766);
     uint32_t id2 = scheduler.add(priority,
                     txTime,
+                    nullptr,
                     packet2,
                     expectResponse,
                     expectedResponseNumPayloadWords,
-                    autoRepeatUs,
-                    readTimeoutUs);
+                    autoRepeatUs);
     EXPECT_EQ(id2, 2);
 
     priority = 0;
@@ -239,11 +235,11 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary3)
     MaplePacket packet3(0x33, 0x02, 0x99887766);
     uint32_t id3 = scheduler.add(priority,
                     txTime,
+                    nullptr,
                     packet3,
                     expectResponse,
                     expectedResponseNumPayloadWords,
-                    autoRepeatUs,
-                    readTimeoutUs);
+                    autoRepeatUs);
     EXPECT_EQ(id3, 3);
 
     const std::list<std::shared_ptr<Transmission>> schedule = scheduler.getSchedule();
@@ -269,33 +265,32 @@ class TransmissionSchedulePopTestA : public TransmissionScheduleTest
             bool expectResponse = true;
             uint32_t expectedResponseNumPayloadWords = 0;
             uint32_t autoRepeatUs = 0;
-            uint32_t readTimeoutUs = 8675309;
             scheduler.add(priority,
                           txTime,
+                          nullptr,
                           packet1,
                           expectResponse,
                           expectedResponseNumPayloadWords,
-                          autoRepeatUs,
-                          readTimeoutUs);
+                          autoRepeatUs);
             txTime = 2;
             autoRepeatUs = 16000;
             MaplePacket packet2(0x22, 0x02, 0x99887766);
             scheduler.add(priority,
                           txTime,
+                          nullptr,
                           packet2,
                           expectResponse,
                           expectedResponseNumPayloadWords,
-                          autoRepeatUs,
-                          readTimeoutUs);
+                          autoRepeatUs);
             txTime = 3;
             MaplePacket packet3(0x33, 0x02, 0x99887766);
             scheduler.add(priority,
                           txTime,
+                          nullptr,
                           packet3,
                           expectResponse,
                           expectedResponseNumPayloadWords,
-                          autoRepeatUs,
-                          readTimeoutUs);
+                          autoRepeatUs);
         }
 };
 
@@ -365,25 +360,24 @@ class TransmissionSchedulePopTestB : public TransmissionScheduleTest
             bool expectResponse = true;
             uint32_t expectedResponseNumPayloadWords = 10;
             uint32_t autoRepeatUs = 0;
-            uint32_t readTimeoutUs = 8675309;
             scheduler.add(priority,
                           txTime,
+                          nullptr,
                           packet1,
                           expectResponse,
                           expectedResponseNumPayloadWords,
-                          autoRepeatUs,
-                          readTimeoutUs);
+                          autoRepeatUs);
             priority = 0;
             txTime = 2 + 300;
             expectedResponseNumPayloadWords = 0;
             MaplePacket packet3(0x22, 0x02, 0x99887766);
             scheduler.add(priority,
                           txTime,
+                          nullptr,
                           packet3,
                           expectResponse,
                           expectedResponseNumPayloadWords,
-                          autoRepeatUs,
-                          readTimeoutUs);
+                          autoRepeatUs);
             priority = 255;
             txTime = 2;
             expectedResponseNumPayloadWords = 3; // 267 us
@@ -391,11 +385,11 @@ class TransmissionSchedulePopTestB : public TransmissionScheduleTest
             autoRepeatUs = 1111;
             scheduler.add(priority,
                           txTime,
+                          nullptr,
                           packet2,
                           expectResponse,
                           expectedResponseNumPayloadWords,
-                          autoRepeatUs,
-                          readTimeoutUs);
+                          autoRepeatUs);
         }
 };
 

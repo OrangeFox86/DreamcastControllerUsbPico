@@ -23,15 +23,13 @@ public:
     //! @param[in] expectResponse  true iff a response is expected after transmission
     //! @param[in] expectedResponseNumPayloadWords  Number of payload words to expect in response
     //! @param[in] autoRepeatUs  How often to repeat this transmission in microseconds
-    //! @param[in] readTimeoutUs  Maximum amount of time to wait for full packet to be received
     //! @returns transmission ID
     virtual uint32_t add(uint64_t txTime,
                          Transmitter* transmitter,
                          MaplePacket& packet,
                          bool expectResponse,
                          uint32_t expectedResponseNumPayloadWords=0,
-                         uint32_t autoRepeatUs=0,
-                         uint32_t readTimeoutUs=DEFAULT_MAPLE_READ_TIMEOUT_US) final;
+                         uint32_t autoRepeatUs=0) final;
 
     //! Cancels scheduled transmission by transmission ID
     //! @param[in] transmissionId  The transmission ID of the transmissions to cancel

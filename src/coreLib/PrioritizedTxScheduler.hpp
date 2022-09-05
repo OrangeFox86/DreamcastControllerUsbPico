@@ -23,7 +23,6 @@ public:
     //! @param[in] expectResponse  true iff a response is expected after transmission
     //! @param[in] expectedResponseNumPayloadWords  Number of payload words to expect in response
     //! @param[in] autoRepeatUs  How often to repeat this transmission in microseconds
-    //! @param[in] readTimeoutUs  Maximum amount of time to wait for full packet to be received
     //! @returns transmission ID
     uint32_t add(uint8_t priority,
                  uint64_t txTime,
@@ -31,8 +30,7 @@ public:
                  MaplePacket& packet,
                  bool expectResponse,
                  uint32_t expectedResponseNumPayloadWords=0,
-                 uint32_t autoRepeatUs=0,
-                 uint32_t readTimeoutUs=DEFAULT_MAPLE_READ_TIMEOUT_US);
+                 uint32_t autoRepeatUs=0);
 
     //! Pops the next scheduled packet, given the current time
     //! @param[in] time  The current time
@@ -75,10 +73,6 @@ protected:
     uint32_t add(std::shared_ptr<Transmission> tx);
 
 public:
-    //! Estimated nanoseconds before peripheral responds
-    static const uint32_t RX_DELAY_NS = 50;
-    //! Estimated nanoseconds per bit to receive data
-    static const uint32_t RX_NS_PER_BIT = 1500;
     //! Use this for txTime if the packet needs to be sent ASAP
     static const uint64_t TX_TIME_ASAP = 0;
 

@@ -15,8 +15,7 @@ uint32_t EndpointTxScheduler::add(uint64_t txTime,
                                   MaplePacket& packet,
                                   bool expectResponse,
                                   uint32_t expectedResponseNumPayloadWords,
-                                  uint32_t autoRepeatUs,
-                                  uint32_t readTimeoutUs)
+                                  uint32_t autoRepeatUs)
 {
     return mPrioritizedScheduler->add(mFixedPriority,
                                       txTime,
@@ -24,8 +23,7 @@ uint32_t EndpointTxScheduler::add(uint64_t txTime,
                                       packet,
                                       expectResponse,
                                       expectedResponseNumPayloadWords,
-                                      autoRepeatUs,
-                                      readTimeoutUs);
+                                      autoRepeatUs);
 }
 
 uint32_t EndpointTxScheduler::cancelById(uint32_t transmissionId)
