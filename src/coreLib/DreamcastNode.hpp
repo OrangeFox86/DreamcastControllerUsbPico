@@ -7,24 +7,18 @@
 #include "DreamcastController.hpp"
 #include "DreamcastScreen.hpp"
 #include "EndpointTxSchedulerInterface.hpp"
+#include "Transmitter.hpp"
 
 #include <stdint.h>
 #include <vector>
 #include <memory>
 
 //! Base class for an addressable node on a Maple Bus
-class DreamcastNode
+class DreamcastNode : public Transmitter
 {
     public:
         //! Virtual destructor
         virtual ~DreamcastNode() {}
-
-        //! Called when a transmission is complete
-        //! @param[in] packet  The packet received or nullptr if this was write only transmission
-        //! @param[in] tx  The transmission that triggered this data
-        //! @returns true iff the data was handled
-        virtual bool txComplete(std::shared_ptr<const MaplePacket> packet,
-                                std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) = 0;
 
         //! Called periodically for this node to execute tasks for the given point in time
         //! @param[in] currentTimeUs  The current time in microseconds
@@ -37,34 +31,6 @@ class DreamcastNode
         inline uint8_t getRecipientAddress()
         {
             return DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr);
-        }
-
-        //! Called when transmission has been sent
-        //! @param[in] tx  The transmission that was sent
-        virtual inline void txSent(std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
-        {
-            for (std::vector<std::shared_ptr<DreamcastPeripheral>>::iterator iter = mPeripherals.begin();
-                 iter != mPeripherals.end();
-                 ++iter)
-            {
-                (*iter)->txSent(tx);
-            }
-        }
-
-        //! Called when transmission failed
-        //! @param[in] writeFailed  Set to true iff TX failed because write failed
-        //! @param[in] readFailed  Set to true iff TX failed because read failed
-        //! @param[in] tx  The transmission that failed
-        virtual inline void txFailed(bool writeFailed,
-                                     bool readFailed,
-                                     std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
-        {
-            for (std::vector<std::shared_ptr<DreamcastPeripheral>>::iterator iter = mPeripherals.begin();
-                 iter != mPeripherals.end();
-                 ++iter)
-            {
-                (*iter)->txFailed(writeFailed, readFailed, tx);
-            }
         }
 
     protected:
@@ -95,23 +61,6 @@ class DreamcastNode
             {
                 (*iter)->task(currentTimeUs);
             }
-        }
-
-        //! Try to get peripherals to handle the given data
-        //! @param[in] packet  The packet received
-        //! @param[in] tx  The transmission that triggered this data
-        //! @returns true iff the data was handled
-        bool handlePeripheralData(std::shared_ptr<const MaplePacket> packet,
-                                  std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
-        {
-            bool handled = false;
-            for (std::vector<std::shared_ptr<DreamcastPeripheral>>::iterator iter = mPeripherals.begin();
-                 iter != mPeripherals.end() && !handled;
-                 ++iter)
-            {
-                handled = (*iter)->txComplete(packet, tx);
-            }
-            return handled;
         }
 
         //! Factory function which generates peripheral objects for the given function code mask

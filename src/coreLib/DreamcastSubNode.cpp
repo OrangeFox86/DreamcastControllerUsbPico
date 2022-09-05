@@ -18,8 +18,8 @@ DreamcastSubNode::DreamcastSubNode(const DreamcastSubNode& rhs) :
 {
 }
 
-bool DreamcastSubNode::txComplete(std::shared_ptr<const MaplePacket> packet,
-                                  std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
+void DreamcastSubNode::txComplete(std::shared_ptr<const MaplePacket> packet,
+                                  std::shared_ptr<const Transmission> tx)
 {
     // If device info received, add the sub peripheral
     if (packet->getFrameCommand() == COMMAND_RESPONSE_DEVICE_INFO)
@@ -39,16 +39,8 @@ bool DreamcastSubNode::txComplete(std::shared_ptr<const MaplePacket> packet,
                             mPlayerData.playerIndex + 1,
                             getRecipientAddress());
             }
-            return (mPeripherals.size() > 0);
-        }
-        else
-        {
-            return false;
         }
     }
-
-    // Pass data to sub peripheral
-    return handlePeripheralData(packet, tx);
 }
 
 void DreamcastSubNode::task(uint64_t currentTimeUs)
@@ -91,6 +83,7 @@ void DreamcastSubNode::setConnected(bool connected, uint64_t currentTimeUs)
             }
             mScheduleId = mEndpointTxScheduler->add(
                 txTime,
+                this,
                 packet,
                 true,
                 EXPECTED_DEVICE_INFO_PAYLOAD_WORDS,

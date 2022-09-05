@@ -11,7 +11,7 @@ public:
     struct ReadStatus
     {
         //! The transmission associated with the data below
-        std::shared_ptr<const PrioritizedTxScheduler::Transmission> transmission;
+        std::shared_ptr<const Transmission> transmission;
         //! Set to received packet or nullptr if nothing received
         std::shared_ptr<const MaplePacket> received;
         //! The phase of the maple bus
@@ -38,7 +38,7 @@ public:
     //! Write timeliner task - called periodically to process timeliner write events
     //! @param[in] currentTimeUs  The current time task is run
     //! @returns the transmission that started or nullptr if nothing was transmitted
-    std::shared_ptr<const PrioritizedTxScheduler::Transmission> writeTask(uint64_t currentTimeUs);
+    std::shared_ptr<const Transmission> writeTask(uint64_t currentTimeUs);
 
 protected:
     //! The maple bus that scheduled transmissions are written to
@@ -46,7 +46,7 @@ protected:
     //! The schedule that transmissions are popped from
     std::shared_ptr<PrioritizedTxScheduler> mSchedule;
     //! The currently sending transmission
-    std::shared_ptr<const PrioritizedTxScheduler::Transmission> mCurrentTx;
+    std::shared_ptr<const Transmission> mCurrentTx;
     //! Recently popped transmission that is waiting to be sent
-    std::shared_ptr<const PrioritizedTxScheduler::Transmission> mNextTx;
+    std::shared_ptr<const Transmission> mNextTx;
 };

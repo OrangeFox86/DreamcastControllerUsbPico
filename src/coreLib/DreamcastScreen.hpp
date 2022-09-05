@@ -21,15 +21,15 @@ class DreamcastScreen : public DreamcastPeripheral
         virtual ~DreamcastScreen();
 
         //! Inherited from DreamcastPeripheral
-        virtual bool txComplete(std::shared_ptr<const MaplePacket> packet,
-                                std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) final;
+        virtual void txComplete(std::shared_ptr<const MaplePacket> packet,
+                                std::shared_ptr<const Transmission> tx) final;
 
         //! Inherited from DreamcastPeripheral
         virtual void task(uint64_t currentTimeUs) final;
 
         //! Called when transmission has been sent
         //! @param[in] tx  The transmission that was sent
-        virtual void txSent(std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) final;
+        virtual void txStarted(std::shared_ptr<const Transmission> tx) final;
 
         //! Called when transmission failed
         //! @param[in] writeFailed  Set to true iff TX failed because write failed
@@ -37,7 +37,7 @@ class DreamcastScreen : public DreamcastPeripheral
         //! @param[in] tx  The transmission that failed
         virtual void txFailed(bool writeFailed,
                               bool readFailed,
-                              std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) final;
+                              std::shared_ptr<const Transmission> tx) final;
 
     private:
         //! Time between each screen state poll (in microseconds)

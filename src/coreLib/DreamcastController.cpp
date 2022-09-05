@@ -18,7 +18,7 @@ DreamcastController::~DreamcastController()
     mGamepad.controllerDisconnected();
 }
 
-void DreamcastController::txSent(std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
+void DreamcastController::txStarted(std::shared_ptr<const Transmission> tx)
 {
     if (mConditionTxId != 0 && tx->transmissionId == mConditionTxId)
     {
@@ -28,7 +28,7 @@ void DreamcastController::txSent(std::shared_ptr<const PrioritizedTxScheduler::T
 
 void DreamcastController::txFailed(bool writeFailed,
                                    bool readFailed,
-                                   std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
+                                   std::shared_ptr<const Transmission> tx)
 {
     if (mConditionTxId != 0 && tx->transmissionId == mConditionTxId)
     {
@@ -36,8 +36,8 @@ void DreamcastController::txFailed(bool writeFailed,
     }
 }
 
-bool DreamcastController::txComplete(std::shared_ptr<const MaplePacket> packet,
-                                     std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
+void DreamcastController::txComplete(std::shared_ptr<const MaplePacket> packet,
+                                     std::shared_ptr<const Transmission> tx)
 {
     if (mWaitingForData && packet != nullptr)
     {
@@ -51,12 +51,8 @@ bool DreamcastController::txComplete(std::shared_ptr<const MaplePacket> packet,
             DreamcastControllerObserver::ControllerCondition controllerCondition;
             memcpy(&controllerCondition, &packet->payload[1], 8);
             mGamepad.setControllerCondition(controllerCondition);
-
-            return true;
         }
     }
-
-    return false;
 }
 
 void DreamcastController::task(uint64_t currentTimeUs)
@@ -66,6 +62,6 @@ void DreamcastController::task(uint64_t currentTimeUs)
         mFirstTask = false;
         MaplePacket packet(COMMAND_GET_CONDITION, getRecipientAddress(), DEVICE_FN_CONTROLLER);
         uint64_t txTime = PrioritizedTxScheduler::computeNextTimeCadence(currentTimeUs, US_PER_CHECK);
-        mConditionTxId = mEndpointTxScheduler->add(txTime, packet, true, 3, US_PER_CHECK);
+        mConditionTxId = mEndpointTxScheduler->add(txTime, this, packet, true, 3, US_PER_CHECK);
     }
 }

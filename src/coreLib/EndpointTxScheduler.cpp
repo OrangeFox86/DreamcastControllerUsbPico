@@ -11,6 +11,7 @@ EndpointTxScheduler::~EndpointTxScheduler()
 {}
 
 uint32_t EndpointTxScheduler::add(uint64_t txTime,
+                                  Transmitter* transmitter,
                                   MaplePacket& packet,
                                   bool expectResponse,
                                   uint32_t expectedResponseNumPayloadWords,
@@ -19,6 +20,7 @@ uint32_t EndpointTxScheduler::add(uint64_t txTime,
 {
     return mPrioritizedScheduler->add(mFixedPriority,
                                       txTime,
+                                      transmitter,
                                       packet,
                                       expectResponse,
                                       expectedResponseNumPayloadWords,

@@ -19,19 +19,19 @@ class DreamcastController : public DreamcastPeripheral
         virtual ~DreamcastController();
 
         //! Inherited from DreamcastPeripheral
-        virtual bool txComplete(std::shared_ptr<const MaplePacket> packet,
-                                std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) final;
+        virtual void txComplete(std::shared_ptr<const MaplePacket> packet,
+                                std::shared_ptr<const Transmission> tx) final;
 
         //! Inherited from DreamcastPeripheral
         virtual void task(uint64_t currentTimeUs) final;
 
         //! Inherited from DreamcastPeripheral
-        virtual void txSent(std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) final;
+        virtual void txStarted(std::shared_ptr<const Transmission> tx) final;
 
         //! Inherited from DreamcastPeripheral
         virtual void txFailed(bool writeFailed,
                               bool readFailed,
-                              std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) final;
+                              std::shared_ptr<const Transmission> tx) final;
 
     private:
         //! Time between each controller state poll (in microseconds)

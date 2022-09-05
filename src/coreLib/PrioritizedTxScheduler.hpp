@@ -2,52 +2,12 @@
 
 #include "MaplePacket.hpp"
 #include "dreamcast_constants.h"
+#include "Transmission.hpp"
 #include <list>
 #include <memory>
 
 class PrioritizedTxScheduler
 {
-public:
-    //! Transmission definition
-    struct Transmission
-    {
-        //! Unique ID of this transmission
-        const uint32_t transmissionId;
-        //! Priority where 0 is highest
-        const uint8_t priority;
-        //! Set to true iff a response is expected
-        const bool expectResponse;
-        const uint32_t readTimeoutUs;
-        const uint32_t autoRepeatUs;
-        const uint32_t txDurationUs;
-        uint64_t nextTxTimeUs;
-        std::shared_ptr<const MaplePacket> packet;
-
-        Transmission(uint32_t transmissionId,
-                     uint8_t priority,
-                     bool expectResponse,
-                     uint32_t readTimeoutUs,
-                     uint32_t autoRepeatUs,
-                     uint32_t txDurationUs,
-                     uint64_t nextTxTimeUs,
-                     std::shared_ptr<MaplePacket> packet):
-            transmissionId(transmissionId),
-            priority(priority),
-            expectResponse(expectResponse),
-            readTimeoutUs(readTimeoutUs),
-            autoRepeatUs(autoRepeatUs),
-            txDurationUs(txDurationUs),
-            nextTxTimeUs(nextTxTimeUs),
-            packet(packet)
-        {}
-
-        //! @returns the estimated completion time of this transmission
-        uint64_t getNextCompletionTime()
-        {
-            return nextTxTimeUs + txDurationUs;
-        }
-    };
-
 public:
     //! Default constructor
     PrioritizedTxScheduler();
@@ -58,6 +18,7 @@ public:
     //! Add a transmission to the schedule
     //! @param[in] priority  priority of this transmission (0 is highest priority)
     //! @param[in] txTime  Time at which this should transmit in microseconds
+    //! @param[in] transmitter  Pointer to transmitter that is adding this
     //! @param[in,out] packet  Packet data to send (internal data is moved upon calling this)
     //! @param[in] expectResponse  true iff a response is expected after transmission
     //! @param[in] expectedResponseNumPayloadWords  Number of payload words to expect in response
@@ -66,6 +27,7 @@ public:
     //! @returns transmission ID
     uint32_t add(uint8_t priority,
                  uint64_t txTime,
+                 Transmitter* transmitter,
                  MaplePacket& packet,
                  bool expectResponse,
                  uint32_t expectedResponseNumPayloadWords=0,

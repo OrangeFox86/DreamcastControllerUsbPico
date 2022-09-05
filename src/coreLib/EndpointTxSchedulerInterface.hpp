@@ -2,6 +2,7 @@
 
 #include "MaplePacket.hpp"
 #include "dreamcast_constants.h"
+#include "Transmitter.hpp"
 
 class EndpointTxSchedulerInterface
 {
@@ -14,6 +15,7 @@ public:
 
     //! Add a transmission to the schedule
     //! @param[in] txTime  Time at which this should transmit in microseconds
+    //! @param[in] transmitter  Pointer to transmitter that is adding this
     //! @param[in,out] packet  Packet data to send (internal data is moved upon calling this)
     //! @param[in] expectResponse  true iff a response is expected after transmission
     //! @param[in] expectedResponseNumPayloadWords  Number of payload words to expect in response
@@ -21,6 +23,7 @@ public:
     //! @param[in] readTimeoutUs  Maximum amount of time to wait for full packet to be received
     //! @returns transmission ID
     virtual uint32_t add(uint64_t txTime,
+                         Transmitter* transmitter,
                          MaplePacket& packet,
                          bool expectResponse,
                          uint32_t expectedResponseNumPayloadWords=0,

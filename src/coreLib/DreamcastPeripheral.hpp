@@ -3,9 +3,10 @@
 #include <stdint.h>
 #include "PrioritizedTxScheduler.hpp"
 #include "EndpointTxSchedulerInterface.hpp"
+#include "Transmitter.hpp"
 
 //! Base class for a connected Dreamcast peripheral
-class DreamcastPeripheral
+class DreamcastPeripheral : public Transmitter
 {
     public:
         //! Constructor
@@ -21,13 +22,6 @@ class DreamcastPeripheral
         //! Virtual destructor
         virtual ~DreamcastPeripheral()
         {}
-
-        //! Called when a transmission is complete
-        //! @param[in] packet  The packet received or nullptr if this was write only transmission
-        //! @param[in] tx  The transmission that triggered this data
-        //! @returns true iff the data was handled
-        virtual bool txComplete(std::shared_ptr<const MaplePacket> packet,
-                                std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx) = 0;
 
         //! @param[in] subPeripheralIndex  Sub peripheral index [0,4]
         //! @returns the sub peripheral mask for the given sub peripheral index
@@ -66,20 +60,6 @@ class DreamcastPeripheral
         //! The task that DreamcastNode yields control to after this peripheral is detected
         //! @param[in] currentTimeUs  The current time in microseconds
         virtual void task(uint64_t currentTimeUs) = 0;
-
-        //! Called when transmission has been sent
-        //! @param[in] tx  The transmission that was sent
-        virtual inline void txSent(std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
-        {}
-
-        //! Called when transmission failed
-        //! @param[in] writeFailed  Set to true iff TX failed because write failed
-        //! @param[in] readFailed  Set to true iff TX failed because read failed
-        //! @param[in] tx  The transmission that failed
-        virtual inline void txFailed(bool writeFailed,
-                                     bool readFailed,
-                                     std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
-        {}
 
     public:
         //! The maximum number of sub peripherals that a main peripheral can handle

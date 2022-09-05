@@ -30,9 +30,9 @@ TransmissionTimeliner::ReadStatus TransmissionTimeliner::readTask(uint64_t curre
     return status;
 }
 
-std::shared_ptr<const PrioritizedTxScheduler::Transmission> TransmissionTimeliner::writeTask(uint64_t currentTimeUs)
+std::shared_ptr<const Transmission> TransmissionTimeliner::writeTask(uint64_t currentTimeUs)
 {
-    std::shared_ptr<const PrioritizedTxScheduler::Transmission> txSent = nullptr;
+    std::shared_ptr<const Transmission> txSent = nullptr;
 
     // Get next transmission
     if (mNextTx == nullptr && !mBus.isBusy())

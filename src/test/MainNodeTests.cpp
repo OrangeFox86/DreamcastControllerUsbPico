@@ -31,7 +31,7 @@ class MockedDreamcastSubNode : public DreamcastSubNode
         MOCK_METHOD(bool,
                     txComplete,
                     (std::shared_ptr<const MaplePacket> packet,
-                        std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx),
+                        std::shared_ptr<const Transmission> tx),
                     (override));
 
         MOCK_METHOD(void, task, (uint64_t currentTimeUs), (override));
@@ -241,7 +241,7 @@ TEST_F(MainNodeTest, peripheralDisconnect)
     // This is a bad way to do it, but I need mCurrentTx in TransmissionTimeliner to be set to something
     EXPECT_CALL(mMapleBus, write(_, _, _)).Times(AnyNumber()).WillRepeatedly(Return(true));
     MaplePacket sentPacket(123, mDreamcastMainNode.getRecipientAddress(), (uint32_t*)nullptr, 0);
-    mDreamcastMainNode.getEndpointTxScheduler()->add(0, sentPacket, true);
+    mDreamcastMainNode.getEndpointTxScheduler()->add(0, &mDreamcastMainNode, sentPacket, true);
     mDreamcastMainNode.getTransmissionTimeliner().writeTask(0);
 
     // --- MOCKING ---

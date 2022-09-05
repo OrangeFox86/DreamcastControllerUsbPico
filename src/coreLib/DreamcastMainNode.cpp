@@ -34,8 +34,8 @@ DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus,
 DreamcastMainNode::~DreamcastMainNode()
 {}
 
-bool DreamcastMainNode::txComplete(std::shared_ptr<const MaplePacket> packet,
-                                   std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
+void DreamcastMainNode::txComplete(std::shared_ptr<const MaplePacket> packet,
+                                   std::shared_ptr<const Transmission> tx)
 {
     // Handle device info from main peripheral
     if (packet != nullptr && packet->getFrameCommand() == COMMAND_RESPONSE_DEVICE_INFO)
@@ -53,17 +53,9 @@ bool DreamcastMainNode::txComplete(std::shared_ptr<const MaplePacket> packet,
                 }
                 DEBUG_PRINT("Player %lu main peripheral connected\n", mPlayerData.playerIndex + 1);
             }
-            return (mPeripherals.size() > 0);
-        }
-        else
-        {
-            return false;
         }
     }
-
-    return handlePeripheralData(packet, tx);
 }
-
 
 void DreamcastMainNode::disconnectMainPeripheral(uint64_t currentTimeUs)
 {
@@ -86,12 +78,12 @@ void DreamcastMainNode::readTask(uint64_t currentTimeUs)
     // See if there is anything to receive
     if (readStatus.busPhase == MapleBusInterface::Phase::READ_COMPLETE)
     {
+        // Check addresses to determine what sub nodes are attached
         uint8_t sendAddr = readStatus.received->getFrameSenderAddr();
         uint8_t recAddr = readStatus.received->getFrameRecipientAddr();
-
         if (recAddr == 0x00)
         {
-            // This packet was meant for me
+            // This packet was meant for me (the host)
 
             if (sendAddr & mAddr)
             {
@@ -103,40 +95,28 @@ void DreamcastMainNode::readTask(uint64_t currentTimeUs)
                     uint8_t mask = (*iter)->getAddr();
                     (*iter)->setConnected((sendAddr & mask) != 0, currentTimeUs);
                 }
+            }
+        }
 
-                // Have the device handle the data
-                txComplete(readStatus.received, readStatus.transmission);
-            }
-            else
-            {
-                int32_t idx = DreamcastPeripheral::subPeripheralIndex(sendAddr);
-                if (idx >= 0 && (uint32_t)idx < mSubNodes.size())
-                {
-                    mSubNodes[idx]->txComplete(readStatus.received, readStatus.transmission);
-                }
-            }
+        // Send this off to the one who transmitted this
+        Transmitter* transmitter = readStatus.transmission->transmitter;
+        if (transmitter != nullptr)
+        {
+            transmitter->txComplete(readStatus.received, readStatus.transmission);
         }
     }
     else if (readStatus.busPhase == MapleBusInterface::Phase::WRITE_COMPLETE)
     {
-        uint8_t recAddr = readStatus.transmission->packet->getFrameRecipientAddr();
-        if (recAddr & mAddr)
+        // Send this off to the one who transmitted this
+        Transmitter* transmitter = readStatus.transmission->transmitter;
+        if (transmitter != nullptr)
         {
-            txComplete(readStatus.received, readStatus.transmission);
-        }
-        else
-        {
-            int32_t idx = DreamcastPeripheral::subPeripheralIndex(recAddr);
-            if (idx >= 0 && (uint32_t)idx < mSubNodes.size())
-            {
-                mSubNodes[idx]->txComplete(readStatus.received, readStatus.transmission);
-            }
+            transmitter->txComplete(readStatus.received, readStatus.transmission);
         }
     }
     else if (readStatus.busPhase == MapleBusInterface::Phase::READ_FAILED
              || readStatus.busPhase == MapleBusInterface::Phase::WRITE_FAILED)
     {
-        // Let peripheral know this packet was sent
         uint8_t recipientAddr = readStatus.transmission->packet->getFrameRecipientAddr();
         if (recipientAddr == getRecipientAddress())
         {
@@ -148,14 +128,13 @@ void DreamcastMainNode::readTask(uint64_t currentTimeUs)
         }
         else
         {
-            int32_t idx = DreamcastPeripheral::subPeripheralIndex(
-                readStatus.transmission->packet->getFrameRecipientAddr());
-
-            if (idx >= 0 && (uint32_t)idx < mSubNodes.size())
+            // Send this off to the one who transmitted this
+            Transmitter* transmitter = readStatus.transmission->transmitter;
+            if (transmitter != nullptr)
             {
-                mSubNodes[idx]->txFailed(readStatus.busPhase == MapleBusInterface::Phase::WRITE_FAILED,
-                                         readStatus.busPhase == MapleBusInterface::Phase::READ_FAILED,
-                                         readStatus.transmission);
+                transmitter->txFailed(readStatus.busPhase == MapleBusInterface::Phase::WRITE_FAILED,
+                                      readStatus.busPhase == MapleBusInterface::Phase::READ_FAILED,
+                                      readStatus.transmission);
             }
         }
     }
@@ -183,7 +162,7 @@ void DreamcastMainNode::runDependentTasks(uint64_t currentTimeUs)
                                DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr),
                                NULL,
                                0);
-            mEndpointTxScheduler->add(txTime, packet, true, EXPECTED_DEVICE_INFO_PAYLOAD_WORDS);
+            mEndpointTxScheduler->add(txTime, this, packet, true, EXPECTED_DEVICE_INFO_PAYLOAD_WORDS);
         }
     }
 }
@@ -191,24 +170,16 @@ void DreamcastMainNode::runDependentTasks(uint64_t currentTimeUs)
 void DreamcastMainNode::writeTask(uint64_t currentTimeUs)
 {
     // Handle transmission
-    std::shared_ptr<const PrioritizedTxScheduler::Transmission> sentTx =
+    std::shared_ptr<const Transmission> sentTx =
         mTransmissionTimeliner.writeTask(currentTimeUs);
 
-    if (sentTx != nullptr && sentTx->packet != nullptr)
+    if (sentTx != nullptr)
     {
-        // Let peripheral know this packet was sent
-        uint8_t recipientAddr = sentTx->packet->getFrameRecipientAddr();
-        if (recipientAddr == getRecipientAddress())
+        // Send this off to the one who transmitted this
+        Transmitter* transmitter = sentTx->transmitter;
+        if (transmitter != nullptr)
         {
-            txSent(sentTx);
-        }
-        else
-        {
-            int32_t idx = DreamcastPeripheral::subPeripheralIndex(sentTx->packet->getFrameRecipientAddr());
-            if (idx >= 0 && (uint32_t)idx < mSubNodes.size())
-            {
-                mSubNodes[idx]->txSent(sentTx);
-            }
+            transmitter->txStarted(sentTx);
         }
     }
 }
@@ -233,6 +204,7 @@ void DreamcastMainNode::addInfoRequestToSchedule(uint64_t currentTimeUs)
                        0);
     mScheduleId = mEndpointTxScheduler->add(
         txTime,
+        this,
         packet,
         true,
         EXPECTED_DEVICE_INFO_PAYLOAD_WORDS,

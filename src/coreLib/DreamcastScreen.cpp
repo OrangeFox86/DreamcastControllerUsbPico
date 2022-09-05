@@ -15,8 +15,8 @@ DreamcastScreen::DreamcastScreen(uint8_t addr,
 DreamcastScreen::~DreamcastScreen()
 {}
 
-bool DreamcastScreen::txComplete(std::shared_ptr<const MaplePacket> packet,
-                                 std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
+void DreamcastScreen::txComplete(std::shared_ptr<const MaplePacket> packet,
+                                 std::shared_ptr<const Transmission> tx)
 {
     if (mWaitingForData && packet != nullptr)
     {
@@ -24,10 +24,7 @@ bool DreamcastScreen::txComplete(std::shared_ptr<const MaplePacket> packet,
         mTransmissionId = 0;
 
         // TODO: return code is ignored for now; in the future, try to resend on failure
-
-        return true;
     }
-    return false;
 }
 
 void DreamcastScreen::task(uint64_t currentTimeUs)
@@ -52,7 +49,7 @@ void DreamcastScreen::task(uint64_t currentTimeUs)
             }
 
             MaplePacket packet(COMMAND_BLOCK_WRITE, getRecipientAddress(), payload, numPayloadWords);
-            mTransmissionId = mEndpointTxScheduler->add(PrioritizedTxScheduler::TX_TIME_ASAP, packet, true, 0);
+            mTransmissionId = mEndpointTxScheduler->add(PrioritizedTxScheduler::TX_TIME_ASAP, this, packet, true, 0);
             mNextCheckTime = currentTimeUs + US_PER_CHECK;
 
             mUpdateRequired = false;
@@ -60,7 +57,7 @@ void DreamcastScreen::task(uint64_t currentTimeUs)
     }
 }
 
-void DreamcastScreen::txSent(std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
+void DreamcastScreen::txStarted(std::shared_ptr<const Transmission> tx)
 {
     if (mTransmissionId > 0 && mTransmissionId == tx->transmissionId)
     {
@@ -70,7 +67,7 @@ void DreamcastScreen::txSent(std::shared_ptr<const PrioritizedTxScheduler::Trans
 
 void DreamcastScreen::txFailed(bool writeFailed,
                                bool readFailed,
-                               std::shared_ptr<const PrioritizedTxScheduler::Transmission> tx)
+                               std::shared_ptr<const Transmission> tx)
 {
     if (mTransmissionId > 0 && mTransmissionId == tx->transmissionId)
     {

@@ -45,6 +45,7 @@ uint32_t PrioritizedTxScheduler::add(std::shared_ptr<Transmission> tx)
 
 uint32_t PrioritizedTxScheduler::add(uint8_t priority,
                                     uint64_t txTime,
+                                    Transmitter* transmitter,
                                     MaplePacket& packet,
                                     bool expectResponse,
                                     uint32_t expectedResponseNumPayloadWords,
@@ -69,7 +70,8 @@ uint32_t PrioritizedTxScheduler::add(uint8_t priority,
                                        autoRepeatUs,
                                        pktDurationUs,
                                        txTime,
-                                       std::make_shared<MaplePacket>(std::move(packet)));
+                                       std::make_shared<MaplePacket>(std::move(packet)),
+                                       transmitter);
 
     return add(tx);
 }
@@ -96,7 +98,7 @@ uint64_t PrioritizedTxScheduler::computeNextTimeCadence(uint64_t currentTime,
     }
 }
 
-std::shared_ptr<const PrioritizedTxScheduler::Transmission> PrioritizedTxScheduler::popNext(uint64_t time)
+std::shared_ptr<const Transmission> PrioritizedTxScheduler::popNext(uint64_t time)
 {
     std::shared_ptr<Transmission> item = nullptr;
 
