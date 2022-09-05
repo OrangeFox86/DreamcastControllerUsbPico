@@ -360,7 +360,7 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
         else // status.phase == Phase::WRITE_IN_PROGRESS - but also catches any other edge case
         {
             // Stopping both out and in just in case there was a race condition (state machine could
-            // have *just* transitioned to READ_IN_PROGESS as we were processing this timeout)
+            // have *just* transitioned to read as we were processing this timeout)
             mSmOut.stop();
             mSmIn.stop();
             // WRITE_FAILED is an impulse phase. Then the state machine goes back to IDLE.

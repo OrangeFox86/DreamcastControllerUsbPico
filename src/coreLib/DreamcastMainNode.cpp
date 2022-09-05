@@ -81,6 +81,9 @@ void DreamcastMainNode::readTask(uint64_t currentTimeUs)
 {
     TransmissionTimeliner::ReadStatus readStatus = mTransmissionTimeliner.readTask(currentTimeUs);
 
+    // WARNING: The below is handled with care so that the transmitter pointer is guaranteed to be
+    //          valid if not set to nullptr. Peripherals are only deleted in 2 places below*
+
     // See if there is anything to receive
     if (readStatus.busPhase == MapleBusInterface::Phase::READ_COMPLETE)
     {
@@ -93,11 +96,15 @@ void DreamcastMainNode::readTask(uint64_t currentTimeUs)
 
             if (sendAddr & mAddr)
             {
+                // This was meant for the main node or one of the main node's peripherals
                 // Use the sender address to determine what sub peripherals are connected
                 for (std::vector<std::shared_ptr<DreamcastSubNode>>::iterator iter = mSubNodes.begin();
                      iter != mSubNodes.end();
                      ++iter)
                 {
+                    // * A sub peripheral may be deleted because of the following, but we already
+                    //   verified that this message was destined for the main node
+
                     uint8_t mask = (*iter)->getAddr();
                     (*iter)->setConnected((sendAddr & mask) != 0, currentTimeUs);
                 }
@@ -129,6 +136,9 @@ void DreamcastMainNode::readTask(uint64_t currentTimeUs)
             // A transmission failure on a main node must cause peripheral disconnect
             if (mPeripherals.size() > 0)
             {
+                // * This will delete all peripherals for this player - this is why the callback for
+                //   the transmitter is NOT subsequently called
+
                 disconnectMainPeripheral(currentTimeUs);
             }
         }
@@ -166,7 +176,7 @@ void DreamcastMainNode::runDependentTasks(uint64_t currentTimeUs)
             uint64_t txTime = PrioritizedTxScheduler::computeNextTimeCadence(currentTimeUs, US_PER_CHECK);
             mEndpointTxScheduler->add(
                 txTime,
-                this,
+                nullptr,
                 COMMAND_DEVICE_INFO_REQUEST,
                 nullptr,
                 0,
