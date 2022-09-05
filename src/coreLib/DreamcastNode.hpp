@@ -78,7 +78,6 @@ class DreamcastNode : public Transmitter
                 mPeripherals.push_back(std::make_shared<DreamcastScreen>(mAddr, mEndpointTxScheduler, mPlayerData));
             }
             // TODO: handle other peripherals here
-            // TODO: add a stub peripheral if none were created
         }
 
     private:

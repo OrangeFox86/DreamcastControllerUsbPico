@@ -29,15 +29,22 @@ void DreamcastSubNode::txComplete(std::shared_ptr<const MaplePacket> packet,
             peripheralFactory(packet->payload[0]);
             if (mPeripherals.size() > 0)
             {
-                // Remove the auto reload device info request transmission from schedule
-                if (mScheduleId >= 0)
-                {
-                    mEndpointTxScheduler->cancelById(mScheduleId);
-                    mScheduleId = -1;
-                }
-                DEBUG_PRINT("Player %lu sub node 0x%02hX connected\n",
+                DEBUG_PRINT("Player %lu, sub node 0x%02hX connected\n",
                             mPlayerData.playerIndex + 1,
                             getRecipientAddress());
+            }
+            else
+            {
+                DEBUG_PRINT("Unknown sub peripheral for player %lu, sub node 0x%02hX\n",
+                            mPlayerData.playerIndex + 1,
+                            getRecipientAddress());
+            }
+            // Remove the auto reload device info request transmission from schedule
+            // This is done even if no known peripheral detected
+            if (mScheduleId >= 0)
+            {
+                mEndpointTxScheduler->cancelById(mScheduleId);
+                mScheduleId = -1;
             }
         }
     }
