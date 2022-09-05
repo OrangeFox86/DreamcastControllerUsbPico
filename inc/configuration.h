@@ -21,10 +21,10 @@
 #define MAPLE_RESPONSE_TIMEOUT_US 500
 
 // Estimated nanoseconds before peripheral responds
-#define RX_DELAY_NS 50
+#define MAPLE_RX_DELAY_NS 50
 
 // Estimated nanoseconds per bit to receive data
-#define RX_NS_PER_BIT 1500
+#define MAPLE_RX_NS_PER_BIT 1500
 
 // Added percentage on top of the expected read completion time
 #define MAPLE_READ_TIMEOUT_EXTRA_PERCENT 50

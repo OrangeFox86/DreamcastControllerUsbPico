@@ -57,8 +57,8 @@ uint32_t PrioritizedTxScheduler::add(uint8_t priority,
 
     if (expectResponse)
     {
-        uint32_t expectedReadDurationUs = MaplePacket::getTxTimeNs(expectedResponseNumPayloadWords, RX_NS_PER_BIT);
-        pktDurationNs += RX_DELAY_NS + expectedReadDurationUs;
+        uint32_t expectedReadDurationUs = MaplePacket::getTxTimeNs(expectedResponseNumPayloadWords, MAPLE_RX_NS_PER_BIT);
+        pktDurationNs += MAPLE_RX_DELAY_NS + expectedReadDurationUs;
         readTimeoutUs = expectedReadDurationUs * (1.0 + (MAPLE_READ_TIMEOUT_EXTRA_PERCENT / 100.0));
     }
 
