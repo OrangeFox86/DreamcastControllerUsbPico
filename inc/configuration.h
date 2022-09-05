@@ -2,7 +2,7 @@
 #define __CONFIGURATION_H__
 
 // true to setup and print debug messages over UART0 (pin 1, 115200 8N1)
-#define SHOW_DEBUG_MESSAGES false
+#define SHOW_DEBUG_MESSAGES true
 
 // Adjust the CPU clock frequency here (133 MHz is maximum documented stable frequency)
 #define CPU_FREQ_KHZ 133000

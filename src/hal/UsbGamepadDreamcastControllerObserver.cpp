@@ -40,9 +40,11 @@ void UsbGamepadDreamcastControllerObserver::setControllerCondition(const Control
 void UsbGamepadDreamcastControllerObserver::controllerConnected()
 {
     mUsbController.updateControllerConnected(true);
+    mUsbController.send(true);
 }
 
 void UsbGamepadDreamcastControllerObserver::controllerDisconnected()
 {
     mUsbController.updateControllerConnected(false);
+    mUsbController.send(true);
 }
