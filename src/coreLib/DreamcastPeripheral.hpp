@@ -61,6 +61,9 @@ class DreamcastPeripheral : public Transmitter
         //! @param[in] currentTimeUs  The current time in microseconds
         virtual void task(uint64_t currentTimeUs) = 0;
 
+        //! @returns peripheral name
+        virtual const char* getName() = 0;
+
     public:
         //! The maximum number of sub peripherals that a main peripheral can handle
         static const uint32_t MAX_SUB_PERIPHERALS = 5;

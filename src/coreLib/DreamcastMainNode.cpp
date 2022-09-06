@@ -48,7 +48,7 @@ void DreamcastMainNode::txComplete(std::shared_ptr<const MaplePacket> packet,
     {
         if (packet->payload.size() > 0)
         {
-            peripheralFactory(packet->payload[0]);
+            uint32_t mask = peripheralFactory(packet->payload[0]);
             if (mPeripherals.size() > 0)
             {
                 // Remove the auto reload device info request transmission from schedule
@@ -57,7 +57,16 @@ void DreamcastMainNode::txComplete(std::shared_ptr<const MaplePacket> packet,
                     mEndpointTxScheduler->cancelById(mScheduleId);
                     mScheduleId = -1;
                 }
-                DEBUG_PRINT("Player %lu main peripheral connected\n", mPlayerData.playerIndex + 1);
+                DEBUG_PRINT("P%lu connected (", mPlayerData.playerIndex + 1);
+                debugPrintPeripherals();
+                DEBUG_PRINT(")\n");
+            }
+
+            if (mask != packet->payload[0])
+            {
+                DEBUG_PRINT("P%lu unknown devices in mask: 0x%08lx\n",
+                            mPlayerData.playerIndex + 1,
+                            packet->payload[0] & ~mask);
             }
         }
     }
@@ -74,7 +83,7 @@ void DreamcastMainNode::disconnectMainPeripheral(uint64_t currentTimeUs)
         (*iter)->mainPeripheralDisconnected();
     }
     addInfoRequestToSchedule(currentTimeUs);
-    DEBUG_PRINT("Player %lu main peripheral disconnected\n", mPlayerData.playerIndex + 1);
+    DEBUG_PRINT("P%lu disconnected\n", mPlayerData.playerIndex + 1);
 }
 
 void DreamcastMainNode::readTask(uint64_t currentTimeUs)

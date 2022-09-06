@@ -26,19 +26,24 @@ void DreamcastSubNode::txComplete(std::shared_ptr<const MaplePacket> packet,
     {
         if (packet->payload.size() > 0)
         {
-            peripheralFactory(packet->payload[0]);
+            uint32_t mask = peripheralFactory(packet->payload[0]);
             if (mPeripherals.size() > 0)
             {
-                DEBUG_PRINT("Player %lu, sub node 0x%02hX connected\n",
+                DEBUG_PRINT("P%lu-%li connected (",
                             mPlayerData.playerIndex + 1,
-                            getRecipientAddress());
+                            DreamcastPeripheral::subPeripheralIndex(mAddr) + 1);
+                debugPrintPeripherals();
+                DEBUG_PRINT(")\n");
             }
-            else
+
+            if (mask != packet->payload[0])
             {
-                DEBUG_PRINT("Unknown sub peripheral for player %lu, sub node 0x%02hX\n",
+                DEBUG_PRINT("P%lu-%li unknown devices in mask: 0x%08lx\n",
                             mPlayerData.playerIndex + 1,
-                            getRecipientAddress());
+                            DreamcastPeripheral::subPeripheralIndex(mAddr) + 1,
+                            packet->payload[0] & ~mask);
             }
+
             // Remove the auto reload device info request transmission from schedule
             // This is done even if no known peripheral detected
             if (mScheduleId >= 0)
@@ -95,9 +100,9 @@ void DreamcastSubNode::setConnected(bool connected, uint64_t currentTimeUs)
         }
         else
         {
-            DEBUG_PRINT("Player %lu sub node 0x%02hX disconnected\n",
+            DEBUG_PRINT("P%lu-%li disconnected\n",
                         mPlayerData.playerIndex + 1,
-                        getRecipientAddress());
+                        DreamcastPeripheral::subPeripheralIndex(mAddr) + 1);
         }
     }
 }

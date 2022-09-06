@@ -65,19 +65,42 @@ class DreamcastNode : public Transmitter
 
         //! Factory function which generates peripheral objects for the given function code mask
         //! @param[in] functionCode  The function code mask
-        virtual void peripheralFactory(uint32_t functionCode)
+        virtual uint32_t peripheralFactory(uint32_t functionCode)
         {
+            uint32_t mask = 0;
+
             mPeripherals.clear();
 
             if (functionCode & DEVICE_FN_CONTROLLER)
             {
                 mPeripherals.push_back(std::make_shared<DreamcastController>(mAddr, mEndpointTxScheduler, mPlayerData));
+                mask |= DEVICE_FN_CONTROLLER;
             }
-            else if (functionCode & DEVICE_FN_LCD)
+
+            if (functionCode & DEVICE_FN_LCD)
             {
                 mPeripherals.push_back(std::make_shared<DreamcastScreen>(mAddr, mEndpointTxScheduler, mPlayerData));
+                mask |= DEVICE_FN_LCD;
             }
+
             // TODO: handle other peripherals here
+
+            return mask;
+        }
+
+        //! Prints all peripheral names
+        inline void debugPrintPeripherals()
+        {
+            for (std::vector<std::shared_ptr<DreamcastPeripheral>>::iterator iter = mPeripherals.begin();
+                 iter != mPeripherals.end();
+                 ++iter)
+            {
+                if (iter != mPeripherals.begin())
+                {
+                    DEBUG_PRINT(", ");
+                }
+                DEBUG_PRINT("%s", (*iter)->getName());
+            }
         }
 
     private:

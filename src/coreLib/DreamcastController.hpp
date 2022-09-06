@@ -33,6 +33,9 @@ class DreamcastController : public DreamcastPeripheral
                               bool readFailed,
                               std::shared_ptr<const Transmission> tx) final;
 
+        //! @returns peripheral name
+        virtual inline const char* getName() final{ return "controller"; }
+
     private:
         //! Time between each controller state poll (in microseconds)
         static const uint32_t US_PER_CHECK = 16000;
