@@ -65,27 +65,17 @@ class DreamcastNode : public Transmitter
 
         //! Factory function which generates peripheral objects for the given function code mask
         //! @param[in] functionCode  The function code mask
+        //! @returns mask items not handled
         virtual uint32_t peripheralFactory(uint32_t functionCode)
         {
-            uint32_t mask = 0;
-
             mPeripherals.clear();
 
-            if (functionCode & DEVICE_FN_CONTROLLER)
-            {
-                mPeripherals.push_back(std::make_shared<DreamcastController>(mAddr, mEndpointTxScheduler, mPlayerData));
-                mask |= DEVICE_FN_CONTROLLER;
-            }
-
-            if (functionCode & DEVICE_FN_LCD)
-            {
-                mPeripherals.push_back(std::make_shared<DreamcastScreen>(mAddr, mEndpointTxScheduler, mPlayerData));
-                mask |= DEVICE_FN_LCD;
-            }
+            peripheralFactoryCheck<DreamcastController>(functionCode);
+            peripheralFactoryCheck<DreamcastScreen>(functionCode);
 
             // TODO: handle other peripherals here
 
-            return mask;
+            return functionCode;
         }
 
         //! Prints all peripheral names
@@ -106,6 +96,19 @@ class DreamcastNode : public Transmitter
     private:
         //! Default constructor - not implemented
         DreamcastNode() = delete;
+
+        //! Adds a peripheral to peripheral vector
+        //! @param[in,out] functionCode  Mask which contains function codes to check; returns mask
+        //!                              minus peripheral that was added, if any
+        template <class PeripheralClass>
+        inline void peripheralFactoryCheck(uint32_t& functionCode)
+        {
+            if (functionCode & PeripheralClass::FUNCTION_CODE)
+            {
+                mPeripherals.push_back(std::make_shared<PeripheralClass>(mAddr, mEndpointTxScheduler, mPlayerData));
+                functionCode &= ~PeripheralClass::FUNCTION_CODE;
+            }
+        }
 
     protected:
         //! Maximum number of players

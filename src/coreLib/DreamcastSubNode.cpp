@@ -36,12 +36,12 @@ void DreamcastSubNode::txComplete(std::shared_ptr<const MaplePacket> packet,
                 DEBUG_PRINT(")\n");
             }
 
-            if (mask != packet->payload[0])
+            if (mask > 0)
             {
                 DEBUG_PRINT("P%lu-%li unknown devices in mask: 0x%08lx\n",
                             mPlayerData.playerIndex + 1,
                             DreamcastPeripheral::subPeripheralIndex(mAddr) + 1,
-                            packet->payload[0] & ~mask);
+                            mask);
             }
 
             // Remove the auto reload device info request transmission from schedule

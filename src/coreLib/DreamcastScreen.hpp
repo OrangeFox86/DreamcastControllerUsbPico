@@ -42,6 +42,10 @@ class DreamcastScreen : public DreamcastPeripheral
         //! @returns peripheral name
         virtual inline const char* getName() final{ return "screen"; }
 
+    public:
+        //! Function code for screen
+        static const uint32_t FUNCTION_CODE = DEVICE_FN_LCD;
+
     private:
         //! Time between each screen state poll (in microseconds)
         static const uint32_t US_PER_CHECK = 16000;
