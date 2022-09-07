@@ -5,9 +5,20 @@
 #include "dreamcast_constants.h"
 #include "PlayerData.hpp"
 #include "DreamcastController.hpp"
+#include "DreamcastStorage.hpp"
 #include "DreamcastScreen.hpp"
+#include "DreamcastTimer.hpp"
+#include "DreamcastVibration.hpp"
+#include "DreamcastMicrophone.hpp"
+#include "DreamcastArGun.hpp"
+#include "DreamcastKeyboard.hpp"
+#include "DreamcastGun.hpp"
+#include "DreamcastMouse.hpp"
+#include "DreamcastExMedia.hpp"
+#include "DreamcastCamera.hpp"
 #include "EndpointTxSchedulerInterface.hpp"
 #include "Transmitter.hpp"
+#include "utils.h"
 
 #include <stdint.h>
 #include <vector>
@@ -71,7 +82,17 @@ class DreamcastNode : public Transmitter
             mPeripherals.clear();
 
             peripheralFactoryCheck<DreamcastController>(functionCode);
+            peripheralFactoryCheck<DreamcastStorage>(functionCode);
             peripheralFactoryCheck<DreamcastScreen>(functionCode);
+            peripheralFactoryCheck<DreamcastTimer>(functionCode);
+            peripheralFactoryCheck<DreamcastVibration>(functionCode);
+            peripheralFactoryCheck<DreamcastMicrophone>(functionCode);
+            peripheralFactoryCheck<DreamcastArGun>(functionCode);
+            peripheralFactoryCheck<DreamcastKeyboard>(functionCode);
+            peripheralFactoryCheck<DreamcastGun>(functionCode);
+            peripheralFactoryCheck<DreamcastMouse>(functionCode);
+            peripheralFactoryCheck<DreamcastExMedia>(functionCode);
+            peripheralFactoryCheck<DreamcastCamera>(functionCode);
 
             // TODO: handle other peripherals here
 

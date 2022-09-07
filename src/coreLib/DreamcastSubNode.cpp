@@ -38,7 +38,7 @@ void DreamcastSubNode::txComplete(std::shared_ptr<const MaplePacket> packet,
 
             if (mask > 0)
             {
-                DEBUG_PRINT("P%lu-%li unknown devices in mask: 0x%08lx\n",
+                DEBUG_PRINT("P%lu-%li unknown device(s) in mask: 0x%08lx\n",
                             mPlayerData.playerIndex + 1,
                             DreamcastPeripheral::subPeripheralIndex(mAddr) + 1,
                             mask);

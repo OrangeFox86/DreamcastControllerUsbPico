@@ -1,7 +1,6 @@
 #pragma once
 
 #include "DreamcastPeripheral.hpp"
-#include "MapleBusInterface.hpp"
 #include "ScreenData.hpp"
 #include "PlayerData.hpp"
 
@@ -21,26 +20,20 @@ class DreamcastScreen : public DreamcastPeripheral
         virtual ~DreamcastScreen();
 
         //! Inherited from DreamcastPeripheral
-        virtual void txComplete(std::shared_ptr<const MaplePacket> packet,
-                                std::shared_ptr<const Transmission> tx) final;
-
-        //! Inherited from DreamcastPeripheral
         virtual void task(uint64_t currentTimeUs) final;
 
         //! Called when transmission has been sent
         //! @param[in] tx  The transmission that was sent
         virtual void txStarted(std::shared_ptr<const Transmission> tx) final;
 
-        //! Called when transmission failed
-        //! @param[in] writeFailed  Set to true iff TX failed because write failed
-        //! @param[in] readFailed  Set to true iff TX failed because read failed
-        //! @param[in] tx  The transmission that failed
+        //! Inherited from DreamcastPeripheral
         virtual void txFailed(bool writeFailed,
                               bool readFailed,
                               std::shared_ptr<const Transmission> tx) final;
 
-        //! @returns peripheral name
-        virtual inline const char* getName() final{ return "screen"; }
+        //! Inherited from DreamcastPeripheral
+        virtual void txComplete(std::shared_ptr<const MaplePacket> packet,
+                                std::shared_ptr<const Transmission> tx) final;
 
     public:
         //! Function code for screen

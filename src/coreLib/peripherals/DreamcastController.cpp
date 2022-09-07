@@ -4,7 +4,7 @@
 
 
 DreamcastController::DreamcastController(uint8_t addr, std::shared_ptr<EndpointTxSchedulerInterface> scheduler, PlayerData playerData) :
-    DreamcastPeripheral(addr, scheduler, playerData.playerIndex),
+    DreamcastPeripheral("controller", addr, scheduler, playerData.playerIndex),
     mGamepad(playerData.gamepad),
     mWaitingForData(false),
     mFirstTask(true),

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "DreamcastPeripheral.hpp"
-#include "MapleBusInterface.hpp"
 #include "DreamcastControllerObserver.hpp"
 #include "PlayerData.hpp"
 
@@ -19,10 +18,6 @@ class DreamcastController : public DreamcastPeripheral
         virtual ~DreamcastController();
 
         //! Inherited from DreamcastPeripheral
-        virtual void txComplete(std::shared_ptr<const MaplePacket> packet,
-                                std::shared_ptr<const Transmission> tx) final;
-
-        //! Inherited from DreamcastPeripheral
         virtual void task(uint64_t currentTimeUs) final;
 
         //! Inherited from DreamcastPeripheral
@@ -33,8 +28,9 @@ class DreamcastController : public DreamcastPeripheral
                               bool readFailed,
                               std::shared_ptr<const Transmission> tx) final;
 
-        //! @returns peripheral name
-        virtual inline const char* getName() final{ return "controller"; }
+        //! Inherited from DreamcastPeripheral
+        virtual void txComplete(std::shared_ptr<const MaplePacket> packet,
+                                std::shared_ptr<const Transmission> tx) final;
 
     public:
         //! Function code for controller

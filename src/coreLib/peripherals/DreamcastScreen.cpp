@@ -4,7 +4,7 @@
 DreamcastScreen::DreamcastScreen(uint8_t addr,
                                  std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                                  PlayerData playerData) :
-    DreamcastPeripheral(addr, scheduler, playerData.playerIndex),
+    DreamcastPeripheral("screen", addr, scheduler, playerData.playerIndex),
     mNextCheckTime(0),
     mWaitingForData(false),
     mUpdateRequired(true),

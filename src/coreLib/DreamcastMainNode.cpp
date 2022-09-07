@@ -64,7 +64,7 @@ void DreamcastMainNode::txComplete(std::shared_ptr<const MaplePacket> packet,
 
             if (mask > 0)
             {
-                DEBUG_PRINT("P%lu unknown devices in mask: 0x%08lx\n",
+                DEBUG_PRINT("P%lu unknown device(s) in mask: 0x%08lx\n",
                             mPlayerData.playerIndex + 1,
                             mask);
             }
