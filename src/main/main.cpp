@@ -68,6 +68,8 @@ UsbControllerInterface* devices[NUMBER_OF_DEVICES] = {
     &usbGamepads[3]
 };
 
+// Second Core Process
+// The second core is in charge of handling communication with Dreamcast peripherals
 void core1()
 {
     set_sys_clock_khz(CPU_FREQ_KHZ, true);
@@ -77,16 +79,17 @@ void core1()
 
     while(true)
     {
-        uint64_t time = time_us_64();
         for (DreamcastMainNode* p_node = &dreamcastMainNodes[0];
              p_node <= &dreamcastMainNodes[NUMBER_OF_DEVICES - 1];
              ++p_node)
         {
-            p_node->task(time);
+            p_node->task(time_us_64());
         }
     }
 }
 
+// First Core Process
+// The first core is in charge of initialization and USB communication
 int main()
 {
     set_sys_clock_khz(CPU_FREQ_KHZ, true);
