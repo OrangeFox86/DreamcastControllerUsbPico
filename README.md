@@ -24,6 +24,7 @@ This is a work in progress. Current progress:
     - C and Z buttons on arcade stick also work
   - Screen interface is working (the "V" in "VMU")
     - Currently just a default screen is sent on connection
+  - Stubs added for all other peripherals (some to be filled in later)
 - Added transmission timeliner so that any peripheral addition is scalable without worrying much about how peripherals may interfere with each other
 
 ## Why the RP2040 is a Game Changer
@@ -45,13 +46,13 @@ sudo apt -y install git cmake gcc-arm-none-eabi
 ```bash
 sudo apt -y install build-essential gdb
 ```
-3. Clone this repo into your WSL instance
+3. Clone this repo then cd into the created directory
 ```bash
 git clone https://github.com/Tails86/DreamcastControllerUsbPico.git
-```
-4. Go into the project's directory and pull down the pico SDK (this is optional if you have PICO_SDK_PATH set in your environment which points to the SDK somewhere on your system)
-```bash
 cd DreamcastControllerUsbPico
+```
+4. Pull down the pico SDK (this is optional if you have PICO_SDK_PATH set in your environment which points to the SDK somewhere on your system)
+```bash
 git submodule update --recursive --init
 ```
 5. Execute the build script
