@@ -226,10 +226,6 @@ void DreamcastMainNode::addInfoRequestToSchedule(uint64_t currentTimeUs)
     {
         txTime = PrioritizedTxScheduler::computeNextTimeCadence(currentTimeUs, US_PER_CHECK);
     }
-    MaplePacket packet(COMMAND_DEVICE_INFO_REQUEST,
-                       DreamcastPeripheral::getRecipientAddress(mPlayerData.playerIndex, mAddr),
-                       NULL,
-                       0);
     mScheduleId = mEndpointTxScheduler->add(
         txTime,
         this,

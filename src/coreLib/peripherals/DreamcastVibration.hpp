@@ -34,9 +34,18 @@ class DreamcastVibration : public DreamcastPeripheral
         virtual void txComplete(std::shared_ptr<const MaplePacket> packet,
                                 std::shared_ptr<const Transmission> tx) final;
 
+        //! Sends vibration
+        //! @param[in] timeUs  The time to send vibration (optional)
+        //! @param[in] intensity  The intensity of the vibration [1,7]
+        //! @param[in] speed  The speed - low values cause undulation [7,59]
+        //! @param[in] revolutions  Proportionate to number of revolutions
+        void send(uint64_t timeUs, uint8_t intensity, uint8_t speed, uint8_t revolutions);
+        void send(uint8_t intensity, uint8_t speed, uint8_t revolutions);
+
     public:
         //! Function code for screen
         static const uint32_t FUNCTION_CODE = DEVICE_FN_VIBRATION;
 
     private:
+        uint32_t mTransmissionId;
 };

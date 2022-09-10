@@ -83,6 +83,7 @@ void core1()
              p_node <= &dreamcastMainNodes[NUMBER_OF_DEVICES - 1];
              ++p_node)
         {
+            // Worst execution duration of below is ~350 us at 133 MHz when debug print is disabled
             p_node->task(time_us_64());
         }
     }
