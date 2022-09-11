@@ -9,7 +9,7 @@ DreamcastVibration::DreamcastVibration(uint8_t addr,
     mTransmissionId(0)
 {
     // Send some vibrations on connection
-    send(7, 0, 200);
+    send(7, 10, 2000);
 }
 
 DreamcastVibration::~DreamcastVibration()
@@ -65,7 +65,7 @@ void DreamcastVibration::send(uint64_t timeUs, uint8_t power, int16_t inclinatio
     uint32_t vibrationWord = 0x10000000;
 
     // Limit power value to 7
-    power = std::min(power, (uint8_t)7);
+    power = std::min(power, (uint8_t)MAX_POWER);
     // Set Power and inclination direction into word
     if (inclination > 0)
     {
@@ -82,24 +82,46 @@ void DreamcastVibration::send(uint64_t timeUs, uint8_t power, int16_t inclinatio
         vibrationWord |= (power << 20);
     }
 
-    // TODO: can play with inclination value if it is 0 in order to set longer durations
+    // Determine frequency and inclination
+    uint32_t freq = 0;
+    if (inclination == 0)
+    {
+        // Can play with inclination value if it is 0 in order to set longer durations
+        // I didn't spend much time deciding what seems best, but these are good enough
+        if (durationMs > 30000)
+        {
+            freq = MIN_FREQ_VALUE;
+        }
+        else if (durationMs > 10000)
+        {
+            freq = 0x0F;
+        }
+        else if (durationMs > 5000)
+        {
+            freq = 0x28;
+        }
+        else
+        {
+            freq = MAX_FREQ_VALUE;
+        }
+        // I generated this equation based on observed vibration times
+        inclination = std::min((uint32_t)((freq / 2 + 1) * (durationMs / 1000.0) - 1), MAX_INCLINATION);
+    }
+    else
+    {
+        // Limit inclination value to 255 (inclination should be positive because of above)
+        inclination = std::min(inclination, (int16_t)MAX_INCLINATION);
+        // Compute freq from all of the above and desired ms
+        // I generated this equation based on observed vibration times
+        freq = 2 * ((1000 * inclination * (MAX_POWER - power + 1) / durationMs - 1));
+        freq = std::min(freq, MAX_FREQ_VALUE);
+    }
 
-    // Limit inclination value to 255 and set it
-    inclination = std::min(inclination, (int16_t)255);
-    vibrationWord |= inclination;
-    // Compute freq from all of the above and desired ms
-    // TODO: this may or may not be correct - check this
-    uint32_t freq = 2 * (1000 * (inclination + 1) / durationMs - 1);
-    // Limit freq to the maximum valid value and set it
-    freq = std::min(freq, (uint32_t)0x3B);
-    vibrationWord |= freq << 8;
+    // Set frequency and inclination
+    vibrationWord |= (freq << 8) | inclination;
 
     // Send it!
-    DEBUG_PRINT("%08lX\n", vibrationWord);
-    uint32_t payload[2] = {
-        FUNCTION_CODE,
-        vibrationWord
-    };
+    uint32_t payload[2] = {FUNCTION_CODE, vibrationWord};
     mEndpointTxScheduler->add(
         timeUs,
         this,

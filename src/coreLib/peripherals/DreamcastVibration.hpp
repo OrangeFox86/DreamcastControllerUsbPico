@@ -38,6 +38,7 @@ class DreamcastVibration : public DreamcastPeripheral
         //! @param[in] timeUs  The time to send vibration (optional)
         //! @param[in] power  Power intensity [0,7] (0 to disable completely)
         //! @param[in] inclination  Ramp up/down value [-255, 255] (0 for stable)
+        //!                         (the lower, the value the faster it gets to target)
         //! @param[in] durationMs  The length of time in ms to vibrate (0 to disable completely)
         void send(uint64_t timeUs, uint8_t power, int16_t inclination, uint32_t durationMs);
         void send(uint8_t power, int16_t inclination, uint32_t durationMs);
@@ -45,6 +46,10 @@ class DreamcastVibration : public DreamcastPeripheral
     public:
         //! Function code for screen
         static const uint32_t FUNCTION_CODE = DEVICE_FN_VIBRATION;
+        static const uint32_t MAX_FREQ_VALUE = 0x3B;
+        static const uint32_t MIN_FREQ_VALUE = 0x07;
+        static const uint32_t MAX_INCLINATION = 0x255;
+        static const uint32_t MAX_POWER = 0x07;
 
     private:
         uint32_t mTransmissionId;
