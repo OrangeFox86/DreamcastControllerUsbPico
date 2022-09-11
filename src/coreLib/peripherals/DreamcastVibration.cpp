@@ -9,7 +9,7 @@ DreamcastVibration::DreamcastVibration(uint8_t addr,
     mTransmissionId(0)
 {
     // Send some vibrations on connection
-    send(7, 10, 5);
+    send(7, 0, 200);
 }
 
 DreamcastVibration::~DreamcastVibration()
@@ -34,62 +34,71 @@ void DreamcastVibration::txComplete(std::shared_ptr<const MaplePacket> packet,
 {
 }
 
-void DreamcastVibration::send(uint64_t timeUs, uint8_t intensity, uint8_t speed, uint8_t revolutions)
+void DreamcastVibration::send(uint64_t timeUs, uint8_t power, int16_t inclination, uint32_t durationMs)
 {
     // This is just a guesstimate of what is going on here based on trial and error...
 
     // Payload byte 2
-    // Byte 0: number of revolutions (00 to FF)
-    // Byte 1: undulation/speed (07 to 3B)
-    // Byte 2: intensity/speed (01-07, 09-0F, 1X-7X)
+    // Byte 0: duration (00 to FF)
+    //         - This is some kind of duration that is augmented by bytes 1, 2, and 3
+    // Byte 1: frequency (07 to 3B)
+    //         - Lower values cause pulsation
+    //         - The lower the value, the longer the duration
+    //         - The higher the value, the greater the speed
+    // Byte 2: intensity/ramp up/ramp down
+    //         - 0X where X is:
+    //            - 0-8 : Stable vibration (0: off, 1: low, 7: high)
+    //            - 8-F : Ramp up, starting intensity up to max (8: off, 9: low, F: high)
+    //         - X0 where X is:
+    //            - 0-7 : Stable vibration (0: off, 1: low, 7: high)
+    //            - 8-F : Ramp down, starting intensity down to min (8: off, 9: low, F: high)
+    //         - X8 where X is:
+    //            - 0-7 : Ramp up, starting intensity up to max (0: off, 1: low, 7: high)
+    //         - 8X where X is:
+    //            - 0-7 : Ramp down, starting intensity down to min (0: off, 1: low, 7: high)
     // Byte 3: 10 or 11 ???
+    //         - Most sig nibble must be 1 for the command to be accepted (unless entire word is 0x00000000)
+    //         - Least sig nibble must be 0 or 1 for the command to be accepted
+    //         - The least significant nibble when set to 1: override to internal duration
+    // A value of 0x00000000 will stop current vibration
 
-    // Last byte with byte 2 at 04
-    // 0xFF: 0 seconds
+    uint32_t vibrationWord = 0x10000000;
 
-    // Last byte with byte 2 at 06
-    // 0xFF: 0 seconds
+    // Limit power value to 7
+    power = std::min(power, (uint8_t)7);
+    // Set Power and inclination direction into word
+    if (inclination > 0)
+    {
+        vibrationWord |= (power << 20) | 0x080000;
+    }
+    else if (inclination < 0)
+    {
+        vibrationWord |= (power << 16) | 0x800000;
+        // Force inclination to be positive for the next step
+        inclination = -inclination;
+    }
+    else
+    {
+        vibrationWord |= (power << 20);
+    }
 
-    // Last byte with byte 2 at 07
-    // 0xFF: 60 seconds (w undulation)
+    // TODO: can play with inclination value if it is 0 in order to set longer durations
 
-    // Last byte with byte 2 at 08
-    // 0xFF: 53.5 seconds (w undulation)
+    // Limit inclination value to 255 and set it
+    inclination = std::min(inclination, (int16_t)255);
+    vibrationWord |= inclination;
+    // Compute freq from all of the above and desired ms
+    // TODO: this may or may not be correct - check this
+    uint32_t freq = 2 * (1000 * (inclination + 1) / durationMs - 1);
+    // Limit freq to the maximum valid value and set it
+    freq = std::min(freq, (uint32_t)0x3B);
+    vibrationWord |= freq << 8;
 
-    // Last byte: (~0.117 seconds per div) with byte 2 at 0F
-    // 0x08: 1 second
-    // 0x10: 1.73 seconds
-    // 0x20: 3.91 seconds
-    // 0x40: 7.42 seconds
-    // 0x80: 15 seconds
-    // 0xFF: 30 seconds
-
-    // Last byte with byte 2 at 20
-    // 0xFF: 14.76 seconds
-
-    // Last byte with byte 2 at 30
-    // 0xFF: 9.69 seconds
-
-    // Last byte with byte 2 at 38
-    // 0xFF: 8.5 seconds
-
-    // Last byte with byte 2 at 3A
-    // 0xFF: 8 seconds
-
-    // Last byte with byte 2 at 3B
-    // 0xFF: 8.2 seconds
-
-    // Last byte with byte 2 at 3C
-    // 0xFF: 0 seconds
-
-    // Last byte with byte 2 at 3F
-    // 0xFF: 0 seconds
-
-    intensity = std::min(intensity, (uint8_t)7);
-    speed = std::min(speed, (uint8_t)59);
+    // Send it!
+    DEBUG_PRINT("%08lX\n", vibrationWord);
     uint32_t payload[2] = {
         FUNCTION_CODE,
-        0x10000000 | ((uint32_t)intensity << 20) | ((uint32_t)speed << 8) | (uint32_t)revolutions
+        vibrationWord
     };
     mEndpointTxScheduler->add(
         timeUs,
@@ -101,7 +110,7 @@ void DreamcastVibration::send(uint64_t timeUs, uint8_t intensity, uint8_t speed,
         0);
 }
 
-void DreamcastVibration::send(uint8_t intensity, uint8_t speed, uint8_t revolutions)
+void DreamcastVibration::send(uint8_t power, int16_t inclination, uint32_t durationMs)
 {
-    send(PrioritizedTxScheduler::TX_TIME_ASAP, intensity, speed, revolutions);
+    send(PrioritizedTxScheduler::TX_TIME_ASAP, power, inclination, durationMs);
 }

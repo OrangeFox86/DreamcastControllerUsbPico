@@ -36,11 +36,11 @@ class DreamcastVibration : public DreamcastPeripheral
 
         //! Sends vibration
         //! @param[in] timeUs  The time to send vibration (optional)
-        //! @param[in] intensity  The intensity of the vibration [1,7]
-        //! @param[in] speed  The speed - low values cause undulation [7,59]
-        //! @param[in] revolutions  Proportionate to number of revolutions
-        void send(uint64_t timeUs, uint8_t intensity, uint8_t speed, uint8_t revolutions);
-        void send(uint8_t intensity, uint8_t speed, uint8_t revolutions);
+        //! @param[in] power  Power intensity [0,7] (0 to disable completely)
+        //! @param[in] inclination  Ramp up/down value [-255, 255] (0 for stable)
+        //! @param[in] durationMs  The length of time in ms to vibrate (0 to disable completely)
+        void send(uint64_t timeUs, uint8_t power, int16_t inclination, uint32_t durationMs);
+        void send(uint8_t power, int16_t inclination, uint32_t durationMs);
 
     public:
         //! Function code for screen
