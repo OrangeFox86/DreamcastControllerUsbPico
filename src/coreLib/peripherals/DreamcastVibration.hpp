@@ -64,6 +64,7 @@ class DreamcastVibration : public DreamcastPeripheral
         static const uint32_t FUNCTION_CODE = DEVICE_FN_VIBRATION;
         static const uint32_t MAX_FREQ_VALUE = 0x3B;
         static const uint32_t MIN_FREQ_VALUE = 0x07;
+        static const uint32_t NUM_FREQ_VALUES = MAX_FREQ_VALUE - MIN_FREQ_VALUE + 1;
         static const uint32_t MAX_DURATION_VALUE = 0xFF;
         static const uint32_t MAX_POWER = 0x07;
         static const uint32_t MIN_POWER = 0x01;
@@ -71,4 +72,5 @@ class DreamcastVibration : public DreamcastPeripheral
 
     private:
         uint32_t mTransmissionId;
+        static const uint32_t MAX_DURATION_LOOKUP[NUM_FREQ_VALUES];
 };
