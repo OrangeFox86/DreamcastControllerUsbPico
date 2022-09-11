@@ -3,11 +3,12 @@
 #include <algorithm>
 
 // Duration value for given increments, frequency, and duration
-#define COMPUTE_DURATION_VALUE(numIncrements, freq, durationMs) (uint32_t)(((freq / 2.0 + 1) * (durationMs / 1000.0)) / numIncrements)
+// I generated this equation based on observed vibration times with a test device
+#define COMPUTE_DURATION_VALUE(numIncrements, freq, durationMs) (uint32_t)(((freq / 2.0 + 1) * (durationMs / 1000.0)) / numIncrements) - 1
 #define FREQ_IDX_TO_FREQ(freqIdx) (freqIdx + MIN_FREQ_VALUE)
 #define FREQ_TO_FREQ_IDX(freq) (freq - MIN_FREQ_VALUE)
 // Maximum duration for a single increment
-#define COMPUTE_MAX_DURATION(freqIdx) (uint32_t)(1000 * MAX_DURATION_VALUE / (FREQ_IDX_TO_FREQ(freqIdx) / 2.0 + 1))
+#define COMPUTE_MAX_DURATION(freqIdx) (uint32_t)(1000 * (MAX_DURATION_VALUE + 1) / (FREQ_IDX_TO_FREQ(freqIdx) / 2.0 + 1))
 
 // There are ways of generating this like using BOOST_PP_ENUM, but I don't want to include boost just for that
 const uint32_t DreamcastVibration::MAX_DURATION_LOOKUP[NUM_FREQ_VALUES] =
@@ -181,8 +182,7 @@ void DreamcastVibration::send(uint64_t timeUs, uint8_t power, int8_t inclination
             vibrationWord |= (power << 20);
         }
 
-        // I generated this equation based on observed vibration times
-        // (it's close but not perfect - off by 5% to 10%)
+        // Compute duration and limit to max value
         uint32_t durationValue = std::min(
             COMPUTE_DURATION_VALUE(numIncrements, freq, durationMs),
             MAX_DURATION_VALUE);
