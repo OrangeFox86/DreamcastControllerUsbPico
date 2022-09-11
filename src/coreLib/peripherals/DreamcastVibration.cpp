@@ -9,7 +9,7 @@ DreamcastVibration::DreamcastVibration(uint8_t addr,
     mTransmissionId(0)
 {
     // Send some vibrations on connection
-    send(7, 10, 2000);
+    send(6, 1, 200);
 }
 
 DreamcastVibration::~DreamcastVibration()
@@ -34,7 +34,7 @@ void DreamcastVibration::txComplete(std::shared_ptr<const MaplePacket> packet,
 {
 }
 
-void DreamcastVibration::send(uint64_t timeUs, uint8_t power, int16_t inclination, uint32_t durationMs)
+void DreamcastVibration::send(uint64_t timeUs, uint8_t power, int8_t inclination, uint32_t durationMs)
 {
     // This is just a guesstimate of what is going on here based on trial and error...
 
@@ -66,61 +66,57 @@ void DreamcastVibration::send(uint64_t timeUs, uint8_t power, int16_t inclinatio
 
     // Limit power value to 7
     power = std::min(power, (uint8_t)MAX_POWER);
+    uint8_t numPowerSteps = 0;
     // Set Power and inclination direction into word
     if (inclination > 0)
     {
         vibrationWord |= (power << 20) | 0x080000;
+        numPowerSteps = (MAX_POWER - power + 1);
     }
     else if (inclination < 0)
     {
         vibrationWord |= (power << 16) | 0x800000;
+        numPowerSteps = (MAX_POWER - power + 1);
         // Force inclination to be positive for the next step
         inclination = -inclination;
     }
     else
     {
         vibrationWord |= (power << 20);
+        numPowerSteps = 1;
     }
 
     // Determine frequency and inclination
     uint32_t freq = 0;
-    if (inclination == 0)
+    // Select a frequency bin to use
+    // I didn't spend much time deciding what seems best, but these are good enough
+    if ((durationMs * numPowerSteps) > 30000)
     {
-        // Can play with inclination value if it is 0 in order to set longer durations
-        // I didn't spend much time deciding what seems best, but these are good enough
-        if (durationMs > 30000)
-        {
-            freq = MIN_FREQ_VALUE;
-        }
-        else if (durationMs > 10000)
-        {
-            freq = 0x0F;
-        }
-        else if (durationMs > 5000)
-        {
-            freq = 0x28;
-        }
-        else
-        {
-            freq = MAX_FREQ_VALUE;
-        }
-        // I generated this equation based on observed vibration times
-        inclination = std::min((uint32_t)((freq / 2 + 1) * (durationMs / 1000.0) - 1), MAX_INCLINATION);
+        freq = MIN_FREQ_VALUE;
+    }
+    else if ((durationMs * numPowerSteps) > 10000)
+    {
+        freq = 0x0F;
+    }
+    else if ((durationMs * numPowerSteps) > 5000)
+    {
+        freq = 0x28;
     }
     else
     {
-        // Limit inclination value to 255 (inclination should be positive because of above)
-        inclination = std::min(inclination, (int16_t)MAX_INCLINATION);
-        // Compute freq from all of the above and desired ms
-        // I generated this equation based on observed vibration times
-        freq = 2 * ((1000 * inclination * (MAX_POWER - power + 1) / durationMs - 1));
-        freq = std::min(freq, MAX_FREQ_VALUE);
+        freq = MAX_FREQ_VALUE;
     }
+    // I generated this equation based on observed vibration times
+    // (it's close but not perfect - off by 5% to 10%)
+    uint32_t inclinationValue = std::min(
+        (uint32_t)(((freq / 2 + 1) * (durationMs / 1000.0)) / numPowerSteps),
+        MAX_INCLINATION);
 
     // Set frequency and inclination
-    vibrationWord |= (freq << 8) | inclination;
+    vibrationWord |= (freq << 8) | inclinationValue;
 
     // Send it!
+    //DEBUG_PRINT("%08lX\n", vibrationWord);
     uint32_t payload[2] = {FUNCTION_CODE, vibrationWord};
     mEndpointTxScheduler->add(
         timeUs,
@@ -132,7 +128,7 @@ void DreamcastVibration::send(uint64_t timeUs, uint8_t power, int16_t inclinatio
         0);
 }
 
-void DreamcastVibration::send(uint8_t power, int16_t inclination, uint32_t durationMs)
+void DreamcastVibration::send(uint8_t power, int8_t inclination, uint32_t durationMs)
 {
     send(PrioritizedTxScheduler::TX_TIME_ASAP, power, inclination, durationMs);
 }
