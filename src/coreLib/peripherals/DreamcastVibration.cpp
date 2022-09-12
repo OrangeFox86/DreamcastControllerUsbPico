@@ -54,6 +54,10 @@ void DreamcastVibration::task(uint64_t currentTimeUs)
 
 void DreamcastVibration::txStarted(std::shared_ptr<const Transmission> tx)
 {
+    if (tx->transmissionId == mTransmissionId)
+    {
+        mTransmissionId = 0;
+    }
 }
 
 void DreamcastVibration::txFailed(bool writeFailed,
@@ -187,9 +191,16 @@ void DreamcastVibration::send(uint64_t timeUs, uint8_t power, int8_t inclination
         vibrationWord |= (freq << 8) | durationValue;
     }
 
+    // Remove past transmission if it hasn't been sent yet
+    if (mTransmissionId > 0)
+    {
+        mEndpointTxScheduler->cancelById(mTransmissionId);
+        mTransmissionId = 0;
+    }
+
     // Send it!
     uint32_t payload[2] = {FUNCTION_CODE, vibrationWord};
-    mEndpointTxScheduler->add(
+    mTransmissionId = mEndpointTxScheduler->add(
         timeUs,
         this,
         COMMAND_SET_CONDITION,

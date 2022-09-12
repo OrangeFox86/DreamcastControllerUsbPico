@@ -35,7 +35,7 @@ class DreamcastMouse : public DreamcastPeripheral
                                 std::shared_ptr<const Transmission> tx) final;
 
     public:
-        //! Function code for screen
+        //! Function code for mouse
         static const uint32_t FUNCTION_CODE = DEVICE_FN_MOUSE;
 
     private:

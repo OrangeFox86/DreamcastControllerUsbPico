@@ -60,17 +60,25 @@ class DreamcastVibration : public DreamcastPeripheral
         uint8_t freqSelect(uint8_t numIncrements, uint8_t pulsation, uint32_t durationMs);
 
     public:
-        //! Function code for screen
+        //! Function code for vibration
         static const uint32_t FUNCTION_CODE = DEVICE_FN_VIBRATION;
+        //! Maximum value for frequency byte
         static const uint32_t MAX_FREQ_VALUE = 0x3B;
+        //! Minimum value for frequency byte
         static const uint32_t MIN_FREQ_VALUE = 0x07;
+        //! Total number of frequency values
         static const uint32_t NUM_FREQ_VALUES = MAX_FREQ_VALUE - MIN_FREQ_VALUE + 1;
+        //! Maximum value for duration byte
         static const uint32_t MAX_DURATION_VALUE = 0xFF;
+        //! Maximum value for power
         static const uint32_t MAX_POWER = 0x07;
+        //! Minimum value for power
         static const uint32_t MIN_POWER = 0x01;
+        //! Maximum pulsation value (a made up value but needs to be less than NUM_FREQ_VALUES)
         static const uint8_t MAX_PULSATION_VALUE = 32;
 
     private:
+        //! The transmission ID of the last scheduled vibration condition
         uint32_t mTransmissionId;
         static const uint32_t MAX_DURATION_LOOKUP[NUM_FREQ_VALUES];
 };
