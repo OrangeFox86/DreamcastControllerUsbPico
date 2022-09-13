@@ -36,14 +36,16 @@ class DreamcastVibration : public DreamcastPeripheral
 
         //! Sends vibration
         //! @param[in] timeUs  The time to send vibration (optional)
-        //! @param[in] power  Starting power intensity [0,7] (0 to disable completely)
+        //! @param[in] power  Starting power intensity [0,7] (0 to stop vibration)
         //! @param[in] inclination  -1: ramp down, 0: constant, 1: ramp up
-        //! @param[in] pulsation  The amount of pulsation to apply [0, 32] (0 for none, 32 for max)
-        //! @param[in] durationMs  The length of time in ms to vibrate (0 to disable completely)
-        void send(uint64_t timeUs, uint8_t power, int8_t inclination, uint8_t pulsation, uint32_t durationMs);
-        void send(uint8_t power, int8_t inclination, uint8_t pulsation, uint32_t durationMs);
+        //! @param[in] desiredFreq  When 0: limit pulsation while maximizing for duration
+        //!                         Otherwise: The desired pulsation freq value; a lower value will
+        //!                         cause more noticeable pulsations [7, 59]
+        //! @param[in] durationMs  The length of time in ms to vibrate (0 to stop vibration)
+        void send(uint64_t timeUs, uint8_t power, int8_t inclination, uint8_t desiredFreq, uint32_t durationMs);
+        void send(uint8_t power, int8_t inclination, uint8_t desiredFreq, uint32_t durationMs);
 
-        //! Stops current vibration
+        //! Immediately stops current vibration
         void stop();
 
     private:
@@ -53,32 +55,30 @@ class DreamcastVibration : public DreamcastPeripheral
         //! @returns the number of power increments
         uint8_t computeNumIncrements(uint8_t power, int8_t inclination);
 
-        //! Selects the frequency best suited to achieve the given parameters
-        //! @param[in] numIncrements  The number of power increments that will be executed
-        //! @param[in] pulsation  The amount of pulsation to apply [0, 32] (0 for none, 32 for max)
-        //! @returns the selected frequency value
-        uint8_t freqSelect(uint8_t numIncrements, uint8_t pulsation, uint32_t durationMs);
+        //! @returns the maximum frequency that can achieve the given duration and # of increments
+        uint8_t maxFreqForDuration(uint8_t numIncrements, uint32_t durationMs);
 
     public:
         //! Function code for vibration
         static const uint32_t FUNCTION_CODE = DEVICE_FN_VIBRATION;
         //! Maximum value for frequency byte
-        static const uint32_t MAX_FREQ_VALUE = 0x3B;
+        static const uint8_t MAX_FREQ_VALUE = 0x3B;
         //! Minimum value for frequency byte
-        static const uint32_t MIN_FREQ_VALUE = 0x07;
+        static const uint8_t MIN_FREQ_VALUE = 0x07;
         //! Total number of frequency values
         static const uint32_t NUM_FREQ_VALUES = MAX_FREQ_VALUE - MIN_FREQ_VALUE + 1;
+        //! Minimum value for duration byte
+        static const uint8_t MIN_CYCLES = 0x00;
         //! Maximum value for duration byte
-        static const uint32_t MAX_DURATION_VALUE = 0xFF;
+        static const uint8_t MAX_CYCLES = 0xFF;
         //! Maximum value for power
-        static const uint32_t MAX_POWER = 0x07;
+        static const uint8_t MAX_POWER = 0x07;
         //! Minimum value for power
-        static const uint32_t MIN_POWER = 0x01;
-        //! Maximum pulsation value (a made up value but needs to be less than NUM_FREQ_VALUES)
-        static const uint8_t MAX_PULSATION_VALUE = 32;
+        static const uint8_t MIN_POWER = 0x01;
 
     private:
         //! The transmission ID of the last scheduled vibration condition
         uint32_t mTransmissionId;
+        //! Lookup table used to maximize pulsation frequency for a given duration
         static const uint32_t MAX_DURATION_LOOKUP[NUM_FREQ_VALUES];
 };
