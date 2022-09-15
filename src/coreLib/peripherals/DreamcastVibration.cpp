@@ -11,8 +11,8 @@
 #define COMPUTE_CYCLES(numIncrements, freqValue, durationMs) (                                      \
     (uint8_t)limit_value(                                                                           \
         (int32_t)((PULSATION_FREQ(freqValue) * (durationMs / 1000.0)) / numIncrements - 1 + 0.5),   \
-        (int32_t)MIN_CYCLES,                                                                \
-        (int32_t)MAX_CYCLES)                                                                \
+        (int32_t)MIN_CYCLES,                                                                        \
+        (int32_t)MAX_CYCLES)                                                                        \
 )
 
 #define FREQ_IDX_TO_FREQ(freqIdx) (freqIdx + MIN_FREQ_VALUE)
