@@ -55,10 +55,10 @@ MapleBus busses[NUMBER_OF_DEVICES] = {
     MapleBus(P4_BUS_START_PIN, MAPLE_HOST_ADDRESS),
 };
 DreamcastMainNode dreamcastMainNodes[NUMBER_OF_DEVICES] = {
-    DreamcastMainNode(busses[0], playerData[0], std::make_shared<PrioritizedTxScheduler>()),
-    DreamcastMainNode(busses[1], playerData[1], std::make_shared<PrioritizedTxScheduler>()),
-    DreamcastMainNode(busses[2], playerData[2], std::make_shared<PrioritizedTxScheduler>()),
-    DreamcastMainNode(busses[3], playerData[3], std::make_shared<PrioritizedTxScheduler>())
+    DreamcastMainNode(busses[0], playerData[0], std::make_shared<PrioritizedTxScheduler>(DreamcastMainNode::MAX_PRIORITY)),
+    DreamcastMainNode(busses[1], playerData[1], std::make_shared<PrioritizedTxScheduler>(DreamcastMainNode::MAX_PRIORITY)),
+    DreamcastMainNode(busses[2], playerData[2], std::make_shared<PrioritizedTxScheduler>(DreamcastMainNode::MAX_PRIORITY)),
+    DreamcastMainNode(busses[3], playerData[3], std::make_shared<PrioritizedTxScheduler>(DreamcastMainNode::MAX_PRIORITY))
 };
 
 UsbControllerInterface* devices[NUMBER_OF_DEVICES] = {

@@ -5,42 +5,25 @@
 // STL
 #include <algorithm>
 
-PrioritizedTxScheduler::PrioritizedTxScheduler(): mNextId(1), mSchedule() {}
+PrioritizedTxScheduler::PrioritizedTxScheduler(uint8_t maxPriority) :
+    mNextId(1),
+    mSchedule()
+{
+    mSchedule.resize(maxPriority + 1);
+}
 
 PrioritizedTxScheduler::~PrioritizedTxScheduler() {}
 
 uint32_t PrioritizedTxScheduler::add(std::shared_ptr<Transmission> tx)
 {
+    std::list<std::shared_ptr<Transmission>>& schedule = mSchedule[tx->priority];
     // Keep iterating until correct position is found
-    // For this to be the right position, it either needs to start and end before the next
-    // packet or starts before the next packet and is higher or same priority.
-    std::list<std::shared_ptr<Transmission>>::const_iterator iter = mSchedule.cbegin();
-    while(iter != mSchedule.cend())
+    std::list<std::shared_ptr<Transmission>>::const_iterator iter = schedule.cbegin();
+    while(iter != schedule.cend() && tx->nextTxTimeUs >= (*iter)->nextTxTimeUs)
     {
-        // If this transmission starts before this element...
-        if (tx->nextTxTimeUs < (*iter)->nextTxTimeUs)
-        {
-            // if this transmission also ends before this element starts
-            // or is of higher or same priority...
-            if (tx->getNextCompletionTime() < (*iter)->nextTxTimeUs
-                || tx->priority <= (*iter)->priority)
-            {
-                // Stop here
-                break;
-            }
-        }
-        // If this transmission starts before this element completes
-        // and is higher priority...
-        else if (tx->nextTxTimeUs < (*iter)->getNextCompletionTime()
-                    && tx->priority < (*iter)->priority)
-        {
-            // Stop here
-            break;
-        }
         ++iter;
     }
-
-    mSchedule.insert(iter, tx);
+    schedule.insert(iter, tx);
     return tx->transmissionId;
 }
 
@@ -103,46 +86,74 @@ std::shared_ptr<const Transmission> PrioritizedTxScheduler::popNext(uint64_t tim
 {
     std::shared_ptr<Transmission> item = nullptr;
 
-    if (!mSchedule.empty())
+    // Find a priority list with item ready to be popped
+    std::vector<std::list<std::shared_ptr<Transmission>>>::iterator scheduleIter = mSchedule.begin();
+    while (scheduleIter != mSchedule.end()
+           && (scheduleIter->empty() || (*scheduleIter->begin())->nextTxTimeUs > time))
     {
-        if (time >= (*mSchedule.begin())->nextTxTimeUs)
+        ++scheduleIter;
+    }
+
+    if (scheduleIter != mSchedule.end())
+    {
+        std::list<std::shared_ptr<Transmission>>::iterator itemIter = scheduleIter->begin();
+
+        bool found = true;
+        if (scheduleIter != mSchedule.begin())
         {
-            item = (*mSchedule.begin());
-            mSchedule.erase(mSchedule.begin());
-        }
-        else
-        {
-            // See if a item down the schedule could start now and end before mSchedule.begin().
-            // It's easier to check here than to rearrange schedule every time a higher priority
-            // transmission preempts a lower priority one.
-            std::list<std::shared_ptr<Transmission>>::iterator iter = mSchedule.begin();
-            std::list<uint8_t> recipientAddrs;
-            recipientAddrs.push_back((*iter)->packet->getFrameRecipientAddr());
-            ++iter;
-            while(iter != mSchedule.end())
+            std::list<uint8_t> recipients;
+            found = false;
+            do
             {
-                if (time >= (*iter)->nextTxTimeUs
-                    && (*iter)->getNextCompletionTime() < (*mSchedule.begin())->nextTxTimeUs
-                    // Ensure the order is preserved for each recipient address
-                    && std::find(recipientAddrs.begin(),
-                                 recipientAddrs.end(),
-                                 (*iter)->packet->getFrameRecipientAddr()) == recipientAddrs.end())
+                // Something was found, so make sure it won't be executing while something of higher
+                // priority is scheduled to run
+                uint64_t completionTime = (*itemIter)->getNextCompletionTime(time);
+                uint8_t recipientAddr = (*itemIter)->packet->getFrameRecipientAddr();
+
+                // Preserve order for each recipient
+                // (don't use this if we already skipped one for the same recipient)
+                if (std::find(recipients.begin(), recipients.end(), recipientAddr) == recipients.end())
                 {
-                    item = (*iter);
-                    mSchedule.erase(iter);
+                    found = true;
+                    std::vector<std::list<std::shared_ptr<Transmission>>>::iterator scheduleIter2 = scheduleIter;
+                    do
+                    {
+                        --scheduleIter2;
+                        if (!scheduleIter2->empty() && (*scheduleIter2->begin())->nextTxTimeUs < completionTime)
+                        {
+                            // Something found - don't use this lower priority item
+                            found = false;
+                            break;
+                        }
+                    } while (scheduleIter2 != mSchedule.begin());
+                }
+
+                if (!found)
+                {
+                    recipients.push_back(recipientAddr);
+                    ++itemIter;
+                }
+                else
+                {
                     break;
                 }
-                recipientAddrs.push_back((*iter)->packet->getFrameRecipientAddr());
-                ++iter;
-            }
+            } while (itemIter != scheduleIter->end() && (*itemIter)->nextTxTimeUs <= time);
         }
 
-        if (item != nullptr
-            && item->autoRepeatUs > 0
-            && (item->autoRepeatEndTimeUs == 0 || time <= item->autoRepeatEndTimeUs))
+        if (found)
         {
-            item->nextTxTimeUs = computeNextTimeCadence(time, item->autoRepeatUs, item->nextTxTimeUs);
-            add(item);
+            // Pop it!
+            item = (*itemIter);
+            scheduleIter->erase(itemIter);
+
+            // Reschedule this if auto repeat settings are valid
+            if (item != nullptr
+                && item->autoRepeatUs > 0
+                && (item->autoRepeatEndTimeUs == 0 || time <= item->autoRepeatEndTimeUs))
+            {
+                item->nextTxTimeUs = computeNextTimeCadence(time, item->autoRepeatUs, item->nextTxTimeUs);
+                add(item);
+            }
         }
     }
 
@@ -152,36 +163,47 @@ std::shared_ptr<const Transmission> PrioritizedTxScheduler::popNext(uint64_t tim
 uint32_t PrioritizedTxScheduler::cancelById(uint32_t transmissionId)
 {
     uint32_t n = 0;
-    std::list<std::shared_ptr<Transmission>>::iterator iter = mSchedule.begin();
-    while (iter != mSchedule.end())
+    for (std::vector<std::list<std::shared_ptr<Transmission>>>::iterator scheduleIter = mSchedule.begin();
+         scheduleIter != mSchedule.end();
+         ++scheduleIter)
     {
-        if ((*iter)->transmissionId == transmissionId)
+        std::list<std::shared_ptr<Transmission>>::iterator iter2 = scheduleIter->begin();
+        while (iter2 != scheduleIter->end())
         {
-            iter = mSchedule.erase(iter);
-            ++n;
-        }
-        else
-        {
-            ++iter;
+            if ((*iter2)->transmissionId == transmissionId)
+            {
+                iter2 = scheduleIter->erase(iter2);
+                ++n;
+            }
+            else
+            {
+                ++iter2;
+            }
         }
     }
+
     return n;
 }
 
 uint32_t PrioritizedTxScheduler::cancelByRecipient(uint8_t recipientAddr)
 {
     uint32_t n = 0;
-    std::list<std::shared_ptr<Transmission>>::iterator iter = mSchedule.begin();
-    while (iter != mSchedule.end())
+    for (std::vector<std::list<std::shared_ptr<Transmission>>>::iterator scheduleIter = mSchedule.begin();
+         scheduleIter != mSchedule.end();
+         ++scheduleIter)
     {
-        if ((*iter)->packet->getFrameRecipientAddr() == recipientAddr)
+        std::list<std::shared_ptr<Transmission>>::iterator iter = scheduleIter->begin();
+        while (iter != scheduleIter->end())
         {
-            iter = mSchedule.erase(iter);
-            ++n;
-        }
-        else
-        {
-            ++iter;
+            if ((*iter)->packet->getFrameRecipientAddr() == recipientAddr)
+            {
+                iter = scheduleIter->erase(iter);
+                ++n;
+            }
+            else
+            {
+                ++iter;
+            }
         }
     }
     return n;
@@ -190,23 +212,32 @@ uint32_t PrioritizedTxScheduler::cancelByRecipient(uint8_t recipientAddr)
 uint32_t PrioritizedTxScheduler::countRecipients(uint8_t recipientAddr)
 {
     uint32_t n = 0;
-
-    for (std::list<std::shared_ptr<Transmission>>::iterator iter = mSchedule.begin();
-         iter != mSchedule.end();
-         ++iter)
+    for (std::vector<std::list<std::shared_ptr<Transmission>>>::iterator scheduleIter = mSchedule.begin();
+         scheduleIter != mSchedule.end();
+         ++scheduleIter)
     {
-        if ((*iter)->packet->getFrameRecipientAddr() == recipientAddr)
+        for (std::list<std::shared_ptr<Transmission>>::iterator iter = scheduleIter->begin();
+            iter != scheduleIter->end();
+            ++iter)
         {
-            ++n;
+            if ((*iter)->packet->getFrameRecipientAddr() == recipientAddr)
+            {
+                ++n;
+            }
         }
     }
-
     return n;
 }
 
 uint32_t PrioritizedTxScheduler::cancelAll()
 {
-    uint32_t n = mSchedule.size();
-    mSchedule.clear();
+    uint32_t n = 0;
+    for (std::vector<std::list<std::shared_ptr<Transmission>>>::iterator scheduleIter = mSchedule.begin();
+         scheduleIter != mSchedule.end();
+         ++scheduleIter)
+    {
+        n += scheduleIter->size();
+        scheduleIter->clear();
+    }
     return n;
 }

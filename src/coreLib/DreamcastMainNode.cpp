@@ -6,6 +6,7 @@
 
 const uint8_t DreamcastMainNode::MAIN_TRANSMISSION_PRIORITY = 0;
 const uint8_t DreamcastMainNode::SUB_TRANSMISSION_PRIORITY = 1;
+const uint8_t DreamcastMainNode::MAX_PRIORITY = 1;
 
 DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus,
                                      PlayerData playerData,

@@ -4,13 +4,14 @@
 #include "dreamcast_constants.h"
 #include "Transmission.hpp"
 #include <list>
+#include <vector>
 #include <memory>
 
 class PrioritizedTxScheduler
 {
 public:
     //! Default constructor
-    PrioritizedTxScheduler();
+    PrioritizedTxScheduler(uint8_t maxPriority);
 
     //! Virtual destructor
     virtual ~PrioritizedTxScheduler();
@@ -81,6 +82,6 @@ public:
 protected:
     //! The next transmission ID to set
     uint32_t mNextId;
-    //! The current schedule ordered by time and priority
-    std::list<std::shared_ptr<Transmission>> mSchedule;
+    //! The current schedule ordered by priority and time
+    std::vector<std::list<std::shared_ptr<Transmission>>> mSchedule;
 };

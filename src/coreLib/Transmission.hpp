@@ -48,8 +48,8 @@ struct Transmission
     {}
 
     //! @returns the estimated completion time of this transmission
-    uint64_t getNextCompletionTime()
+    uint64_t getNextCompletionTime(uint64_t executionTime)
     {
-        return nextTxTimeUs + txDurationUs;
+        return executionTime + txDurationUs;
     }
 };
