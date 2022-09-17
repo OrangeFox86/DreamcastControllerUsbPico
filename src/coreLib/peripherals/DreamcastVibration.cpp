@@ -3,7 +3,9 @@
 #include "globalConstants.h"
 #include <algorithm>
 
-// I generated these equations based on observed vibrations with a test device
+// I generated these equations based on observed vibrations with two test devices:
+// Dreamcast OEM Jump Pack AKA Puru Puru Pack AKA Vibration Pack
+// Performance TremorPak
 
 // Converts pulsation frequency value into approximate pulsation frequency in Hz
 #define PULSATION_FREQ(freqValue) (freqValue / 2.0 + 1)
