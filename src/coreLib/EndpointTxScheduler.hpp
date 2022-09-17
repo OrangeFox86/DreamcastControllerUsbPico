@@ -26,6 +26,7 @@ public:
     //! @param[in] expectResponse  true iff a response is expected after transmission
     //! @param[in] expectedResponseNumPayloadWords  Number of payload words to expect in response
     //! @param[in] autoRepeatUs  How often to repeat this transmission in microseconds
+    //! @param[in] autoRepeatEndTimeUs  If not 0, auto repeat will cancel after this time
     //! @returns transmission ID
     virtual uint32_t add(uint64_t txTime,
                          Transmitter* transmitter,
@@ -34,7 +35,8 @@ public:
                          uint8_t payloadLen,
                          bool expectResponse,
                          uint32_t expectedResponseNumPayloadWords=0,
-                         uint32_t autoRepeatUs=0) final;
+                         uint32_t autoRepeatUs=0,
+                         uint64_t autoRepeatEndTimeUs=0) final;
 
     //! Cancels scheduled transmission by transmission ID
     //! @param[in] transmissionId  The transmission ID of the transmissions to cancel

@@ -50,7 +50,8 @@ uint32_t PrioritizedTxScheduler::add(uint8_t priority,
                                     MaplePacket& packet,
                                     bool expectResponse,
                                     uint32_t expectedResponseNumPayloadWords,
-                                    uint32_t autoRepeatUs)
+                                    uint32_t autoRepeatUs,
+                                    uint64_t autoRepeatEndTimeUs)
 {
     uint32_t pktDurationNs = MAPLE_OPEN_LINE_CHECK_TIME_US + packet.getTxTimeNs();
 
@@ -66,8 +67,9 @@ uint32_t PrioritizedTxScheduler::add(uint8_t priority,
         std::make_shared<Transmission>(mNextId++,
                                        priority,
                                        expectResponse,
-                                       autoRepeatUs,
                                        pktDurationUs,
+                                       autoRepeatUs,
+                                       autoRepeatEndTimeUs,
                                        txTime,
                                        std::make_shared<MaplePacket>(std::move(packet)),
                                        transmitter);
@@ -135,7 +137,9 @@ std::shared_ptr<const Transmission> PrioritizedTxScheduler::popNext(uint64_t tim
             }
         }
 
-        if (item != nullptr && item->autoRepeatUs > 0)
+        if (item != nullptr
+            && item->autoRepeatUs > 0
+            && (item->autoRepeatEndTimeUs == 0 || time <= item->autoRepeatEndTimeUs))
         {
             item->nextTxTimeUs = computeNextTimeCadence(time, item->autoRepeatUs, item->nextTxTimeUs);
             add(item);

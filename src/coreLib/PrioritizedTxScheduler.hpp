@@ -23,6 +23,7 @@ public:
     //! @param[in] expectResponse  true iff a response is expected after transmission
     //! @param[in] expectedResponseNumPayloadWords  Number of payload words to expect in response
     //! @param[in] autoRepeatUs  How often to repeat this transmission in microseconds
+    //! @param[in] autoRepeatEndTimeUs  If not 0, auto repeat will cancel after this time
     //! @returns transmission ID
     uint32_t add(uint8_t priority,
                  uint64_t txTime,
@@ -30,7 +31,8 @@ public:
                  MaplePacket& packet,
                  bool expectResponse,
                  uint32_t expectedResponseNumPayloadWords=0,
-                 uint32_t autoRepeatUs=0);
+                 uint32_t autoRepeatUs=0,
+                 uint64_t autoRepeatEndTimeUs=0);
 
     //! Pops the next scheduled packet, given the current time
     //! @param[in] time  The current time

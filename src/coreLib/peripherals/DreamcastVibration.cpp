@@ -42,10 +42,9 @@ DreamcastVibration::DreamcastVibration(uint8_t addr,
                                std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                                PlayerData playerData) :
     DreamcastPeripheral("vibration", addr, scheduler, playerData.playerIndex),
-    mTransmissionId(0)
+    mTransmissionId(0),
+    mFirst(true)
 {
-    // Send some vibrations on connection
-    send(6, 0, 15, 100);
 }
 
 DreamcastVibration::~DreamcastVibration()
@@ -53,6 +52,13 @@ DreamcastVibration::~DreamcastVibration()
 
 void DreamcastVibration::task(uint64_t currentTimeUs)
 {
+    if (mFirst)
+    {
+        mFirst = false;
+
+        // Send some vibrations on connection
+        send(currentTimeUs, 7, 0, 0, 500);
+    }
 }
 
 void DreamcastVibration::txStarted(std::shared_ptr<const Transmission> tx)
@@ -115,10 +121,13 @@ void DreamcastVibration::send(uint64_t timeUs, uint8_t power, int8_t inclination
     // Payload byte 2
     // Byte 0: cycles (00 to FF)
     //         - The number of pulsation cycles per ramp increment
+    //         - Value of 00 is not valid when ramp up/down set
+    //         - Dreamcast OEM ignores this value when ramp up/down not set (just pulses)
     // Byte 1: pulsation frequency value (07 to 3B)
-    //         - Lower values cause noticeable pulsation
+    //         -Lower values cause noticeable pulsation
     //         - The lower the value, the longer the total vibration duration
     //         - The frequency seems to correlate to about (value / 2 + 1) Hz
+    //         - For Dreamcast OEM: this value makes no real difference when power is 7
     // Byte 2: intensity/ramp up/ramp down
     //         - Each intensity is executed for the number of specified cycles
     //         - 0X where X is:
@@ -139,6 +148,9 @@ void DreamcastVibration::send(uint64_t timeUs, uint8_t power, int8_t inclination
 
     uint32_t vibrationWord = 0x10000000;
 
+    uint32_t autoRepeatUs = 0;
+    uint64_t autoRepeatEndTimeUs = 0;
+
     if (power > 0 && durationMs > 0)
     {
         // Limit power value to valid value
@@ -149,8 +161,11 @@ void DreamcastVibration::send(uint64_t timeUs, uint8_t power, int8_t inclination
         uint8_t freq = MAX_FREQ_VALUE;
         if (desiredFreq == 0)
         {
-            // Get the maximum frequency that can achieve the given duration
-            freq = maxFreqForDuration(numIncrements, durationMs);
+            if (inclination != 0)
+            {
+                // Get the maximum frequency that can achieve the given duration
+                freq = maxFreqForDuration(numIncrements, durationMs);
+            }
         }
         else
         {
@@ -172,11 +187,22 @@ void DreamcastVibration::send(uint64_t timeUs, uint8_t power, int8_t inclination
             vibrationWord |= (power << 20);
         }
 
-        // Compute duration and limit to max value
-        uint8_t durationValue = COMPUTE_CYCLES(numIncrements, freq, durationMs);
+        // Compute duration and limit to max value (ignored if no inclination set)
+        uint8_t durationValue = 0;
+        if (inclination != 0)
+        {
+            durationValue = COMPUTE_CYCLES(numIncrements, freq, durationMs);
+        }
 
         // Set frequency and duration
         vibrationWord |= (freq << 8) | durationValue;
+
+        // If inclination is 0, then the command needs to be resent periodically
+        if (inclination == 0)
+        {
+            autoRepeatUs = 1000000 / 2 / PULSATION_FREQ(freq) + 0.5;
+            autoRepeatEndTimeUs = timeUs + (durationMs * 1000) - (autoRepeatUs * 2) + 1;
+        }
     }
 
     // Remove past transmission if it hasn't been sent yet
@@ -195,15 +221,32 @@ void DreamcastVibration::send(uint64_t timeUs, uint8_t power, int8_t inclination
         payload,
         2,
         true,
-        0);
+        0,
+        autoRepeatUs,
+        autoRepeatEndTimeUs);
 }
 
-void DreamcastVibration::send(uint8_t power, int8_t inclination, uint8_t desiredFreq, uint32_t durationMs)
+void DreamcastVibration::start(uint8_t power, uint8_t desiredFreq)
 {
-    send(PrioritizedTxScheduler::TX_TIME_ASAP, power, inclination, desiredFreq, durationMs);
+    uint8_t freq = (desiredFreq != 0) ? desiredFreq : MAX_FREQ_VALUE;
+    uint32_t vibrationWord = 0x10000000 | (power << 20) | (freq << 8);
+
+    uint32_t autoRepeatUs = 1000000 / 2 / PULSATION_FREQ(freq) + 0.5;
+
+    // Send it!
+    uint32_t payload[2] = {FUNCTION_CODE, vibrationWord};
+    mTransmissionId = mEndpointTxScheduler->add(
+        PrioritizedTxScheduler::TX_TIME_ASAP,
+        this,
+        COMMAND_SET_CONDITION,
+        payload,
+        2,
+        true,
+        0,
+        autoRepeatUs);
 }
 
 void DreamcastVibration::stop()
 {
-    send(0, 0, 0, 0);
+    send(PrioritizedTxScheduler::TX_TIME_ASAP, 0, 0, 0, 0);
 }

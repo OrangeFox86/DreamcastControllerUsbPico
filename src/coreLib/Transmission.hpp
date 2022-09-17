@@ -14,10 +14,12 @@ struct Transmission
     const uint8_t priority;
     //! Set to true iff a response is expected
     const bool expectResponse;
-    //! If not 0, the period which this transmission should be repeated in microseconds
-    const uint32_t autoRepeatUs;
     //! The expected transmission duration (from transmit to end of receive)
     const uint32_t txDurationUs;
+    //! If not 0, the period which this transmission should be repeated in microseconds
+    const uint32_t autoRepeatUs;
+    //! If not 0, auto repeat will cancel after this time
+    const uint64_t autoRepeatEndTimeUs;
     //! The next time that this packet is to be transmitted
     uint64_t nextTxTimeUs;
     //! The packet to transmit
@@ -28,16 +30,18 @@ struct Transmission
     Transmission(uint32_t transmissionId,
                  uint8_t priority,
                  bool expectResponse,
-                 uint32_t autoRepeatUs,
                  uint32_t txDurationUs,
+                 uint32_t autoRepeatUs,
+                 uint64_t autoRepeatEndTimeUs,
                  uint64_t nextTxTimeUs,
                  std::shared_ptr<MaplePacket> packet,
                  Transmitter* transmitter):
         transmissionId(transmissionId),
         priority(priority),
         expectResponse(expectResponse),
-        autoRepeatUs(autoRepeatUs),
         txDurationUs(txDurationUs),
+        autoRepeatUs(autoRepeatUs),
+        autoRepeatEndTimeUs(autoRepeatEndTimeUs),
         nextTxTimeUs(nextTxTimeUs),
         packet(packet),
         transmitter(transmitter)
