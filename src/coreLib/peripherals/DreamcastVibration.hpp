@@ -41,7 +41,7 @@ class DreamcastVibration : public DreamcastPeripheral
         //! @param[in] desiredFreq  When 0: limit pulsation while maximizing for duration
         //!                         Otherwise: The desired pulsation freq value; a lower value will
         //!                         cause more noticeable pulsations [7, 59]
-        //! @param[in] durationMs  The length of time in ms to vibrate (0 to stop vibration)
+        //! @param[in] durationMs  The length of time in ms to vibrate (0 for minimum pulse)
         void send(uint64_t timeUs, uint8_t power, int8_t inclination, uint8_t desiredFreq, uint32_t durationMs);
 
         //! Starts indefinite vibration
@@ -88,5 +88,5 @@ class DreamcastVibration : public DreamcastPeripheral
         //! Initialized to true and set to false on first task execution
         bool mFirst;
         //! Lookup table used to maximize pulsation frequency for a given duration
-        static const uint32_t MAX_DURATION_LOOKUP[NUM_FREQ_VALUES];
+        static const uint32_t MAX_DURATION_MS_LOOKUP[NUM_FREQ_VALUES];
 };
