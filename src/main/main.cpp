@@ -95,8 +95,6 @@ int main()
 {
     set_sys_clock_khz(CPU_FREQ_KHZ, true);
 
-    board_init();
-
 #if SHOW_DEBUG_MESSAGES
     stdio_init_all();
 #endif

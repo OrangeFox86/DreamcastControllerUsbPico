@@ -88,6 +88,7 @@ void led_task()
 
 void usb_init()
 {
+  board_init();
   tusb_init();
 }
 
