@@ -1,7 +1,7 @@
 #pragma once
 
 #include "DreamcastPeripheral.hpp"
-#include "DreamcastControllerObserver.hpp"
+#include "hal/Usb/DreamcastControllerObserver.hpp"
 #include "PlayerData.hpp"
 
 //! Handles communication with the Dreamcast controller peripheral

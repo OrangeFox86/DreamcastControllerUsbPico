@@ -1,6 +1,6 @@
 #include "usb_execution.h"
 
-#include "UsbControllerInterface.hpp"
+#include "hal/Usb/UsbControllerInterface.hpp"
 #include "UsbGamepad.h"
 #include "configuration.h"
 #include <stdlib.h>

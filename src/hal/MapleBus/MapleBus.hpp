@@ -1,7 +1,7 @@
 #ifndef __MAPLE_BUS_H__
 #define __MAPLE_BUS_H__
 
-#include "MapleBusInterface.hpp"
+#include "hal/MapleBus/MapleBusInterface.hpp"
 #include "pico/stdlib.h"
 #include "hardware/structs/systick.h"
 #include "hardware/dma.h"

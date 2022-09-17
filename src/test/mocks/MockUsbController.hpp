@@ -1,6 +1,6 @@
 #pragma once
 
-#include "UsbControllerInterface.hpp"
+#include "hal/Usb/UsbControllerInterface.hpp"
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>

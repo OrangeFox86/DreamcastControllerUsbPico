@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MaplePacket.hpp"
+#include "hal/MapleBus/MaplePacket.hpp"
 #include "dreamcast_constants.h"
 #include "Transmitter.hpp"
 

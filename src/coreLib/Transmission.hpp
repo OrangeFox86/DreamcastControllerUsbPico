@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <memory>
-#include "MaplePacket.hpp"
+#include "hal/MapleBus/MaplePacket.hpp"
 #include "Transmitter.hpp"
 
 //! Transmission definition

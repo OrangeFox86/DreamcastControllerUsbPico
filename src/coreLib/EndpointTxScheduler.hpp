@@ -1,7 +1,7 @@
 #pragma once
 
 #include "EndpointTxSchedulerInterface.hpp"
-#include "MaplePacket.hpp"
+#include "hal/MapleBus/MaplePacket.hpp"
 #include "dreamcast_constants.h"
 #include "PrioritizedTxScheduler.hpp"
 #include <memory>

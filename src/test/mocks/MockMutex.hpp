@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MutexInterface.hpp"
+#include "hal/System/MutexInterface.hpp"
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>

@@ -1,7 +1,7 @@
 #ifndef __USB_CONTROLLER_DREAMCAST_CONTROLLER_OBSERVER_H__
 #define __USB_CONTROLLER_DREAMCAST_CONTROLLER_OBSERVER_H__
 
-#include "DreamcastControllerObserver.hpp"
+#include "hal/Usb/DreamcastControllerObserver.hpp"
 #include "UsbGamepad.h"
 
 //! Yes, I know this name is ridiculous, but at least it's descriptive!

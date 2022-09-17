@@ -1,7 +1,7 @@
 #pragma once
 
-#include "MaplePacket.hpp"
-#include "MapleBusInterface.hpp"
+#include "hal/MapleBus/MaplePacket.hpp"
+#include "hal/MapleBus/MapleBusInterface.hpp"
 #include "PrioritizedTxScheduler.hpp"
 
 class TransmissionTimeliner

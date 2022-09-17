@@ -2,7 +2,7 @@
 
 #include "DreamcastNode.hpp"
 #include "DreamcastSubNode.hpp"
-#include "MapleBusInterface.hpp"
+#include "hal/MapleBus/MapleBusInterface.hpp"
 #include "DreamcastPeripheral.hpp"
 #include "TransmissionTimeliner.hpp"
 

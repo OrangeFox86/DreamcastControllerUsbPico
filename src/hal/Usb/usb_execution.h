@@ -1,7 +1,7 @@
 #ifndef __USB_EXECUTION_H__
 #define __USB_EXECUTION_H__
 
-#include "UsbControllerInterface.hpp"
+#include "hal/Usb/UsbControllerInterface.hpp"
 #include <stdint.h>
 
 //! Sets all of the USB devices to execute with

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "MapleBusInterface.hpp"
-#include "MaplePacket.hpp"
+#include "hal/MapleBus/MapleBusInterface.hpp"
+#include "hal/MapleBus/MaplePacket.hpp"
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>

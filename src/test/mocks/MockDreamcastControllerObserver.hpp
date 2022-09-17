@@ -1,6 +1,6 @@
 #pragma once
 
-#include "DreamcastControllerObserver.hpp"
+#include "hal/Usb/DreamcastControllerObserver.hpp"
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>

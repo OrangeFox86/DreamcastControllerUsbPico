@@ -4,7 +4,7 @@
 #include "MockMutex.hpp"
 #include "MockUsbController.hpp"
 
-#include "MaplePacket.hpp"
+#include "hal/MapleBus/MaplePacket.hpp"
 
 #include <memory>
 #include <utility>
