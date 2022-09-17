@@ -251,7 +251,13 @@ void DreamcastVibration::send(uint64_t timeUs, uint8_t power, int8_t inclination
 
 void DreamcastVibration::start(uint8_t power, uint8_t desiredFreq)
 {
-    uint8_t freq = (desiredFreq != 0) ? desiredFreq : MAX_FREQ_VALUE;
+    uint8_t freq = MAX_FREQ_VALUE;
+    if (desiredFreq != 0)
+    {
+        freq = limit_value(desiredFreq, MIN_FREQ_VALUE, MAX_FREQ_VALUE);
+    }
+    // else: default to MAX_FREQ_VALUE
+
     uint32_t vibrationWord = 0x10000000 | (power << 20) | (freq << 8);
 
     // Automatically repeat at half the duration
