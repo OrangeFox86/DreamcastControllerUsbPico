@@ -1,6 +1,6 @@
 #include "DreamcastVibration.hpp"
 #include "utils.h"
-#include "globalConstants.h"
+#include "global_constants.h"
 #include <algorithm>
 
 // I generated these equations based on observed vibrations with two test devices:
