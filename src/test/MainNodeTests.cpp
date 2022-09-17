@@ -75,10 +75,11 @@ class DreamcastMainNodeOverride : public DreamcastMainNode
 
         //! This function overrides the real peripheral factory so that mock peripherals may be
         //! created.
-        void peripheralFactory(uint32_t functionCode) override
+        uint32_t peripheralFactory(uint32_t functionCode) override
         {
             mPeripherals = mPeripheralsToAdd;
             mockMethodPeripheralFactory(functionCode);
+            return 0;
         }
 
         //! Allows the test to check what peripherals the node has

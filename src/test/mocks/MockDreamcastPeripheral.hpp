@@ -11,7 +11,7 @@ class MockDreamcastPeripheral : public DreamcastPeripheral
         MockDreamcastPeripheral(uint8_t addr,
                                 std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                                 uint32_t playerIndex) :
-            DreamcastPeripheral(addr, scheduler, playerIndex)
+            DreamcastPeripheral("mock", addr, scheduler, playerIndex)
         {}
 
         MOCK_METHOD(void, txStarted, (std::shared_ptr<const Transmission> tx), (override));

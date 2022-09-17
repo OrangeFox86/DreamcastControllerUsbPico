@@ -36,10 +36,11 @@ class DreamcastSubNodeOverride : public DreamcastSubNode
 
         //! This function overrides the real peripheral factory so that mock peripherals may be
         //! created.
-        void peripheralFactory(uint32_t functionCode) override
+        uint32_t peripheralFactory(uint32_t functionCode) override
         {
             mPeripherals = mPeripheralsToAdd;
             mockMethodPeripheralFactory(functionCode);
+            return 0;
         }
 
         //! Allows the test to check what peripherals the node has
@@ -116,7 +117,7 @@ TEST_F(SubNodeTest, handleDataCommandNoPeripheralsAdded)
     std::shared_ptr<MaplePacket> packet = std::make_shared<MaplePacket>(5, 0, 1234567);
     std::shared_ptr<MaplePacket> txPacket = std::make_shared<MaplePacket>(4, 1, 7654321);
     std::shared_ptr<const Transmission> tx =
-        std::make_shared<Transmission>(0, 0, true, 0, 123, 0, txPacket, nullptr);
+        std::make_shared<Transmission>(0, 0, true, 123, 0, 0, 0, txPacket, nullptr);
 
     // --- TEST EXECUTION ---
     mDreamcastSubNode.txComplete(packet, tx);
@@ -136,7 +137,7 @@ TEST_F(SubNodeTest, handleDataCommandPeripheralAdded)
     std::shared_ptr<MaplePacket> packet = std::make_shared<MaplePacket>(5, 0, 1234567);
     std::shared_ptr<MaplePacket> txPacket = std::make_shared<MaplePacket>(4, 1, 7654321);
     std::shared_ptr<const Transmission> tx =
-        std::make_shared<Transmission>(0, 0, true, 0, 123, 0, txPacket, nullptr);
+        std::make_shared<Transmission>(0, 0, true, 123, 0, 0, 0, txPacket, nullptr);
 
     // --- TEST EXECUTION ---
     mDreamcastSubNode.txComplete(packet, tx);
@@ -155,7 +156,7 @@ TEST_F(SubNodeTest, handleDataCommandInvalidPayloadSize)
     std::shared_ptr<MaplePacket> packet = std::make_shared<MaplePacket>(5, 0, (uint32_t*)NULL, 0);
     std::shared_ptr<MaplePacket> txPacket = std::make_shared<MaplePacket>(4, 1, 7654321);
     std::shared_ptr<const Transmission> tx =
-        std::make_shared<Transmission>(0, 0, true, 0, 123, 0, txPacket, nullptr);
+        std::make_shared<Transmission>(0, 0, true, 123, 0, 0, 0, txPacket, nullptr);
     EXPECT_CALL(mDreamcastSubNode, mockMethodPeripheralFactory(_)).Times(0);
 
     // --- TEST EXECUTION ---
