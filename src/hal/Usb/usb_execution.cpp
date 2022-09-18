@@ -162,16 +162,14 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 {
   (void) report_id;
   (void) report_type;
-  if (instance < numUsbDevices)
+  if (instance >= numUsbDevices)
   {
     return 0;
   }
   else
   {
-    // Build the report for the given report ID
-    pAllUsbDevices[instance]->getReport(buffer, reqlen);
-    // Return the size of the report
-    return sizeof(hid_keyboard_report_t);
+    // Build the report for the given report ID and return the size set
+    return pAllUsbDevices[instance]->getReport(buffer, reqlen);
   }
 }
 

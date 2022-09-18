@@ -32,7 +32,8 @@ class UsbControllerDevice : public UsbControllerInterface
     //! Gets the report for the currently pressed buttons
     //! @param[out] buffer  Where the report is written
     //! @param[in] reqlen  The length of buffer
-    virtual void getReport(uint8_t *buffer, uint16_t reqlen) = 0;
+    //! @returns the number of bytes set in buffer
+    virtual uint16_t getReport(uint8_t *buffer, uint16_t reqlen) = 0;
 
     //! Called only from callbacks to update USB connected state
     //! @param[in] connected  true iff USB connected

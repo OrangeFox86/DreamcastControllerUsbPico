@@ -87,7 +87,7 @@ class UsbGamepad : public UsbControllerDevice
     //! Gets the report for the currently pressed keys
     //! @param[out] buffer  Where the report is written
     //! @param[in] reqlen  The length of buffer
-    void getReport(uint8_t *buffer, uint16_t reqlen) final;
+    uint16_t getReport(uint8_t *buffer, uint16_t reqlen) final;
 
   protected:
     //! @returns the hat value based on current dpad state

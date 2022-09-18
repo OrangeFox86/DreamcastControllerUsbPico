@@ -226,7 +226,7 @@ uint8_t UsbGamepad::getReportSize()
   return sizeof(hid_gamepad_report_t);
 }
 
-void UsbGamepad::getReport(uint8_t *buffer, uint16_t reqlen)
+uint16_t UsbGamepad::getReport(uint8_t *buffer, uint16_t reqlen)
 {
   // Build the report
   hid_gamepad_report_t report;
@@ -241,4 +241,5 @@ void UsbGamepad::getReport(uint8_t *buffer, uint16_t reqlen)
   // Copy report into buffer
   uint16_t setLen = (sizeof(report) <= reqlen) ? sizeof(report) : reqlen;
   memcpy(buffer, &report, setLen);
+  return setLen;
 }
