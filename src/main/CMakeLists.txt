@@ -11,7 +11,7 @@ target_link_libraries(main
     pico_multicore
     hal-MapleBus
     hal-System
-    hal-Usb
+    hal-UsbHid
     coreLib
 )
 target_compile_options(main PRIVATE
