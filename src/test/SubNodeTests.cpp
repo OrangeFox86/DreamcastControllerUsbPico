@@ -2,7 +2,6 @@
 #include "MockDreamcastControllerObserver.hpp"
 #include "MockDreamcastPeripheral.hpp"
 #include "MockMutex.hpp"
-#include "MockUsbController.hpp"
 
 #include "DreamcastMainNode.hpp"
 #include "DreamcastSubNode.hpp"

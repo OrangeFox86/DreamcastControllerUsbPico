@@ -2,10 +2,9 @@
 #define __USB_CONTROLLER_DEVICE_H__
 
 #include <stdint.h>
-#include "UsbControllerInterface.hpp"
 
 //! Base class for a USB controller device
-class UsbControllerDevice : public UsbControllerInterface
+class UsbControllerDevice
 {
   public:
     //! Constructor

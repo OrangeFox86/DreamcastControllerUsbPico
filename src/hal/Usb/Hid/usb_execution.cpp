@@ -1,4 +1,4 @@
-#include "UsbControllerInterface.hpp"
+#include "UsbControllerDevice.h"
 #include "UsbGamepadDreamcastControllerObserver.hpp"
 #include "UsbGamepad.h"
 #include "configuration.h"
@@ -27,7 +27,7 @@ UsbGamepadDreamcastControllerObserver usbGamepadDreamcastControllerObservers[NUM
   UsbGamepadDreamcastControllerObserver(usbGamepads[3])
 };
 
-UsbControllerInterface* devices[NUMBER_OF_DEVICES] = {
+UsbControllerDevice* devices[NUMBER_OF_DEVICES] = {
   &usbGamepads[0],
   &usbGamepads[1],
   &usbGamepads[2],
@@ -53,14 +53,14 @@ uint32_t get_num_usb_controllers()
 
 bool usbEnabled = false;
 
-UsbControllerInterface** pAllUsbDevices = nullptr;
+UsbControllerDevice** pAllUsbDevices = nullptr;
 
 uint8_t numUsbDevices = 0;
 
 bool usbDisconnecting = false;
 absolute_time_t usbDisconnectTime;
 
-void set_usb_devices(UsbControllerInterface** devices, uint8_t n)
+void set_usb_devices(UsbControllerDevice** devices, uint8_t n)
 {
   pAllUsbDevices = devices;
   numUsbDevices = n;
@@ -87,7 +87,7 @@ void led_task()
   else
   {
     bool keyPressed = false;
-    UsbControllerInterface** pdevs = pAllUsbDevices;
+    UsbControllerDevice** pdevs = pAllUsbDevices;
     for (uint32_t i = numUsbDevices; i > 0; --i, ++pdevs)
     {
       if ((*pdevs)->isButtonPressed())
@@ -153,7 +153,7 @@ void usb_task()
 // Invoked when device is mounted
 void tud_mount_cb(void)
 {
-  UsbControllerInterface** pdevs = pAllUsbDevices;
+  UsbControllerDevice** pdevs = pAllUsbDevices;
   for (uint32_t i = numUsbDevices; i > 0; --i, ++pdevs)
   {
     (*pdevs)->updateUsbConnected(true);
@@ -165,7 +165,7 @@ void tud_mount_cb(void)
 // Invoked when device is unmounted
 void tud_umount_cb(void)
 {
-  UsbControllerInterface** pdevs = pAllUsbDevices;
+  UsbControllerDevice** pdevs = pAllUsbDevices;
   for (uint32_t i = numUsbDevices; i > 0; --i, ++pdevs)
   {
     (*pdevs)->updateUsbConnected(false);
@@ -179,7 +179,7 @@ void tud_umount_cb(void)
 void tud_suspend_cb(bool remote_wakeup_en)
 {
   (void) remote_wakeup_en;
-  UsbControllerInterface** pdevs = pAllUsbDevices;
+  UsbControllerDevice** pdevs = pAllUsbDevices;
   for (uint32_t i = numUsbDevices; i > 0; --i, ++pdevs)
   {
     (*pdevs)->updateUsbConnected(false);
@@ -190,7 +190,7 @@ void tud_suspend_cb(bool remote_wakeup_en)
 // Invoked when usb bus is resumed
 void tud_resume_cb(void)
 {
-  UsbControllerInterface** pdevs = pAllUsbDevices;
+  UsbControllerDevice** pdevs = pAllUsbDevices;
   for (uint32_t i = numUsbDevices; i > 0; --i, ++pdevs)
   {
     (*pdevs)->updateUsbConnected(true);
