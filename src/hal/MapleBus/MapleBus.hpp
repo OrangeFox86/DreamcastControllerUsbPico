@@ -1,6 +1,7 @@
 #ifndef __MAPLE_BUS_H__
 #define __MAPLE_BUS_H__
 
+#include <memory>
 #include "hal/MapleBus/MapleBusInterface.hpp"
 #include "pico/stdlib.h"
 #include "hardware/structs/systick.h"
@@ -111,5 +112,10 @@ class MapleBus : public MapleBusInterface
         //! The last sampled read word transfer count
         uint32_t mLastReadTransferCount;
 };
+
+std::shared_ptr<MapleBusInterface> create_maple_bus(uint32_t pinA, uint8_t senderAddr)
+{
+    return std::make_shared<MapleBus>(pinA, senderAddr);
+}
 
 #endif // __MAPLE_BUS_H__

@@ -2,6 +2,7 @@
 #define __MAPLE_BUS_INTERFACE_H__
 
 #include <stdint.h>
+#include <memory>
 #include "configuration.h"
 #include "utils.h"
 #include "MaplePacket.hpp"
@@ -70,5 +71,10 @@ class MapleBusInterface
         //! @returns true iff the bus is currently busy reading or writing.
         virtual bool isBusy() = 0;
 };
+
+//! Creates a maple bus
+//! @param[in] pinA  GPIO index for pin A. The very next GPIO will be designated as pin B.
+//! @param[in] senderAddr  The address of this device
+extern std::shared_ptr<MapleBusInterface> create_maple_bus(uint32_t pinA, uint8_t senderAddr);
 
 #endif // __MAPLE_BUS_INTERFACE_H__

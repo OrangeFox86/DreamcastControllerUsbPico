@@ -10,7 +10,6 @@
 #include "hardware/structs/systick.h"
 #include "hardware/regs/m0plus.h"
 
-#include "MapleBus.hpp"
 #include "DreamcastNode.hpp"
 #include "DreamcastMainNode.hpp"
 #include "PlayerData.hpp"
@@ -20,6 +19,8 @@
 #include "UsbGamepadDreamcastControllerObserver.hpp"
 #include "usb_descriptors.h"
 #include "usb_execution.h"
+
+#include "hal/MapleBus/MapleBusInterface.hpp"
 
 #define MAPLE_HOST_ADDRESS 0x00
 
@@ -48,18 +49,6 @@ PlayerData playerData[NUMBER_OF_DEVICES] = {
     {2, usbGamepadDreamcastControllerObservers[2], screenData[2]},
     {3, usbGamepadDreamcastControllerObservers[3], screenData[3]}
 };
-MapleBus busses[NUMBER_OF_DEVICES] = {
-    MapleBus(P1_BUS_START_PIN, MAPLE_HOST_ADDRESS),
-    MapleBus(P2_BUS_START_PIN, MAPLE_HOST_ADDRESS),
-    MapleBus(P3_BUS_START_PIN, MAPLE_HOST_ADDRESS),
-    MapleBus(P4_BUS_START_PIN, MAPLE_HOST_ADDRESS),
-};
-DreamcastMainNode dreamcastMainNodes[NUMBER_OF_DEVICES] = {
-    DreamcastMainNode(busses[0], playerData[0], std::make_shared<PrioritizedTxScheduler>(DreamcastMainNode::MAX_PRIORITY)),
-    DreamcastMainNode(busses[1], playerData[1], std::make_shared<PrioritizedTxScheduler>(DreamcastMainNode::MAX_PRIORITY)),
-    DreamcastMainNode(busses[2], playerData[2], std::make_shared<PrioritizedTxScheduler>(DreamcastMainNode::MAX_PRIORITY)),
-    DreamcastMainNode(busses[3], playerData[3], std::make_shared<PrioritizedTxScheduler>(DreamcastMainNode::MAX_PRIORITY))
-};
 
 UsbControllerInterface* devices[NUMBER_OF_DEVICES] = {
     &usbGamepads[0],
@@ -76,6 +65,20 @@ void core1()
 
     // Wait for steady state
     sleep_ms(100);
+
+    std::shared_ptr<MapleBusInterface> buses[NUMBER_OF_DEVICES] = {
+        create_maple_bus(P1_BUS_START_PIN, MAPLE_HOST_ADDRESS),
+        create_maple_bus(P2_BUS_START_PIN, MAPLE_HOST_ADDRESS),
+        create_maple_bus(P3_BUS_START_PIN, MAPLE_HOST_ADDRESS),
+        create_maple_bus(P4_BUS_START_PIN, MAPLE_HOST_ADDRESS)
+    };
+
+    DreamcastMainNode dreamcastMainNodes[NUMBER_OF_DEVICES] = {
+        DreamcastMainNode(*buses[0], playerData[0], std::make_shared<PrioritizedTxScheduler>(DreamcastMainNode::MAX_PRIORITY)),
+        DreamcastMainNode(*buses[1], playerData[1], std::make_shared<PrioritizedTxScheduler>(DreamcastMainNode::MAX_PRIORITY)),
+        DreamcastMainNode(*buses[2], playerData[2], std::make_shared<PrioritizedTxScheduler>(DreamcastMainNode::MAX_PRIORITY)),
+        DreamcastMainNode(*buses[3], playerData[3], std::make_shared<PrioritizedTxScheduler>(DreamcastMainNode::MAX_PRIORITY))
+    };
 
     while(true)
     {
