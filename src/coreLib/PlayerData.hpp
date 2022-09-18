@@ -9,4 +9,8 @@ struct PlayerData
     const uint32_t playerIndex;
     DreamcastControllerObserver& gamepad;
     ScreenData& screenData;
+
+    PlayerData(uint32_t playerIndex, DreamcastControllerObserver& gamepad, ScreenData& screenData) :
+        playerIndex(playerIndex), gamepad(gamepad), screenData(screenData)
+    {}
 };
