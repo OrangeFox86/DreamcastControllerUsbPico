@@ -5,12 +5,12 @@ Goals for this project:
 - Detect and interact with the following:
   - Controller
   - VMU (or just MU)
-  - Rumble Pack
-- Setup USB HID Gamepad that supports rumble
+  - Jump pack
+- Setup USB HID Gamepad that supports vibration
 - Setup some other USB device for VMU/MU access
 - Create whatever Linux/Windows drivers are necessary to communicate with all devices (probably will just use libusb)
 - Create Linux/Windows software to upload/download data to/from memory unit
-- Interface with emulator such as Redream for controller, rumble pack, and VMU
+- Interface with emulator such as Redream for controller, jump pack, and VMU
 
 *Please reach out to me if you want to help out with development or have any tips. The PC side of things intimidates me slightly. I think modifying the open source version of Redream is my only immediate option to actually get an emulator interface to work with this (to display VMU screens and possibly access VMU data). My voice gets lost in the Redream Discord server, so I don't think I'll get attention from that community until I can prove something works.*
 
@@ -24,6 +24,8 @@ This is a work in progress. Current progress:
     - C and Z buttons on arcade stick also work
   - Screen interface is working (the "V" in "VMU")
     - Currently just a default screen is sent on connection
+  - Vibration peripheral is working (not yet implemented on USB side)
+    - I'm looking into how to support force feedback on an HID gamepad (more universal but likely less supported) while also looking into supporting XInput as a secondary option
   - Stubs added for all other peripherals (some to be filled in later)
 - Added transmission timeliner so that any peripheral addition is scalable without worrying much about how peripherals may interfere with each other
 
