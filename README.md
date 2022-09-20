@@ -206,8 +206,8 @@ The peripheral may respond with a source address as if it is player 1. As such, 
 | 0x02 | Extended Device Info Request | Host->Device | 0 | - | 0x06 |
 | 0x03 | Reset | Host->Device | 0 | - | 0x07 |
 | 0x04 | Shutdown | Host->Device | 0 | - | 0x07 |
-| 0x05 | Device Info | Device->Host | 2..255 | supported function codes mask**; info... | - |
-| 0x06 | Extended Device Info | Device->Host | 2..255 | supported function codes mask**; info... | - |
+| 0x05 | Device Info | Device->Host | 2..255 | supported function codes mask; info...** | - |
+| 0x06 | Extended Device Info | Device->Host | 2..255 | supported function codes mask; info...** | - |
 | 0x07 | Acknowledge | Device->Host | 0 | - | - |
 | 0x08 | Data Transfer | Device->Host | 2..255 | function code; data... | - |
 | 0x09 | Get Condition | Host->Device | 1 | function code | 0x08 |
@@ -222,7 +222,9 @@ The peripheral may respond with a source address as if it is player 1. As such, 
 
 *Most peripheral devices won't respond to any other command until device info is requested for the device.
 
-**The supported function codes mask in device info responses will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage.
+**The supported function codes mask in device info responses will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage. The information following will be in ASCII format with some non-ASCII markers in between ex: "~?@Visual Memory                 Produced By or Under License From SEGA ENTERPRISES,LTD.     |Version 1.005,1999/04/15,315-6208-03,SEGA Visual Memory System BIOS Produced by IOS Produced". See note in Word Format about how to parse ASCII.
+
+**TODO**: It would be nice to define the exact format of the info and extended info strings
 
 ### CRC
 
