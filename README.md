@@ -167,6 +167,8 @@ A packet consists of the following data.
 
 Each word is 32 bits in length, transmitted in little-endian order. The most significant bit of each byte transmits first. This means that the most significant bit of the least significant byte of each word transmits first.
 
+When ASCII text is transmitted, the most significant byte is the first character of the 4 character sequence in each word. On a system that uses little-endian memory storage like the pico, each word needs to be flipped before parsing the payload as a character array.
+
 ### Frame Word
 
 The following is how a frame word is broken down into its 4 parts.
