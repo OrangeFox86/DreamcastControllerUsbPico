@@ -15,8 +15,9 @@
 #include <memory>
 #include <algorithm>
 
-#define MAPLE_HOST_ADDRESS 0x00
 #define MAX_DEVICES 4
+
+const uint8_t MAPLE_HOST_ADDRESSES[MAX_DEVICES] = {0x00, 0x40, 0x80, 0xC0};
 
 // Second Core Process
 // The second core is in charge of handling communication with Dreamcast peripherals
@@ -43,7 +44,7 @@ void core1()
     {
         screenData[i] = std::make_shared<ScreenData>(screenMutexes[i]);
         playerData[i] = std::make_shared<PlayerData>(i, *(observers[i]), *screenData[i]);
-        buses[i] = create_maple_bus(maplePins[i], MAPLE_HOST_ADDRESS);
+        buses[i] = create_maple_bus(maplePins[i], MAPLE_HOST_ADDRESSES[i]);
         dreamcastMainNodes[i] = std::make_shared<DreamcastMainNode>(
             *buses[i],
             *playerData[i],

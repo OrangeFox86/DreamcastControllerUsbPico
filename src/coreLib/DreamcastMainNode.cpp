@@ -100,7 +100,7 @@ void DreamcastMainNode::readTask(uint64_t currentTimeUs)
         // Check addresses to determine what sub nodes are attached
         uint8_t sendAddr = readStatus.received->getFrameSenderAddr();
         uint8_t recAddr = readStatus.received->getFrameRecipientAddr();
-        if (recAddr == 0x00)
+        if ((recAddr & 0x3F) == 0x00)
         {
             // This packet was meant for me (the host)
 

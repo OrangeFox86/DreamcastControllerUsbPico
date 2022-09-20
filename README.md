@@ -187,13 +187,16 @@ example:
 
 The following addresses are used for all components on the bus.
 
-| Host | Main Peripheral | Sub-Peripheral 1 | Sub-Peripheral 2 | Sub-Peripheral 3 | Sub-Peripheral 4 | Sub-Peripheral 5 |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 0x00 | 0x20* | 0x01 | 0x02 | 0x04 | 0x08 | 0x10 |
+| Player Number | Host | Main Peripheral | Sub-Peripheral 1 | Sub-Peripheral 2 | Sub-Peripheral 3 | Sub-Peripheral 4 | Sub-Peripheral 5 |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 1 | 0x00 | 0x20* | 0x01 | 0x02 | 0x04 | 0x08 | 0x10 |
+| 2 | 0x40 | 0x60* | 0x41 | 0x42 | 0x44 | 0x48 | 0x50 |
+| 3 | 0x80 | 0xA0* | 0x81 | 0x82 | 0x84 | 0x88 | 0x90 |
+| 4 | 0xC0 | 0xE0* | 0xC1 | 0xC2 | 0xC4 | 0xC8 | 0xD0 |
 
 *When the main peripheral sets its sender address, it also sets the bits corresponding to which sub-peripherals are attached. For example, if sub-peripherals 1 and 2 are attached, the main peripheral's sender address will be 0x23. This informs the host what else is attached.
 
-**TODO:** Add info about player index (upper 2 bits)
+The peripheral may respond with a source address as if it is player 1. As such, the host should ignore whatever the upper 2 bits that the device uses as its source address.
 
 #### Commands
 
@@ -203,15 +206,15 @@ The following addresses are used for all components on the bus.
 | 0x02 | Extended Device Info Request | Host->Device | 0 | N/A |  |
 | 0x03 | Reset | Host->Device | 0 | N/A |  |
 | 0x04 | Shutdown | Host->Device | 0 | N/A |  |
-| 0x05 | Device Info | Device->Host | 2..N | supported function codes mask; info... | The supported function codes mask will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage |
-| 0x06 | Extended Device Info | Device->Host | 2..N | supported function codes mask; info... | See note above |
+| 0x05 | Device Info | Device->Host | 2..255 | supported function codes mask; info... | The supported function codes mask will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage |
+| 0x06 | Extended Device Info | Device->Host | 2..255 | supported function codes mask; info... | See note above |
 | 0x07 | Acknowledge | Device->Host | 0 | N/A |  |
-| 0x08 | Data Transfer | Device->Host | 2..N | function code; data... |  |
+| 0x08 | Data Transfer | Device->Host | 2..255 | function code; data... |  |
 | 0x09 | Get Condition | Host->Device | 1 | function code |  |
 | 0x0A | Get Memory Information | Host->Device | 2 | function code; location word |  |
 | 0x0B | Block Read | Host->Device | 2 | function code; location word |  |
-| 0x0C | Block Write | Host->Device | 3..N | function code; location word; data... |  |
-| 0x0E | Set Condition | Host->Device | 2..N | function code; condition... |  |
+| 0x0C | Block Write | Host->Device | 3..255 | function code; location word; data... |  |
+| 0x0E | Set Condition | Host->Device | 2..255 | function code; condition... |  |
 | 0xFB | File Error | Device->Host | 0 | N/A |  |
 | 0xFC | Request Resend | Device->Host | 0 | N/A |  |
 | 0xFD | Unknown Command | Device->Host | 0 | N/A |  |
