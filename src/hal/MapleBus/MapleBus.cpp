@@ -280,21 +280,21 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
         {
             // The frame word always contains how many proceeding words there are [0,255]
             uint32_t len = mReadBuffer[0] >> 24;
-            if (len == (dmaWordsRead - 2))
+            if (len <= (dmaWordsRead - 2))
             {
                 uint8_t crc = 0;
                 // Bytes are loaded to the left, but the first byte is actually the LSB.
                 // This means we need to byte swap (compute crc while we're at it)
-                for (uint32_t i = 0; i < len + 1; ++i)
+                for (uint32_t i = 0; i < dmaWordsRead - 1; ++i)
                 {
                     swapByteOrder(mLastRead[i], mReadBuffer[i], crc);
                 }
                 // crc in the last word does not need to be byte swapped
                 // Data is only valid if the CRC is correct and first word has something in it (cmd 0 is invalid)
-                if (crc == mReadBuffer[len + 1])
+                if (crc == mReadBuffer[dmaWordsRead - 1])
                 {
                     status.readBuffer = mLastRead;
-                    status.readBufferLen = len + 1;
+                    status.readBufferLen = dmaWordsRead - 1;
                 }
                 else
                 {
@@ -304,7 +304,7 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
             }
             else
             {
-                // Read failed because the packet length in package didn't match number of DMA words
+                // Read failed because not enough words read
                 status.phase = Phase::READ_FAILED;
             }
         }
