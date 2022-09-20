@@ -200,25 +200,29 @@ The peripheral may respond with a source address as if it is player 1. As such, 
 
 #### Commands
 
-| Command Value | Description | Communication Direction | Number of Payload Words | Payload Arguments | Expected Response | Notes |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 0x01 | Device Info Request | Host->Device | 0 | - | 0x05 | Most peripheral devices won't respond to any other command until device info is requested for the device |
-| 0x02 | Extended Device Info Request | Host->Device | 0 | - | 0x06 |  |
-| 0x03 | Reset | Host->Device | 0 | - | 0x07 |  |
-| 0x04 | Shutdown | Host->Device | 0 | - | 0x07 |  |
-| 0x05 | Device Info | Device->Host | 2..255 | supported function codes mask; info... | - | The supported function codes mask will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage |
-| 0x06 | Extended Device Info | Device->Host | 2..255 | supported function codes mask; info... | - | See note above |
-| 0x07 | Acknowledge | Device->Host | 0 | - | - |  |
-| 0x08 | Data Transfer | Device->Host | 2..255 | function code; data... | - |  |
-| 0x09 | Get Condition | Host->Device | 1 | function code | 0x08 |  |
-| 0x0A | Get Memory Information | Host->Device | 2 | function code; location word | 0x08 |  |
-| 0x0B | Block Read | Host->Device | 2 | function code; location word | 0x08 |  |
-| 0x0C | Block Write | Host->Device | 3..255 | function code; location word; data... | 0x07 |  |
-| 0x0E | Set Condition | Host->Device | 2..255 | function code; condition... | 0x07 |  |
-| 0xFB | File Error | Device->Host | 0 | - | - |  |
-| 0xFC | Request Resend | Device->Host | 0 | - | - |  |
-| 0xFD | Unknown Command | Device->Host | 0 | - | - |  |
-| 0xFE | Function Code Not Supported | Device->Host | 0 | - | - |  |
+| Command Value | Description | Communication Direction | Number of Payload Words | Payload Arguments | Expected Response |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| 0x01 | Device Info Request* | Host->Device | 0 | - | 0x05 |
+| 0x02 | Extended Device Info Request | Host->Device | 0 | - | 0x06 |
+| 0x03 | Reset | Host->Device | 0 | - | 0x07 |
+| 0x04 | Shutdown | Host->Device | 0 | - | 0x07 |
+| 0x05 | Device Info | Device->Host | 2..255 | supported function codes mask**; info... | - |
+| 0x06 | Extended Device Info | Device->Host | 2..255 | supported function codes mask**; info... | - |
+| 0x07 | Acknowledge | Device->Host | 0 | - | - |
+| 0x08 | Data Transfer | Device->Host | 2..255 | function code; data... | - |
+| 0x09 | Get Condition | Host->Device | 1 | function code | 0x08 |
+| 0x0A | Get Memory Information | Host->Device | 2 | function code; location word | 0x08 |
+| 0x0B | Block Read | Host->Device | 2 | function code; location word | 0x08 |
+| 0x0C | Block Write | Host->Device | 3..255 | function code; location word; data... | 0x07 |
+| 0x0E | Set Condition | Host->Device | 2..255 | function code; condition... | 0x07 |
+| 0xFB | File Error | Device->Host | 0 | - | - |
+| 0xFC | Request Resend | Device->Host | 0 | - | - |
+| 0xFD | Unknown Command | Device->Host | 0 | - | - |
+| 0xFE | Function Code Not Supported | Device->Host | 0 | - | - |
+
+*Most peripheral devices won't respond to any other command until device info is requested for the device.
+
+**The supported function codes mask in device info responses will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage.
 
 ### CRC
 
@@ -248,3 +252,15 @@ Below defines a location word which is used to address blocks of memory in some 
 | Byte 0 (LSB) | Byte 1 | Byte 2 | Byte 3 (MSB) |
 | :---: | :---: | :---: | :---: |
 | Block | 0x00 | Phase | Partition |
+
+**TODO**: Define block, phase, partition
+
+# External Resources
+
+**Maple Bus Resources**
+
+http://mc.pp.se/dc/maplebus.html and http://mc.pp.se/dc/controller.html
+
+https://tech-en.netlify.app/articles/en540236/index.html
+
+https://www.raphnet.net/programmation/dreamcast_usb/index_en.php
