@@ -57,7 +57,11 @@ cd DreamcastControllerUsbPico
 ```bash
 git submodule update --recursive --init
 ```
-5. Execute the build script
+5. (optional) Build and run tests - this runs core lib unit tests locally
+```bash
+./run_tests.sh
+```
+6. Execute the build script
 ```bash
 ./build.sh
 ```
