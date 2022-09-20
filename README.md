@@ -108,10 +108,6 @@ Every packet begins with a start sequence. Note that there are different start s
   <img src="images/Maple_Bus_Start_Sequence.png?raw=true" alt="Maple Bus Start Sequence"/>
 </p>
 
-#### Side Note on Start Sequence
-
-Some sources claim that B transitioning LOW is part of the start sequence. However, the patent for Maple Bus shows that the start sequence ends when both A and B are HIGH. I will need to verify this by forcing some actual hardware to transmit 128 words of data which would make the first bit HIGH. The question is then: does the B line transition LOW then back HIGH before getting clocked or will it remain HIGH? According to the patent, I assume B should remain HIGH.
-
 ### End Sequence
 
 Every packet is completed with an end sequence to commit the data to the target component.
@@ -199,30 +195,47 @@ The following addresses are used for all components on the bus.
 
 #### Commands
 
-| Command Value | Description |
-| :---: | :---: |
-| 0x01* | Device Info Request |
-| 0x02 | Extended Device Info Request |
-| 0x03 | Reset |
-| 0x04 | Shutdown |
-| 0x05 | Device Info |
-| 0x06 | Extended Device Info |
-| 0x07 | Acknowledge |
-| 0x08 | Data Transfer |
-| 0x09 | Get Condition |
-| 0x0A | Get Memory Information |
-| 0x0B | Block Read |
-| 0x0C | Block Write |
-| 0x0E | Set Condition |
-| 0xFB | File Error |
-| 0xFC | Request Resend |
-| 0xFD | Unknown Command |
-| 0xFE | Function Code Not Supported |
-
-*Most peripheral devices won't respond to any other command until device info is requested for the device.
-
-**TODO:** Add more info here
+| Command Value | Description | Communication Direction | Number of Payload Words | Payload Arguments | Notes |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| 0x01 | Device Info Request | Host->Device | 0 | N/A | Most peripheral devices won't respond to any other command until device info is requested for the device |  |
+| 0x02 | Extended Device Info Request | Host->Device | 0 | N/A |  |
+| 0x03 | Reset | Host->Device | 0 | N/A |  |
+| 0x04 | Shutdown | Host->Device | 0 | N/A |  |
+| 0x05 | Device Info | Device->Host | 2..N | supported function codes mask; info... | The supported function codes mask will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage |
+| 0x06 | Extended Device Info | Device->Host | 2..N | supported function codes mask; info... | See note above |
+| 0x07 | Acknowledge | Device->Host | 0 | N/A |  |
+| 0x08 | Data Transfer | Device->Host | 2..N | function code; data... |  |
+| 0x09 | Get Condition | Host->Device | 1 | function code |  |
+| 0x0A | Get Memory Information | Host->Device | 2 | function code; location word |  |
+| 0x0B | Block Read | Host->Device | 2 | function code; location word |  |
+| 0x0C | Block Write | Host->Device | 3..N | function code; location word; data... |  |
+| 0x0E | Set Condition | Host->Device | 2..N | function code; condition... |  |
+| 0xFB | File Error | Device->Host | 0 | N/A |  |
+| 0xFC | Request Resend | Device->Host | 0 | N/A |  |
+| 0xFD | Unknown Command | Device->Host | 0 | N/A |  |
+| 0xFE | Function Code Not Supported | Device->Host | 0 | N/A |  |
 
 ### CRC
 
 CRC byte transmits last, just before the end sequence is transmitted. It is the value after starting with 0 and applying XOR to each other byte in the packet.
+
+### Function Codes
+
+| Code / Mask | Description |
+| :---: | :---: |
+| 0x00000001 | Controller |
+| 0x00000002 | Storage |
+| 0x00000004 | Screen |
+| 0x00000008 | Timer |
+| 0x00000010 | Audio Input |
+| 0x00000020 | AR Gun |
+| 0x00000040 | Keyboard |
+| 0x00000080 | Gun |
+| 0x00000100 | Vibration |
+| 0x00000200 | Mouse |
+
+### Location Word
+
+| Byte 0 (LSB) | Byte 1 | Byte 2 | Byte 3 (MSB) |
+| :---: | :---: | :---: | :---: |
+| Block | 0x00 | Phase | Partition |
