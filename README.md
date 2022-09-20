@@ -200,31 +200,33 @@ The peripheral may respond with a source address as if it is player 1. As such, 
 
 #### Commands
 
-| Command Value | Description | Communication Direction | Number of Payload Words | Payload Arguments | Notes |
-| :---: | :---: | :---: | :---: | :---: | :---: |
-| 0x01 | Device Info Request | Host->Device | 0 | N/A | Most peripheral devices won't respond to any other command until device info is requested for the device |  |
-| 0x02 | Extended Device Info Request | Host->Device | 0 | N/A |  |
-| 0x03 | Reset | Host->Device | 0 | N/A |  |
-| 0x04 | Shutdown | Host->Device | 0 | N/A |  |
-| 0x05 | Device Info | Device->Host | 2..255 | supported function codes mask; info... | The supported function codes mask will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage |
-| 0x06 | Extended Device Info | Device->Host | 2..255 | supported function codes mask; info... | See note above |
-| 0x07 | Acknowledge | Device->Host | 0 | N/A |  |
-| 0x08 | Data Transfer | Device->Host | 2..255 | function code; data... |  |
-| 0x09 | Get Condition | Host->Device | 1 | function code |  |
-| 0x0A | Get Memory Information | Host->Device | 2 | function code; location word |  |
-| 0x0B | Block Read | Host->Device | 2 | function code; location word |  |
-| 0x0C | Block Write | Host->Device | 3..255 | function code; location word; data... |  |
-| 0x0E | Set Condition | Host->Device | 2..255 | function code; condition... |  |
-| 0xFB | File Error | Device->Host | 0 | N/A |  |
-| 0xFC | Request Resend | Device->Host | 0 | N/A |  |
-| 0xFD | Unknown Command | Device->Host | 0 | N/A |  |
-| 0xFE | Function Code Not Supported | Device->Host | 0 | N/A |  |
+| Command Value | Description | Communication Direction | Number of Payload Words | Payload Arguments | Expected Response | Notes |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 0x01 | Device Info Request | Host->Device | 0 | - | 0x05 | Most peripheral devices won't respond to any other command until device info is requested for the device |
+| 0x02 | Extended Device Info Request | Host->Device | 0 | - | 0x06 |  |
+| 0x03 | Reset | Host->Device | 0 | - | 0x07 |  |
+| 0x04 | Shutdown | Host->Device | 0 | - | 0x07 |  |
+| 0x05 | Device Info | Device->Host | 2..255 | supported function codes mask; info... | - | The supported function codes mask will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage |
+| 0x06 | Extended Device Info | Device->Host | 2..255 | supported function codes mask; info... | - | See note above |
+| 0x07 | Acknowledge | Device->Host | 0 | - | - |  |
+| 0x08 | Data Transfer | Device->Host | 2..255 | function code; data... | - |  |
+| 0x09 | Get Condition | Host->Device | 1 | function code | 0x08 |  |
+| 0x0A | Get Memory Information | Host->Device | 2 | function code; location word | 0x08 |  |
+| 0x0B | Block Read | Host->Device | 2 | function code; location word | 0x08 |  |
+| 0x0C | Block Write | Host->Device | 3..255 | function code; location word; data... | 0x07 |  |
+| 0x0E | Set Condition | Host->Device | 2..255 | function code; condition... | 0x07 |  |
+| 0xFB | File Error | Device->Host | 0 | - | - |  |
+| 0xFC | Request Resend | Device->Host | 0 | - | - |  |
+| 0xFD | Unknown Command | Device->Host | 0 | - | - |  |
+| 0xFE | Function Code Not Supported | Device->Host | 0 | - | - |  |
 
 ### CRC
 
 CRC byte transmits last, just before the end sequence is transmitted. It is the value after starting with 0 and applying XOR to each other byte in the packet.
 
 ### Function Codes
+
+The below are function codes which are used to address functionality in some payloads.
 
 | Code / Mask | Description |
 | :---: | :---: |
@@ -240,6 +242,8 @@ CRC byte transmits last, just before the end sequence is transmitted. It is the 
 | 0x00000200 | Mouse |
 
 ### Location Word
+
+Below defines a location word which is used to address blocks of memory in some peripherals.
 
 | Byte 0 (LSB) | Byte 1 | Byte 2 | Byte 3 (MSB) |
 | :---: | :---: | :---: | :---: |
