@@ -159,7 +159,7 @@ For each bit, the state machine waits for the designated clock to be HIGH then t
 
 Whenever **A** is designated as the clock, the input PIO state machine will detect when **B** toggles HIGH then LOW while **A** remains HIGH. It is assumed that this is the beginning of the end sequence. The state machine will then block on an IRQ so that the application can handle the received data. The application must then stop the input state machine.
 
-## Packet Data Format
+# Maple Bus Packet Data Format
 
 A packet consists of the following data.
 
@@ -167,13 +167,13 @@ A packet consists of the following data.
 | :---: | :---: | :---: |
 | 1 32-Bit Word  | 0 to 255 32-Bit Words | 1 Byte |
 
-### Word Format
+## Word Format
 
 Each word is 32 bits in length, transmitted in little-endian order. The most significant bit of each byte transmits first. This means that the most significant bit of the least significant byte of each word transmits first.
 
 When ASCII text is transmitted, the most significant byte is the first character of the 4 character sequence in each word. On a system that uses little-endian memory storage like the pico, each word needs to be flipped before parsing the payload as a character array.
 
-### Frame Word
+## Frame Word
 
 The following is how a frame word is broken down into its 4 parts.
 
@@ -187,7 +187,7 @@ example:
   <img src="images/Frame_Word.png?raw=true" alt="Frame Word"/>
 </p>
 
-#### Addressing
+### Addressing
 
 The following addresses are used for all components on the bus.
 
@@ -202,37 +202,89 @@ The following addresses are used for all components on the bus.
 
 The peripheral may respond with a source address as if it is player 1. As such, the host should ignore whatever the upper 2 bits that the device uses as its source address.
 
-#### Commands
+### Commands
 
-| Command Value | Description | Communication Direction | Number of Payload Words | Payload Arguments | Expected Response |
-| :---: | :---: | :---: | :---: | :---: | :---: |
-| 0x01 | Device Info Request* | Host->Device | 0 | - | 0x05 |
-| 0x02 | Extended Device Info Request | Host->Device | 0 | - | 0x06 |
-| 0x03 | Reset | Host->Device | 0 | - | 0x07 |
-| 0x04 | Shutdown | Host->Device | 0 | - | 0x07 |
-| 0x05 | Device Info | Device->Host | 2..255 | supported function codes mask; info...** | - |
-| 0x06 | Extended Device Info | Device->Host | 2..255 | supported function codes mask; info...** | - |
-| 0x07 | Acknowledge | Device->Host | 0 | - | - |
-| 0x08 | Data Transfer | Device->Host | 2..255 | function code; data... | - |
-| 0x09 | Get Condition | Host->Device | 1 | function code | 0x08 |
-| 0x0A | Get Memory Information | Host->Device | 2 | function code; location word | 0x08 |
-| 0x0B | Block Read | Host->Device | 2 | function code; location word | 0x08 |
-| 0x0C | Block Write | Host->Device | 3..255 | function code; location word; data... | 0x07 |
-| 0x0E | Set Condition | Host->Device | 2..255 | function code; condition... | 0x07 |
-| 0xFB | File Error | Device->Host | 0 | - | - |
-| 0xFC | Request Resend | Device->Host | 0 | - | - |
-| 0xFD | Unknown Command | Device->Host | 0 | - | - |
-| 0xFE | Function Code Not Supported | Device->Host | 0 | - | - |
+| Command Value | Description | Communication Direction | Number of Payload Words | Expected Response |
+| :---: | :---: | :---: | :---: | :---: |
+| 0x01 | Device Info Request* | Host->Device | 0 | 0x05 |
+| 0x02 | Extended Device Info Request | Host->Device | 0 | 0x06 |
+| 0x03 | Reset | Host->Device | 0 | 0x07 |
+| 0x04 | Shutdown | Host->Device | 0 | 0x07 |
+| 0x05 | Device Info | Device->Host | 28 | - |
+| 0x06 | Extended Device Info | Device->Host | 48 | - |
+| 0x07 | Acknowledge | Device->Host | 0 | - |
+| 0x08 | Data Transfer | Device->Host | 2..255 | - |
+| 0x09 | Get Condition | Host->Device | 1 | 0x08 |
+| 0x0A | Get Memory Information | Host->Device | 2 | 0x08 |
+| 0x0B | Block Read | Host->Device | 2 | 0x08 |
+| 0x0C | Block Write | Host->Device | 3..255 | 0x07 |
+| 0x0E | Set Condition | Host->Device | 2..255 | 0x07 |
+| 0xFB | File Error | Device->Host | 0 | - |
+| 0xFC | Request Resend | Device->Host | 0 | - |
+| 0xFD | Unknown Command | Device->Host | 0 | - |
+| 0xFE | Function Code Not Supported | Device->Host | 0 | - |
 
 *Most peripheral devices won't respond to any other command until device info is requested for the device.
 
-**The supported function codes mask in device info responses will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage. The information following will be in ASCII format with some non-ASCII markers in between ex: "~?@Visual Memory                 Produced By or Under License From SEGA ENTERPRISES,LTD.     |Version 1.005,1999/04/15,315-6208-03,SEGA Visual Memory System BIOS Produced by IOS Produced". See note in Word Format about how to parse ASCII.
-
-**TODO**: It would be nice to define the exact format of the info and extended info strings
-
-### CRC
+## CRC
 
 CRC byte transmits last, just before the end sequence is transmitted. It is the value after starting with 0 and applying XOR to each other byte in the packet.
+
+## Command Payload structures
+
+### Device Info Payload Structure (cmd 0x05)
+
+| Word 0 | Words 1-3 | Word 4 | Words 5-11 | Words 12-26 | Word 27 |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| Supported [function codes](#function-codes) mask | ??? | 2 least significant bytes: first two characters of description ASCII string | The rest of the description ASCII string | Producer information ASCII string | ??? |
+
+The supported function codes mask in device info responses will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage.
+
+### Extended Device Info Payload Structure (cmd 0x06)
+
+| Word 0 | Words 1-3 | Word 4 | Words 5-11 | Words 12-26 | Word 27 | Words 28-47 |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Supported [function codes](#function-codes) mask | ??? | 2 least significant bytes: first two characters of description ASCII string | The rest of the description ASCII string | Producer information ASCII string | ??? | Version information and/or capabilities ASCII string |
+
+The supported function codes mask in device info responses will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage.
+
+### Data Transfer Payload Structure (cmd 0x08)
+
+| Word 0 | Words 1..255 |
+| :---: | :---: |
+| [Function code](#function-codes) | Data - device dependent structure |
+
+### Get Condition Payload Structure (cmd 0x09)
+
+| Word 0 |
+| :---: |
+| [Function code](#function-codes) |
+
+### Get Memory Information Payload Structure (cmd 0x0A)
+
+| Word 0 | Word 1 |
+| :---: | :---: |
+| [Function code](#function-codes) | [Location word](#location-word) |
+
+### Block Read Payload Structure (cmd 0x0B)
+
+| Word 0 | Word 1 |
+| :---: | :---: |
+| [Function code](#function-codes) | [Location word](#location-word) |
+
+### Block Write Payload Structure (cmd 0x0C)
+
+| Word 0 | Word 1 | Words 2..255 |
+| :---: | :---: | :---: |
+| [Function code](#function-codes) | [Location word](#location-word) | Data - device dependent structure |
+
+### Set Condition Payload Structure (cmd 0x0D)
+
+| Word 0 | Words 1..255 |
+| :---: | :---: |
+| [Function code](#function-codes) | Condition - device dependent structure |
+
+## Common Word Types
 
 ### Function Codes
 
@@ -259,7 +311,9 @@ Below defines a location word which is used to address blocks of memory in some 
 | :---: | :---: | :---: | :---: |
 | Block | 0x00 | Phase | Partition |
 
-**TODO**: Define block, phase, partition
+**Block**: Memory block number index
+**Phase**: Sequence number
+**Partition**: Partition number (normally 0)
 
 # External Resources
 

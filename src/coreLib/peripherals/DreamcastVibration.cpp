@@ -8,7 +8,7 @@
 // Performance TremorPak
 
 // Converts pulsation frequency value into approximate pulsation frequency in Hz
-#define PULSATION_FREQ(freqValue) ((freqValue + 1) / 2.0)
+#define PULSATION_FREQ(freqValue) ((freqValue + 1) * 0.5)
 
 // Computes cycle value for given increments, frequency, and duration
 #define COMPUTE_CYCLES(numIncrements, freqValue, durationMs) (                                      \
