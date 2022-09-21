@@ -96,9 +96,13 @@ A Maple Bus consists of 2 signal/clock lines that are labeled SDCKA and SDCKB. H
 
 ### Connecting the Hardware
 
-The Dreamcast uses a 36 ohm resistor and a small fuse in series between the chip I/O and the controller ports. In my tests, I have hard wired the I/O of the pico to the controller port without running into issues (yet). However, I plan on using a 33 ohm resistor and 1/16 amp littelfuse once I actually build things out. These components would be there just in case a faulty device was plugged in. On a fault, the 33 ohm resistor will limit the current draw to 100 mA at 3.3 V for each I/O. This is still twice the rated max I/O current of the RP2040. That's where the fuse will come in - it should blow within a few milliseconds (on average) after a fault occurs. I don't know how much abuse the RP2040 can take, but I assume it should be able to survive that. You'd then just be left with a dead port instead of a dead chip.
+The Dreamcast uses 36 ohm resistors and small fuses in series between the 8 chip I/O and the 8 controller port I/O. I have decided to use lower value resistors because some resistance is built into the pico's outputs already. There is some weirdness with plugging in a VMU without a battery installed which gets worse with higher resistor values. I'm using littelfuse 1/16 A quick burning fuses, and none of them have blown during my tests. They're mostly optional, but I'd suggest using higher value resistors if they are omitted as a safety measure. Anything higher than 100-ohm starts to cause communication errors though due to capacitances on the I/O.
 
-I played around with higher resistance on these lines, but any more than around 100 ohms limits the charge/discharge speed and causes communication errors. I feel like low value resistors and quick blowing fuses provide the best tradeoff while still keeping cost and complexity low. It also matches Sega's design.
+This is generally the setup I have been testing with:
+
+<p align="center">
+  <img src="images/schematic.png?raw=true" alt="Schematic"/>
+</p>
 
 ## Generating Maple Bus Output
 
@@ -240,6 +244,8 @@ CRC byte transmits last, just before the end sequence is transmitted. It is the 
 
 The supported function codes mask in device info responses will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage.
 
+Refer to the [word format](#word-format) section about how to parse ASCII strings.
+
 ### Extended Device Info Payload Structure (cmd 0x06)
 
 | Word 0 | Words 1-3 | Word 4 | Words 5-11 | Words 12-26 | Word 27 | Words 28-47 |
@@ -247,6 +253,8 @@ The supported function codes mask in device info responses will contain the bitm
 | Supported [function codes](#function-codes) mask | ??? | 2 least significant bytes: first two characters of description ASCII string | The rest of the description ASCII string | Producer information ASCII string | ??? | Version information and/or capabilities ASCII string |
 
 The supported function codes mask in device info responses will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage.
+
+Refer to the [word format](#word-format) section about how to parse ASCII strings.
 
 ### Data Transfer Payload Structure (cmd 0x08)
 
@@ -311,11 +319,9 @@ Below defines a location word which is used to address blocks of memory in some 
 | :---: | :---: | :---: | :---: |
 | Block | 0x00 | Phase | Partition |
 
-**Block**: Memory block number index
-
-**Phase**: Sequence number
-
-**Partition**: Partition number (normally 0)
+* **Block**: Memory block number index
+* **Phase**: Sequence number
+* **Partition**: Partition number (normally 0)
 
 # External Resources
 
