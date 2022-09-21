@@ -312,7 +312,9 @@ Below defines a location word which is used to address blocks of memory in some 
 | Block | 0x00 | Phase | Partition |
 
 **Block**: Memory block number index
+
 **Phase**: Sequence number
+
 **Partition**: Partition number (normally 0)
 
 # External Resources
