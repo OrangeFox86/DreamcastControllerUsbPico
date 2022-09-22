@@ -230,10 +230,6 @@ The peripheral may respond with a source address as if it is player 1. As such, 
 
 *Most peripheral devices won't respond to any other command until device info is requested for the device.
 
-## CRC
-
-CRC byte transmits last, just before the end sequence is transmitted. It is the value after starting with 0 and applying XOR to each other byte in the packet.
-
 ## Command Payload structures
 
 ### Device Info Payload Structure (cmd 0x05)
@@ -322,6 +318,10 @@ Below defines a location word which is used to address blocks of memory in some 
 * **Block**: Memory block number index
 * **Phase**: Sequence number
 * **Partition**: Partition number (normally 0)
+
+## CRC
+
+CRC byte transmits last, just before the end sequence is transmitted. It is the value after starting with 0 and applying XOR to each other byte in the packet.
 
 # External Resources
 
