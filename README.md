@@ -163,13 +163,7 @@ For each bit, the state machine waits for the designated clock to be HIGH then t
 
 Whenever **A** is designated as the clock, the input PIO state machine will detect when **B** toggles HIGH then LOW while **A** remains HIGH. It is assumed that this is the beginning of the end sequence. The state machine will then block on an IRQ so that the application can handle the received data. The application must then stop the input state machine.
 
-# Maple Bus Packet Data Format
-
-A packet consists of the following data.
-
-| Frame | Payload | CRC |
-| :---: | :---: | :---: |
-| 1 32-Bit Word  | 0 to 255 32-Bit Words | 1 Byte |
+# Maple Bus Packet
 
 ## Word Format
 
@@ -177,13 +171,21 @@ Each word is 32 bits in length, transmitted in little-endian order. The most sig
 
 When ASCII text is transmitted, the most significant byte is the first character of the 4 character sequence in each word. On a system that uses little-endian memory storage like the pico, each word needs to be flipped before parsing the payload as a character array.
 
-## Frame Word
+## Packet Data Format
+
+A packet consists of the following data.
+
+* **[Frame](#frame-word):** 1 32-Bit Word
+* **[Payload](#payload):** 0 to 255 32-Bit Words
+* **[CRC](#crc):** 1 Byte
+
+### Frame Word
 
 The following is how a frame word is broken down into its 4 parts.
 
 | Byte 0 (LSB) | Byte 1 | Byte 2 | Byte 3 (MSB) |
 | :---: | :---: | :---: | :---: |
-| Number of Words<br>in Payload | Sender<br>Address | Recipient<br>Address | Command |
+| Number of Words<br>in Payload | Sender<br>[Address](#addressing) | Recipient<br>[Address](#addressing) | [Command](#commands) |
 
 example:
 
@@ -191,7 +193,7 @@ example:
   <img src="images/Frame_Word.png?raw=true" alt="Frame Word"/>
 </p>
 
-### Addressing
+#### Addressing
 
 The following addresses are used for all components on the bus.
 
@@ -206,7 +208,7 @@ The following addresses are used for all components on the bus.
 
 The peripheral may respond with a source address as if it is player 1. As such, the host should ignore whatever the upper 2 bits that the device uses as its source address.
 
-### Commands
+#### Commands
 
 | Command Value | Description | Communication Direction | Number of Payload Words | Expected Response |
 | :---: | :---: | :---: | :---: | :---: |
@@ -230,9 +232,11 @@ The peripheral may respond with a source address as if it is player 1. As such, 
 
 *Most peripheral devices won't respond to any other command until device info is requested for the device.
 
-## Command Payload structures
+### Payload
 
-### Device Info Payload Structure (cmd 0x05)
+The structure of a payload is structured based on the command used in the frame word.
+
+#### Device Info Payload Structure (cmd 0x05)
 
 | Word 0 | Words 1-3 | Word 4 | Words 5-11 | Words 12-26 | Word 27 |
 | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -242,7 +246,7 @@ The supported function codes mask in device info responses will contain the bitm
 
 Refer to the [word format](#word-format) section about how to parse ASCII strings.
 
-### Extended Device Info Payload Structure (cmd 0x06)
+#### Extended Device Info Payload Structure (cmd 0x06)
 
 | Word 0 | Words 1-3 | Word 4 | Words 5-11 | Words 12-26 | Word 27 | Words 28-47 |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -252,45 +256,45 @@ The supported function codes mask in device info responses will contain the bitm
 
 Refer to the [word format](#word-format) section about how to parse ASCII strings.
 
-### Data Transfer Payload Structure (cmd 0x08)
+#### Data Transfer Payload Structure (cmd 0x08)
 
 | Word 0 | Words 1..255 |
 | :---: | :---: |
 | [Function code](#function-codes) | Data - device dependent structure |
 
-### Get Condition Payload Structure (cmd 0x09)
+#### Get Condition Payload Structure (cmd 0x09)
 
 | Word 0 |
 | :---: |
 | [Function code](#function-codes) |
 
-### Get Memory Information Payload Structure (cmd 0x0A)
+#### Get Memory Information Payload Structure (cmd 0x0A)
 
 | Word 0 | Word 1 |
 | :---: | :---: |
 | [Function code](#function-codes) | [Location word](#location-word) |
 
-### Block Read Payload Structure (cmd 0x0B)
+#### Block Read Payload Structure (cmd 0x0B)
 
 | Word 0 | Word 1 |
 | :---: | :---: |
 | [Function code](#function-codes) | [Location word](#location-word) |
 
-### Block Write Payload Structure (cmd 0x0C)
+#### Block Write Payload Structure (cmd 0x0C)
 
 | Word 0 | Word 1 | Words 2..255 |
 | :---: | :---: | :---: |
 | [Function code](#function-codes) | [Location word](#location-word) | Data - device dependent structure |
 
-### Set Condition Payload Structure (cmd 0x0D)
+#### Set Condition Payload Structure (cmd 0x0D)
 
 | Word 0 | Words 1..255 |
 | :---: | :---: |
 | [Function code](#function-codes) | Condition - device dependent structure |
 
-## Common Word Types
+#### Common Payload Word Types
 
-### Function Codes
+##### Function Codes
 
 The below are function codes which are used to address functionality in some payloads.
 
@@ -307,7 +311,7 @@ The below are function codes which are used to address functionality in some pay
 | 0x00000100 | Vibration |
 | 0x00000200 | Mouse |
 
-### Location Word
+##### Location Word
 
 Below defines a location word which is used to address blocks of memory in some peripherals.
 
@@ -319,7 +323,7 @@ Below defines a location word which is used to address blocks of memory in some 
 * **Phase**: Sequence number
 * **Partition**: Partition number (normally 0)
 
-## CRC
+### CRC
 
 CRC byte transmits last, just before the end sequence is transmitted. It is the value after starting with 0 and applying XOR to each other byte in the packet.
 
