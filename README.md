@@ -167,9 +167,9 @@ Whenever **A** is designated as the clock, the input PIO state machine will dete
 
 ## Word Format
 
-Each word is 32 bits in length, transmitted in little-endian order. The most significant bit of each byte transmits first. This means that the most significant bit of the least significant byte of each word transmits first.
+Each word is 32 bits in length, transmitted in little-endian byte order. The most significant bit of each byte transmits first. This means that the most significant bit of the least significant byte of each word transmits first. Refer to the [Frame Word](#frame-word) section for an example of how a word is formed.
 
-When ASCII text is transmitted, the most significant byte is the first character of the 4 character sequence in each word. On a system that uses little-endian memory storage like the pico, each word needs to be flipped before parsing the payload as a character array.
+When ASCII text is transmitted, the most significant byte is the first character of the 4 character sequence in each word. This means that the byte order of each word needs to be flipped before parsing the payload as a character array. The size of the ASCII payload section is pre-determined based on the command. No NULL termination byte is supplied at the end of the string, and spaces are used to pad out remaining characters at the end of the string.
 
 ## Packet Data Format
 
@@ -240,21 +240,21 @@ The structure of a payload is structured based on the command used in the frame 
 
 | Word 0 | Words 1-3 | Word 4 | Words 5-11 | Words 12-26 | Word 27 |
 | :---: | :---: | :---: | :---: | :---: | :---: |
-| Supported [function codes](#function-codes) mask | ??? | 2 least significant bytes: first two characters of description ASCII string | The rest of the description ASCII string | Producer information ASCII string | ??? |
+| Supported [function codes](#function-codes) mask* | ??? | 2 least significant bytes: first two characters of description ASCII string** | The rest of the description ASCII string** | Producer information ASCII string** | ??? |
 
-The supported function codes mask in device info responses will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage.
+*The supported function codes mask in device info responses will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage.
 
-Refer to the [word format](#word-format) section about how to parse ASCII strings.
+**Refer to the [word format](#word-format) section about how to parse ASCII strings.
 
 #### Extended Device Info Payload Structure (cmd 0x06)
 
 | Word 0 | Words 1-3 | Word 4 | Words 5-11 | Words 12-26 | Word 27 | Words 28-47 |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Supported [function codes](#function-codes) mask | ??? | 2 least significant bytes: first two characters of description ASCII string | The rest of the description ASCII string | Producer information ASCII string | ??? | Version information and/or capabilities ASCII string |
+| Supported [function codes](#function-codes) mask* | ??? | 2 least significant bytes: first two characters of description ASCII string** | The rest of the description ASCII string** | Producer information ASCII string** | ??? | Version information and/or capabilities ASCII string** |
 
-The supported function codes mask in device info responses will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage.
+*The supported function codes mask in device info responses will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage.
 
-Refer to the [word format](#word-format) section about how to parse ASCII strings.
+**Refer to the [word format](#word-format) section about how to parse ASCII strings.
 
 #### Data Transfer Payload Structure (cmd 0x08)
 
