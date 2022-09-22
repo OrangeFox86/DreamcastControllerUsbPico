@@ -216,15 +216,15 @@ The peripheral may respond with a source address as if it is player 1. As such, 
 | 0x02 | Extended Device Info Request | Host->Device | 0 | 0x06 |
 | 0x03 | Reset | Host->Device | 0 | 0x07 |
 | 0x04 | Shutdown | Host->Device | 0 | 0x07 |
-| 0x05 | Device Info | Device->Host | 28 | - |
-| 0x06 | Extended Device Info | Device->Host | 48 | - |
+| 0x05 | Device Info | Device->Host | [28](#device-info-payload-structure-cmd-0x05) | - |
+| 0x06 | Extended Device Info | Device->Host | [48](#extended-device-info-payload-structure-cmd-0x06) | - |
 | 0x07 | Acknowledge | Device->Host | 0 | - |
-| 0x08 | Data Transfer | Device->Host | 2..255 | - |
-| 0x09 | Get Condition | Host->Device | 1 | 0x08 |
-| 0x0A | Get Memory Information | Host->Device | 2 | 0x08 |
-| 0x0B | Block Read | Host->Device | 2 | 0x08 |
-| 0x0C | Block Write | Host->Device | 3..255 | 0x07 |
-| 0x0E | Set Condition | Host->Device | 2..255 | 0x07 |
+| 0x08 | Data Transfer | Device->Host | [2..255](#data-transfer-payload-structure-cmd-0x08) | - |
+| 0x09 | Get Condition | Host->Device | [1](#get-condition-payload-structure-cmd-0x09) | 0x08 |
+| 0x0A | Get Memory Information | Host->Device | [2](#get-memory-information-payload-structure-cmd-0x0a) | 0x08 |
+| 0x0B | Block Read | Host->Device | [2](#block-read-payload-structure-cmd-0x0b) | 0x08 |
+| 0x0C | Block Write | Host->Device | [3..255](#block-write-payload-structure-cmd-0x0c) | 0x07 |
+| 0x0E | Set Condition | Host->Device | [2..255](#set-condition-payload-structure-cmd-0x0e) | 0x07 |
 | 0xFB | File Error | Device->Host | 0 | - |
 | 0xFC | Request Resend | Device->Host | 0 | - |
 | 0xFD | Unknown Command | Device->Host | 0 | - |
@@ -286,7 +286,7 @@ Refer to the [word format](#word-format) section about how to parse ASCII string
 | :---: | :---: | :---: |
 | [Function code](#function-codes) | [Location word](#location-word) | Data - device dependent structure |
 
-#### Set Condition Payload Structure (cmd 0x0D)
+#### Set Condition Payload Structure (cmd 0x0E)
 
 | Word 0 | Words 1..255 |
 | :---: | :---: |
