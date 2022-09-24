@@ -106,12 +106,6 @@ This is generally the setup I have been testing with:
 
 The [maple_out PIO state machine](src/hal/MapleBus/maple_out.pio) handles Maple Bus output.
 
-The [MapleBus class](src/hal/MapleBus/MapleBus.hpp) operates as the interface between the microcontroller's code and the PIO state machines. When a write operation is started, the MapleBus class loads data into the Direct Memory Access (DMA) channel designated for use with the maple_out state machine in the MapleBus instance. The DMA will automatically load data onto the TX FIFO of the output PIO state machine so it won't stall waiting for more data.
-
-The first 32-bit word loaded onto the output DMA is how many transmission bits will follow. In order for the state machine to process things properly, `(x - 8) % 32 == 0 && x >= 40` must be true where x is that first 32-bit word. The rest of the data loaded is the entirety of a single packet.
-
-A blocking IRQ is triggered once the maple_out state machine completes the transfer. This then allows MapleBus to stop the maple_out state machine and start the maple_in state machine.
-
 ### Start Sequence
 
 Every packet begins with a start sequence. Note that there are different start sequences which determine how the following bit sequence should be handled, but this project mainly focuses on the standard start sequence used to communicate with a standard Dreamcast controller and its sub-peripherals.
@@ -155,8 +149,6 @@ For reference, Dreamcast controllers usually transmit a little slower with each 
 
 The [maple_in PIO state machine](src/hal/MapleBus/maple_in.pio) handles Maple Bus input. Some concessions had to be made in order to handle all input operations within the 32 instruction set limit of the input PIO block.
 
-The [MapleBus class](src/hal/MapleBus/MapleBus.hpp) operates as the interface between the microcontroller's code and the PIO state machines. A Direct Memory Access (DMA) channel is setup to automatically pop items off of the RX FIFO so that the maple_in state machine doesn't stall while reading.
-
 ### Sampling the Start Sequence
 
 The input PIO state machine will wait until **A** transitions LOW and then count how many times **B** toggles LOW then HIGH while making sure **A** doesn't transition HIGH until after **B** transitions HIGH. If the toggle count isn't 4, then the state machine keeps waiting. Otherwise, the state machine triggers a non-blocking IRQ to signal to the application that the state machine is now reading data.
@@ -167,7 +159,17 @@ For each bit, the state machine waits for the designated clock to be HIGH then t
 
 ### Sampling the End Sequence
 
-Whenever **A** is designated as the clock, the input PIO state machine will detect when **B** toggles HIGH then LOW while **A** remains HIGH. It is assumed that this is the beginning of the end sequence. The state machine will then block on an IRQ so that the application can handle the received data. The associated [MapleBus object](src/hal/MapleBus/MapleBus.hpp) must then stop the input state machine and process the results.
+Whenever **A** is designated as the clock, the input PIO state machine will detect when **B** toggles HIGH then LOW while **A** remains HIGH. It is assumed that this is the beginning of the end sequence. The state machine will then block on an IRQ so that the application can handle the received data.
+
+## Interfacing with the PIO State Machines
+
+The [MapleBus class](src/hal/MapleBus/MapleBus.hpp) operates as the interface between the microcontroller's code and the PIO state machines. When the write method is called, data is loaded into the Direct Memory Access (DMA) channel designated for use with the maple_out state machine in the MapleBus instance. The DMA will automatically load data onto the TX FIFO of the output PIO state machine so it won't stall waiting for more data.
+
+The first 32-bit word loaded onto the output DMA is how many transmission bits will follow. In order for the state machine to process things properly, `(x - 8) % 32 == 0 && x >= 40` must be true where x is that first 32-bit word i.e. every word is 32 bits long and at least frame and CRC is in the packet. The rest of the data loaded is the entirety of a single packet.
+
+A blocking IRQ is triggered once the maple_out state machine completes the transfer. This then allows MapleBus to stop the maple_out state machine and start the maple_in state machine.
+
+A Direct Memory Access (DMA) channel is setup to automatically pop items off of the RX FIFO of the maple_in state machine so that the maple_in state machine doesn't stall while reading. Once the IRQ is triggered by the maple_in state machine, MapleBus stops the state machine and reads from data in the DMA.
 
 # Maple Bus Packet
 
