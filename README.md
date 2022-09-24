@@ -165,11 +165,17 @@ Whenever **A** is designated as the clock, the input PIO state machine will dete
 
 The [MapleBus class](src/hal/MapleBus/MapleBus.hpp) operates as the interface between the microcontroller's code and the PIO state machines. When the write method is called, data is loaded into the Direct Memory Access (DMA) channel designated for use with the maple_out state machine in the MapleBus instance. The DMA will automatically load data onto the TX FIFO of the output PIO state machine so it won't stall waiting for more data.
 
-The first 32-bit word loaded onto the output DMA is how many transmission bits will follow. In order for the state machine to process things properly, `(x - 8) % 32 == 0 && x >= 40` must be true where x is that first 32-bit word i.e. every word is 32 bits long and at least frame and CRC is in the packet. The rest of the data loaded is the entirety of a single packet.
+The first 32-bit word loaded onto the output DMA is how many transmission bits will follow. In order for the state machine to process things properly, `(x - 8) % 32 == 0 && x >= 40` must be true where x is that first 32-bit word i.e. every word is 32 bits long and at least frame and CRC is in the packet. The rest of the data loaded is the entirety of a single packet. This word needs to be loaded with byte order flipped because byte swap is enabled in the DMA so that all other words are written in the correct byte order.
 
 A blocking IRQ is triggered once the maple_out state machine completes the transfer. This then allows MapleBus to stop the maple_out state machine and start the maple_in state machine.
 
 A Direct Memory Access (DMA) channel is setup to automatically pop items off of the RX FIFO of the maple_in state machine so that the maple_in state machine doesn't stall while reading. Once the IRQ is triggered by the maple_in state machine, MapleBus stops the state machine and reads from data in the DMA.
+
+The following lays out the phases of the state machine handled within the MapleBus class.
+
+<p align="center">
+  <img src="images/MapleBus_Class_State_Machine.png?raw=true" alt="MapleBus Class State Machine"/>
+</p>
 
 # Maple Bus Packet
 
@@ -349,7 +355,7 @@ CRC byte transmits last, just before the end sequence is transmitted. It is the 
 
 ## Vibration
 
-The set condition command is used to activate vibration. A lot of trial and error went into reverse engineering the structure of the vibration condition word. First, every value in the range 0x00000000 to 0xFFFFFFFF was sent from some test code to the peripheral, and all that received an ACKNOWLEDGE response was logged. This helped get an idea of how each byte value is broken down with their valid ranges. Then the meaning of each value was determined by a lot of trial and error.
+The "set condition" command is used to activate vibration. A lot of trial and error went into reverse engineering the structure of the vibration condition word. First, every value in the range 0x00000000 to 0xFFFFFFFF was sent from some test code to the peripheral, and all that received an ACKNOWLEDGE response was logged. This helped get an idea of how each byte value is broken down with their valid ranges. Then the meaning of each value was determined by a lot of trial and error.
 
 The following are the two devices that were used for testing.
 - Sega OEM Puru Puru Pack

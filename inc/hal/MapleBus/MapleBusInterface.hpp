@@ -18,7 +18,7 @@ class MapleBusInterface
             IDLE,
             //! Write is currently in progress
             WRITE_IN_PROGRESS,
-            //! Write has failed
+            //! Write has failed (impulse response used only as a result of processing events)
             WRITE_FAILED,
             //! Write completed and no read was expected
             WRITE_COMPLETE,
@@ -26,7 +26,7 @@ class MapleBusInterface
             WAITING_FOR_READ_START,
             //! Currently waiting for response
             READ_IN_PROGRESS,
-            //! Read has failed
+            //! Read has failed (impulse response used only as a result of processing events)
             READ_FAILED,
             //! Write and read cycle completed
             READ_COMPLETE,

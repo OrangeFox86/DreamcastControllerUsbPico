@@ -232,7 +232,7 @@ bool MapleBus::write(const MaplePacket& packet,
 
             if (expectResponse)
             {
-                // Start reading
+                // Start read DMA (won't start filling until mSmIn.start() is called)
                 mLastReadTransferCount = sizeof(mReadBuffer) / sizeof(mReadBuffer[0]);
                 dma_channel_transfer_to_buffer_now(
                     mDmaReadChannel, mReadBuffer, mLastReadTransferCount);
@@ -249,6 +249,39 @@ bool MapleBus::write(const MaplePacket& packet,
 
             rv = true;
         }
+    }
+
+    return rv;
+}
+
+bool MapleBus::startRead(uint64_t readTimeoutUs)
+{
+    bool rv = false;
+
+    if (!isBusy())
+    {
+        // Make sure previous DMA instances are killed
+        dma_channel_abort(mDmaWriteChannel);
+        dma_channel_abort(mDmaReadChannel);
+
+        // Start read DMA
+        mLastReadTransferCount = sizeof(mReadBuffer) / sizeof(mReadBuffer[0]);
+        dma_channel_transfer_to_buffer_now(
+            mDmaReadChannel, mReadBuffer, mLastReadTransferCount);
+
+        // Setup state
+        if (readTimeoutUs == std::numeric_limits<uint64_t>::max())
+        {
+            mProcKillTime = std::numeric_limits<uint64_t>::max();
+        }
+        else
+        {
+            mProcKillTime = time_us_64() + readTimeoutUs;
+        }
+        mCurrentPhase = Phase::WAITING_FOR_READ_START;
+
+        // Start reading
+        mSmIn.start();
     }
 
     return rv;
@@ -277,6 +310,9 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
         if (dmaWordsRead > 1)
         {
             // The frame word always contains how many proceeding words there are [0,255]
+            // For at least 1 instance (VMU extended device info) the number of words received will
+            // not match len. For this reason, the following allows for more words to be read than
+            // specified by the frame word as long as the CRC is still correct.
             uint32_t len = mReadBuffer[0] & 0xFF;
             if (len <= (dmaWordsRead - 2))
             {
@@ -320,15 +356,22 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
     }
     else if (status.phase == Phase::READ_IN_PROGRESS)
     {
-        // Check for inter-word timeout
+        // Check for buffer overflow or inter-word timeout
+        // The RX transfer count decrements from buffer size down to 0 as words are read in maple_in
         uint32_t transferCount = dma_channel_hw_addr(mDmaReadChannel)->transfer_count;
-        if (mLastReadTransferCount == transferCount)
+        if (transferCount == 0)
+        {
+            // 1 extra word is allocated in the buffer, so transfer count should never reach 0
+            status.phase = Phase::READ_FAILED;
+            mCurrentPhase = Phase::IDLE;
+        }
+        else if (mLastReadTransferCount == transferCount)
         {
             if (currentTimeUs > mLastReceivedWordTimeUs
                 && (currentTimeUs - mLastReceivedWordTimeUs) >= MAPLE_INTER_WORD_READ_TIMEOUT_US)
             {
+                // Inter-word timeout occurred
                 mSmIn.stop();
-                // READ_FAILED is an impulse phase. Then the state machine goes back to IDLE.
                 status.phase = Phase::READ_FAILED;
                 mCurrentPhase = Phase::IDLE;
             }
@@ -348,7 +391,6 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
         if (status.phase == Phase::WAITING_FOR_READ_START)
         {
             mSmIn.stop();
-            // READ_FAILED is an impulse phase. Then the state machine goes back to IDLE.
             status.phase = Phase::READ_FAILED;
             mCurrentPhase = Phase::IDLE;
         }
@@ -358,7 +400,6 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
             // have *just* transitioned to read as we were processing this timeout)
             mSmOut.stop();
             mSmIn.stop();
-            // WRITE_FAILED is an impulse phase. Then the state machine goes back to IDLE.
             status.phase = Phase::WRITE_FAILED;
             mCurrentPhase = Phase::IDLE;
         }
@@ -381,9 +422,9 @@ void MapleBus::crc8(volatile const uint32_t *source, uint32_t len, uint8_t &crc)
 
 void MapleBus::crc8(uint32_t source, uint8_t &crc)
 {
-    // Condense the 32-bit CRC into an 8-bit CRC
+    // Set each byte of the source word into the crc
     const uint8_t* src = reinterpret_cast<uint8_t*>(&source);
-    for (uint i = 0; i < 4; ++i, ++src)
+    for (uint i = 0; i < sizeof(source); ++i, ++src)
     {
         crc ^= *src;
     }

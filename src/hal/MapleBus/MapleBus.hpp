@@ -2,6 +2,7 @@
 #define __MAPLE_BUS_H__
 
 #include <memory>
+#include <limits>
 #include "hal/MapleBus/MapleBusInterface.hpp"
 #include "pico/stdlib.h"
 #include "hardware/structs/systick.h"
@@ -12,13 +13,7 @@
 #include "maple_out.pio.h"
 #include "hardware/pio.h"
 
-//! Handles communication over Maple Bus. This class is currently only setup to handle communication
-//! from a host which initiates communication. This can easily be modified to handle communication
-//! for a device, but that is not a use-case of this project.
-//!
-//! If this is ever modified to be a device, keep in mind that the maple_in state machine doesn't
-//! sample the full end sequence. The application side should wait a sufficient amount of time
-//! after bus goes neutral before responding in that case. Waiting for neutral bus is enough anyway.
+//! Handles communication over Maple Bus.
 //!
 //! @warning this class is not "thread safe" - it should only be used by 1 core.
 class MapleBus : public MapleBusInterface
@@ -30,11 +25,24 @@ class MapleBus : public MapleBusInterface
         MapleBus(uint32_t pinA, uint8_t senderAddr);
 
         //! Writes a packet to the maple bus
+        //! @post processEvents() must periodically be called to check status
         //! @param[in] packet  The packet to send (sender address will be overloaded)
         //! @param[in] expectResponse  Set to true in order to start receive after send is complete
         //! @returns true iff the bus was "open" and send has started
         bool write(const MaplePacket& packet,
                    bool expectResponse);
+
+        //! Begins waiting for input
+        //! @post processEvents() must periodically be called to check status
+        //! @note This is NOT meant to be called if bus is setup as a host
+        //! @note Keep in mind that the maple_in state machine doesn't  sample the full end
+        //!       sequence. The application side should wait a sufficient amount of time after bus
+        //!       goes neutral before responding in that case. Waiting for neutral bus within
+        //!       write() may be enough though (as long as MAPLE_OPEN_LINE_CHECK_TIME_US is set to
+        //!       at least 2).
+        //! @param[in] readTimeoutUs  Minimum number of microseconds to read for (optional)
+        //! @returns true iff bus was not busy and read started
+        bool startRead(uint64_t readTimeoutUs=std::numeric_limits<uint64_t>::max());
 
         //! Called from a PIO ISR when read has completed for this sender.
         void readIsr();
@@ -106,8 +114,8 @@ class MapleBus : public MapleBusInterface
 
         //! The output word buffer - 256 + 2 extra words for bit count and CRC
         volatile uint32_t mWriteBuffer[258];
-        //! The input word buffer - 256 + 1 extra word for CRC
-        volatile uint32_t mReadBuffer[257];
+        //! The input word buffer - 256 + 1 extra word for CRC + 1 for overflow
+        volatile uint32_t mReadBuffer[258];
         //! Persistent storage for external use after processEvents call
         uint32_t mLastRead[256];
         //! Current phase of the state machine
