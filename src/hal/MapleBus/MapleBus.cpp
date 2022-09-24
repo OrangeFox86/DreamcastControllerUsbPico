@@ -4,7 +4,8 @@
 #include "hardware/regs/m0plus.h"
 #include "hardware/irq.h"
 #include "configuration.h"
-#include "maple.pio.h"
+#include "maple_in.pio.h"
+#include "maple_out.pio.h"
 #include "string.h"
 #include "utils.h"
 
@@ -120,8 +121,8 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     dma_channel_config c = dma_channel_get_default_config(mDmaWriteChannel);
     channel_config_set_read_increment(&c, true);
     channel_config_set_write_increment(&c, false);
-    // Bytes are instead manually swapped since CRC needs to be computed anyway
-    // channel_config_set_bswap(&c, true);
+    // Bytes need to be swapped so the least significant byte is sent first
+    channel_config_set_bswap(&c, true);
     channel_config_set_dreq(&c, pio_get_dreq(mSmOut.mProgram.mPio, mSmOut.mSmIdx, true));
     dma_channel_configure(mDmaWriteChannel,
                             &c,
@@ -134,8 +135,8 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
     c = dma_channel_get_default_config(mDmaReadChannel);
     channel_config_set_read_increment(&c, false);
     channel_config_set_write_increment(&c, true);
-    // Bytes are instead manually swapped since CRC needs to be computed anyway
-    // channel_config_set_bswap(&c, true);
+    // Bytes need to be swapped since bytes are loaded to the left by default
+    channel_config_set_bswap(&c, true);
     channel_config_set_dreq(&c, pio_get_dreq(mSmIn.mProgram.mPio, mSmIn.mSmIdx, false));
     dma_channel_configure(mDmaReadChannel,
                             &c,
@@ -209,22 +210,19 @@ bool MapleBus::write(const MaplePacket& packet,
         dma_channel_abort(mDmaReadChannel);
 
         // First 32 bits sent to the state machine is how many bits to output.
-        uint8_t len = packet.payload.size();
-        mWriteBuffer[0] = packet.getNumTotalBits();
-        // The PIO state machine reads from "left to right" to achieve the right bit order, but the data
-        // out needs to be little endian. Therefore, the data bytes needs to be swapped. Might as well
-        // Compute the CRC while we're at it.
+        // Since channel_config_set_bswap is set to make the packet bytes the right order, these
+        // bytes need to be flipped so the PIO state machine can work with it correctly.
+        mWriteBuffer[0] = flipWordBytes(packet.getNumTotalBits());
+        // Load the frame word and start computing the crc
+        mWriteBuffer[1] = packet.getFrameWord(mSenderAddr);
         uint8_t crc = 0;
-        swapByteOrder(mWriteBuffer[1], packet.getFrameWord(mSenderAddr), crc);
-        volatile uint32_t* pDest = &mWriteBuffer[2];
-        for (std::vector<uint32_t>::const_iterator iter = packet.payload.begin();
-             iter != packet.payload.end();
-             ++iter, ++pDest)
-        {
-            swapByteOrder(*pDest, *iter, crc);
-        }
-        // Last byte left shifted out is the CRC
-        mWriteBuffer[len + 2] = crc << 24;
+        crc8(mWriteBuffer[1], crc);
+        // Load the rest of the packet
+        uint8_t len = packet.payload.size();
+        wordCpy(&mWriteBuffer[2], packet.payload.data(), len);
+        crc8(&mWriteBuffer[2], len, crc);
+        // Last byte is the CRC
+        mWriteBuffer[len + 2] = crc;
 
         if (writeInit())
         {
@@ -279,19 +277,15 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
         if (dmaWordsRead > 1)
         {
             // The frame word always contains how many proceeding words there are [0,255]
-            uint32_t len = mReadBuffer[0] >> 24;
+            uint32_t len = mReadBuffer[0] & 0xFF;
             if (len <= (dmaWordsRead - 2))
             {
+                // Copy what was read and compute CRC
+                wordCpy(&mLastRead[0], &mReadBuffer[0], dmaWordsRead - 1);
                 uint8_t crc = 0;
-                // Bytes are loaded to the left, but the first byte is actually the LSB.
-                // This means we need to byte swap (compute crc while we're at it)
-                for (uint32_t i = 0; i < dmaWordsRead - 1; ++i)
-                {
-                    swapByteOrder(mLastRead[i], mReadBuffer[i], crc);
-                }
-                // crc in the last word does not need to be byte swapped
-                // Data is only valid if the CRC is correct and first word has something in it (cmd 0 is invalid)
-                if (crc == mReadBuffer[dmaWordsRead - 1])
+                crc8(&mLastRead[0], dmaWordsRead - 1, crc);
+                // Data is only valid if the CRC is correct
+                if (crc == (mReadBuffer[dmaWordsRead - 1] >> 24))
                 {
                     status.readBuffer = mLastRead;
                     status.readBufferLen = dmaWordsRead - 1;
@@ -371,4 +365,41 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
     }
 
     return status;
+}
+
+void MapleBus::crc8(volatile const uint32_t *source, uint32_t len, uint8_t &crc)
+{
+    // Compute a 32-bit CRC
+    uint32_t crc32 = 0;
+    for (; len > 0; --len, ++source)
+    {
+        crc32 ^= *source;
+    }
+    // Condense to 8-bit CRC
+    crc8(crc32, crc);
+}
+
+void MapleBus::crc8(uint32_t source, uint8_t &crc)
+{
+    // Condense the 32-bit CRC into an 8-bit CRC
+    const uint8_t* src = reinterpret_cast<uint8_t*>(&source);
+    for (uint i = 0; i < 4; ++i, ++src)
+    {
+        crc ^= *src;
+    }
+}
+
+void MapleBus::wordCpy(volatile uint32_t* dest,
+                       volatile const uint32_t* source,
+                       uint32_t len)
+{
+    for (; len > 0; --len, ++source, ++dest)
+    {
+        *dest = *source;
+    }
+}
+
+uint32_t MapleBus::flipWordBytes(const uint32_t& word)
+{
+    return (word << 24) | (word << 8 & 0xFF0000) | (word >> 8 & 0xFF00) | (word >> 24);
 }

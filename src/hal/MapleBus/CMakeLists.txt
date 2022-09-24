@@ -5,7 +5,8 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 file(GLOB SRC "${CMAKE_CURRENT_SOURCE_DIR}/*.c*")
 
 add_library(hal-MapleBus STATIC ${SRC})
-pico_generate_pio_header(hal-MapleBus ${CMAKE_CURRENT_LIST_DIR}/maple.pio)
+pico_generate_pio_header(hal-MapleBus ${CMAKE_CURRENT_LIST_DIR}/maple_in.pio)
+pico_generate_pio_header(hal-MapleBus ${CMAKE_CURRENT_LIST_DIR}/maple_out.pio)
 target_link_libraries(hal-MapleBus
   PUBLIC
     pico_stdlib

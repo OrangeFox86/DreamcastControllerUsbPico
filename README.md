@@ -31,7 +31,7 @@ This is a work in progress. Current progress:
 
 ## Why the RP2040 is a Game Changer
 
-To emulate a bespoke bus such as the Maple Bus on an MCU, one would usually either need to add extra hardware or bit bang the interface. This is not true with the RP2040 and its PIO. Think of it as several extra small processors on the side using a special machine language purpose-built for handling I/O. This means I can offload communication to the PIO and only check on them after an interrupt is activated or a timeout has elapsed. Check out [maple.pio](src/hal/maple.pio) to see the PIO code.
+To emulate a bespoke bus such as the Maple Bus on an MCU, one would usually either need to add extra hardware or bit bang the interface. This is not true with the RP2040 and its PIO. Think of it as several extra small processors on the side using a special machine language purpose-built for handling I/O. This means I can offload communication to the PIO and only check on them after an interrupt is activated or a timeout has elapsed. Check out [maple_in.pio](src/hal/maple_in.pio) and [maple_out.pio](src/hal/maple_out.pio) to see the PIO code.
 
 Luckily, the RP2040 comes with 2 PIO blocks each with 4 separate state machines. This means that the RP2040 can easily emulate 4 separate controller interfaces! This project uses one PIO block for writing and one for reading. This is necessary because each PIO block can only hold up to 32 instructions. The write state machine is completely stopped before starting the read state machine for the targeted bus. This wouldn't be necessary if read was done on separate pins from write as each PIO needs to take ownership of the pins. More simplistic wiring is desired if possible though. Switching state machines is fast enough that there shouldn't be a problem, especially since the "write" state machine intentionally doesn't bring the bus back to neutral before it notifies the application. Then the application side kills the "write" state machine and brings the bus to neutral just before switching to "read". The application-side write completion process should happen within a microsecond. A device on the Maple Bus usually starts responding after 50 microseconds from the point of the bus going neutral at the end of an end sequence. This ensures that a response is always captured.
 
@@ -72,9 +72,7 @@ This project may be opened in vscode. In vscode, the default shortcut `ctrl+shif
 
 # Maple Bus Implementation
 
-**Disclaimer:** I'm still working through this interface, so information here is not guaranteed to be 100% accurate.
-
-Maple Bus is the name of the bus used for the controller interface on the Dreamcast.
+Maple Bus is the name of the bus used for the controller interface on the Dreamcast. This project simulates a host communicating on a maple bus. All of the code pertaining to the Maple Bus implementation is located under [src/hal/MapleBus](src/hal/MapleBus).
 
 ## Hardware Overview
 
@@ -106,7 +104,13 @@ This is generally the setup I have been testing with:
 
 ## Generating Maple Bus Output
 
-The maple_out PIO state machine handles Maple Bus output.
+The [maple_out PIO state machine](src/hal/MapleBus/maple_out.pio) handles Maple Bus output.
+
+The [MapleBus class](src/hal/MapleBus/MapleBus.hpp) operates as the interface between the microcontroller's code and the PIO state machines. When a write operation is started, the MapleBus class loads data into the Direct Memory Access (DMA) channel designated for use with the maple_out state machine in the MapleBus instance. The DMA will automatically load data onto the TX FIFO of the output PIO state machine so it won't stall waiting for more data.
+
+The first 32-bit word loaded onto the output DMA is how many transmission bits will follow. In order for the state machine to process things properly, `(x - 8) % 32 == 0 && x >= 40` must be true where x is that first 32-bit word. The rest of the data loaded is the entirety of a single packet.
+
+A blocking IRQ is triggered once the maple_out state machine completes the transfer. This then allows MapleBus to stop the maple_out state machine and start the maple_in state machine.
 
 ### Start Sequence
 
@@ -149,7 +153,9 @@ For reference, Dreamcast controllers usually transmit a little slower with each 
 
 ## Sampling Maple Bus Input
 
-The maple_in PIO state machine handles Maple Bus input. Some concessions had to be made in order to handle all input operations within the 32 instruction set limit of the input PIO block.
+The [maple_in PIO state machine](src/hal/MapleBus/maple_in.pio) handles Maple Bus input. Some concessions had to be made in order to handle all input operations within the 32 instruction set limit of the input PIO block.
+
+The [MapleBus class](src/hal/MapleBus/MapleBus.hpp) operates as the interface between the microcontroller's code and the PIO state machines. A Direct Memory Access (DMA) channel is setup to automatically pop items off of the RX FIFO so that the maple_in state machine doesn't stall while reading.
 
 ### Sampling the Start Sequence
 
@@ -161,9 +167,11 @@ For each bit, the state machine waits for the designated clock to be HIGH then t
 
 ### Sampling the End Sequence
 
-Whenever **A** is designated as the clock, the input PIO state machine will detect when **B** toggles HIGH then LOW while **A** remains HIGH. It is assumed that this is the beginning of the end sequence. The state machine will then block on an IRQ so that the application can handle the received data. The application must then stop the input state machine.
+Whenever **A** is designated as the clock, the input PIO state machine will detect when **B** toggles HIGH then LOW while **A** remains HIGH. It is assumed that this is the beginning of the end sequence. The state machine will then block on an IRQ so that the application can handle the received data. The associated [MapleBus object](src/hal/MapleBus/MapleBus.hpp) must then stop the input state machine and process the results.
 
 # Maple Bus Packet
+
+This section is included for reference. It contains information about packet structure which was used to build up packets within components of [coreLib](src/coreLib/).
 
 ## Word Format
 
@@ -326,6 +334,61 @@ Below defines a location word which is used to address blocks of memory in some 
 ### CRC
 
 CRC byte transmits last, just before the end sequence is transmitted. It is the value after starting with 0 and applying XOR to each other byte in the packet.
+
+# Peripheral Implementation
+
+## Controller
+
+(TODO)
+
+## Screen
+
+(TODO)
+
+## Vibration
+
+The set condition command is used to activate vibration. A lot of trial and error went into reverse engineering the structure of the vibration condition word. First, every value in the range 0x00000000 to 0xFFFFFFFF was sent from some test code to the peripheral, and all that received an ACKNOWLEDGE response was logged. This helped get an idea of how each byte value is broken down with their valid ranges. Then the meaning of each value was determined by a lot of trial and error.
+
+The following are the two devices that were used for testing.
+- Sega OEM Puru Puru Pack
+- Performance TremorPak
+
+### Condition Word
+
+| Byte 0 (LSB) | Byte 1 | Byte 2 | Byte 3 (MSB) |
+| :---: | :---: | :---: | :---: |
+| Cycles | Pulsation Frequency | Inclination Direction and Power | Enable/Disable |
+
+#### Cycles
+
+This value represents how many pulsation cycles to execute per inclination intensity. The number of cycles to execute is 1 more than the value specified. This value must be 0 when no inclination is set, so only a single cycle will execute in that case. With inclination set, this value can be set to a maximum of 255.
+
+#### Pulsation Frequency
+
+This value sets the frequency at which the motor pulsates. The pulsation is smooth - feels like a sine wave pulsation. At values near the maximum, the pulsation is not very noticeable at all.
+
+The valid range for this value is between 7 and 59. The extended device info from a vibration pack was very helpful in determining the appropriate frequency based on this value:
+
+```
+Puru Puru Pack                Produced By or Under License From SEGA ENTERPRISES,LTD.    Version 1.000,1998/11/10,315-6211-AH   ,Vibration Motor:1 , Fm:4 - 30Hz ,Pow:7
+```
+
+Specifically, the text `Fm:4 - 30Hz`. This correlates to `(value + 1) / 2` and matches what was observed in testing.
+
+#### Inclination Direction and Power
+
+- When value is 0xX0 where X is:
+  - 0-7 : Single stable vibration (0: off, 1: low, 7: high)
+- When value is 0xX8 where X is:
+  - 0-7 : Ramp up, starting intensity up to max (0: off, 1: low, 7: high)
+- When value is 0x8X where X is:
+  - 0-7 : Ramp down, starting intensity down to min (0: off, 1: low, 7: high)
+
+There is no smooth transition when ramping up and down. When long cycle periods are selected, there is a very noticeable change from one vibration power to the next.
+
+#### Enable/Disable
+
+Always set this value to 0x10. In testing, this value could also be set to 0 as long as every other byte in the word is set to 0.
 
 # External Resources
 
