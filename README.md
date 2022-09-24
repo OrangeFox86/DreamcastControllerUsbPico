@@ -183,7 +183,7 @@ This section is included for reference. It contains information about packet str
 
 ## Word Format
 
-Each word is 32 bits in length, transmitted in little-endian byte order. The most significant bit of each byte transmits first. This means that the most significant bit of the least significant byte of each word transmits first. Refer to the [Frame Word](#frame-word) section for an example of how a word is formed.
+Each word is 32 bits in length, transmitted in little-endian byte order. The most significant bit of each byte transmits first. This means that the most significant bit of the least significant byte of each word transmits first. Refer to the [Frame Word](#frame-word) section for an example of how a word is formed. All tables in this document list bytes in transmission order with the least significant bit (LSB) as the first byte.
 
 When ASCII text is transmitted, the most significant byte is the first character of the 4 character sequence in each word. This means that the byte order of each word needs to be flipped before parsing the payload as a character array. The size of the ASCII payload section is pre-determined based on the command. No NULL termination byte is supplied at the end of the string, and spaces are used to pad out remaining characters at the end of the string.
 
@@ -398,11 +398,27 @@ There is no smooth transition when ramping up and down. When long cycle periods 
 
 #### Vibration Mode
 
-| Bits 4 to 7 <br> (Most Significant Nibble) | Bits 0 to 3 <br> (Least Significant Nibble) |
-| :---: | :---: |
-| Always set to 1 for <br> command to be accepted | Duration augmentation |
+For this byte to be accepted, it must be set to the following.
 
-The least significant nibble of this byte may be set to 1 to augment duration, but the meaning of this nibble hasn't been nailed down. As such, that nibble is always set to 0 for this implementation.
+| Bit 7 <br> (MSb) | Bit 6 | Bit 5 | Bit 4 | Bit 3 | Bit 2 | Bit 1 | Bit 0 <br> (LSb) |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 0 | 0 | 0 | 1 | 0 | 0 | 0 | X |
+
+Bit 0 may be set to 1 to augment duration, but the meaning is not completely understood. As such, that bit is always set to 0 for this implementation.
+
+# Appendix A: Abbreviations and Definitions
+
+- `0x` Prefix: The following value is hex format
+- Byte: Data consisting of 8 consecutive bits
+- DMA: Direct Memory Access
+- LSB: Least Significant Byte
+- LSb: Least Significant bit
+- MSB: Most Significant Byte
+- MSb: Most Significant bit
+- Nibble: Data consisting of 4 consecutive bits
+- PIO: Programmable Input/Output
+- SDCK: Serial Data and Clock I/O
+- Word: Data consisting of 32 consecutive bits
 
 # External Resources
 
