@@ -285,7 +285,7 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
                 uint8_t crc = 0;
                 crc8(&mLastRead[0], dmaWordsRead - 1, crc);
                 // Data is only valid if the CRC is correct
-                if (crc == (mReadBuffer[dmaWordsRead - 1] >> 24))
+                if (crc == mReadBuffer[dmaWordsRead - 1])
                 {
                     status.readBuffer = mLastRead;
                     status.readBufferLen = dmaWordsRead - 1;

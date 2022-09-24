@@ -54,7 +54,7 @@ jmp x-- end_detect_b_toggle ; if B is still HIGH, try again
 ; Warning: the full end sequence is not sampled for simplicity
 ; Either end is actually there or there was a glitch (rely on len and CRC of packet data in that case)
 end_detected:
-push ; make sure the crc is pushed out
+in null 24 ; shift out the crc byte
 ; Wait for IRQ to be handled before continuing
 irq wait 0 rel
 ; Application should kill the state machine before reaching this point
