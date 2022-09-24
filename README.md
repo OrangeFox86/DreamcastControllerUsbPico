@@ -365,9 +365,9 @@ The following are the two devices that were used for testing.
 
 | Byte 0 (LSB) | Byte 1 | Byte 2 | Byte 3 (MSB) |
 | :---: | :---: | :---: | :---: |
-| Cycles | Pulsation Frequency | Inclination Direction and Power | Enable/Disable |
+| Vibration Cycles | Pulsation Frequency | Inclination Direction and Power | Vibration Mode |
 
-#### Cycles
+#### Vibration Cycles
 
 This value represents how many pulsation cycles to execute per inclination intensity. The number of cycles to execute is 1 more than the value specified. This value must be 0 when no inclination is set, so only a single cycle will execute in that case. With inclination set, this value can be set to a maximum of 255.
 
@@ -378,7 +378,9 @@ This value sets the frequency at which the motor pulsates. The pulsation is smoo
 The valid range for this value is between 7 and 59. The extended device info from a vibration pack was very helpful in determining the appropriate frequency based on this value:
 
 ```
-Puru Puru Pack                Produced By or Under License From SEGA ENTERPRISES,LTD.    Version 1.000,1998/11/10,315-6211-AH   ,Vibration Motor:1 , Fm:4 - 30Hz ,Pow:7
+Puru Puru Pack
+Produced By or Under License From SEGA ENTERPRISES,LTD.
+Version 1.000,1998/11/10,315-6211-AH   ,Vibration Motor:1 , Fm:4 - 30Hz ,Pow:7
 ```
 
 Specifically, the text `Fm:4 - 30Hz`. This correlates to `(value + 1) / 2` and matches what was observed in testing.
@@ -394,9 +396,13 @@ Specifically, the text `Fm:4 - 30Hz`. This correlates to `(value + 1) / 2` and m
 
 There is no smooth transition when ramping up and down. When long cycle periods are selected, there is a very noticeable change from one vibration power to the next.
 
-#### Enable/Disable
+#### Vibration Mode
 
-Always set this value to 0x10. In testing, this value could also be set to 0 as long as every other byte in the word is set to 0.
+| Bits 4 to 7 <br> (Most Significant Nibble) | Bits 0 to 3 <br> (Least Significant Nibble) |
+| :---: | :---: |
+| Always set to 1 for <br> command to be accepted | Duration augmentation |
+
+The least significant nibble of this byte may be set to 1 to augment duration, but the meaning of this nibble hasn't been nailed down. As such, that nibble is always set to 0 for this implementation.
 
 # External Resources
 
