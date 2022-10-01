@@ -183,7 +183,7 @@ This section is included for reference. It contains information about packet str
 
 ## Word Format
 
-Each word is 32 bits in length, transmitted in little-endian byte order. The most significant bit of each byte transmits first. This means that the most significant bit of the least significant byte of each word transmits first. Refer to the [Frame Word](#frame-word) section for an example of how a word is formed. All tables in this document list bytes in transmission order with the least significant bit (LSB) as the first byte.
+Each word is 32 bits in length, transmitted in little-endian byte order. The most significant bit of each byte transmits first. This means that the most significant bit of the least significant byte of each word transmits first. Refer to the [Frame Word](#frame-word) section for an example of how a word is formed. All tables in this document list bytes in transmission order with the least significant byte (LSB) as the first byte.
 
 When ASCII text is transmitted, the most significant byte is the first character of the 4 character sequence in each word. This means that the byte order of each word needs to be flipped before parsing the payload as a character array. The size of the ASCII payload section is pre-determined based on the command. No NULL termination byte is supplied at the end of the string, and spaces are used to pad out remaining characters at the end of the string.
 
@@ -367,9 +367,26 @@ The following are the two devices that were used for testing.
 | :---: | :---: | :---: | :---: |
 | Vibration Cycles | Pulsation Frequency | Inclination Direction and Power | Vibration Mode |
 
-#### Vibration Cycles
+#### Vibration Mode
 
-This value represents how many pulsation cycles to execute per inclination intensity. The number of cycles to execute is 1 more than the value specified. This value must be 0 when no inclination is set, so only a single cycle will execute in that case. With inclination set, this value can be set to a maximum of 255.
+For this byte to be accepted, it must be set to the following.
+
+| Bit 7 <br> (MSb) | Bit 6 | Bit 5 | Bit 4 | Bit 3 | Bit 2 | Bit 1 | Bit 0 <br> (LSb) |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 0 | 0 | 0 | 1 | 0 | 0 | 0 | X |
+
+Bit 0 may be set to 1 to augment duration, but the meaning is not completely understood. As such, that bit is always set to 0 for this implementation.
+
+#### Inclination Direction and Power
+
+- When value is 0xX0 where X is:
+  - 0-7 : Single stable vibration (0: off, 1: low, 7: high)
+- When value is 0xX8 where X is:
+  - 0-7 : Ramp up, starting intensity up to max (0: off, 1: low, 7: high)
+- When value is 0x8X where X is:
+  - 0-7 : Ramp down, starting intensity down to min (0: off, 1: low, 7: high)
+
+There is no smooth transition when ramping up and down. When long cycle periods are selected, there is a very noticeable change from one vibration power to the next.
 
 #### Pulsation Frequency
 
@@ -383,28 +400,11 @@ Produced By or Under License From SEGA ENTERPRISES,LTD.
 Version 1.000,1998/11/10,315-6211-AH   ,Vibration Motor:1 , Fm:4 - 30Hz ,Pow:7
 ```
 
-Specifically, the text `Fm:4 - 30Hz`. This correlates to `(value + 1) / 2` and matches what was observed in testing.
+Specifically, the text `Fm:4 - 30Hz` which correlates to `(value + 1) / 2` and matches what was observed in testing.
 
-#### Inclination Direction and Power
+#### Vibration Cycles
 
-- When value is 0xX0 where X is:
-  - 0-7 : Single stable vibration (0: off, 1: low, 7: high)
-- When value is 0xX8 where X is:
-  - 0-7 : Ramp up, starting intensity up to max (0: off, 1: low, 7: high)
-- When value is 0x8X where X is:
-  - 0-7 : Ramp down, starting intensity down to min (0: off, 1: low, 7: high)
-
-There is no smooth transition when ramping up and down. When long cycle periods are selected, there is a very noticeable change from one vibration power to the next.
-
-#### Vibration Mode
-
-For this byte to be accepted, it must be set to the following.
-
-| Bit 7 <br> (MSb) | Bit 6 | Bit 5 | Bit 4 | Bit 3 | Bit 2 | Bit 1 | Bit 0 <br> (LSb) |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 0 | 0 | 0 | 1 | 0 | 0 | 0 | X |
-
-Bit 0 may be set to 1 to augment duration, but the meaning is not completely understood. As such, that bit is always set to 0 for this implementation.
+This value represents how many pulsation cycles to execute per inclination intensity. The number of cycles to execute is 1 more than the value specified. This value must be 0 when no inclination is set, so only a single cycle will execute in that case. With inclination set, this value can be set to a maximum of 255.
 
 # Appendix A: Abbreviations and Definitions
 
@@ -420,12 +420,30 @@ Bit 0 may be set to 1 to augment duration, but the meaning is not completely und
 - SDCK: Serial Data and Clock I/O
 - Word: Data consisting of 32 consecutive bits
 
-# External Resources
+# Appendix B: External Resources
 
-**Maple Bus Resources**
+**Maple Bus**
 
 http://mc.pp.se/dc/maplebus.html and http://mc.pp.se/dc/controller.html
 
 https://tech-en.netlify.app/articles/en540236/index.html
 
 https://www.raphnet.net/programmation/dreamcast_usb/index_en.php
+
+**USB**
+
+https://usb.org/sites/default/files/pid1_01_0.pdf
+
+https://usb.org/sites/default/files/hut1_3_0.pdf
+
+**Raspberry Pi Pico**
+
+https://datasheets.raspberrypi.org/pico/getting-started-with-pico.pdf
+
+https://datasheets.raspberrypi.com/pico/raspberry-pi-pico-c-sdk.pdf
+
+https://github.com/raspberrypi/pico-examples/tree/master/usb/device/dev_hid_composite
+
+**Maple Bus Analyzer Library for Saleae**
+
+https://github.com/Tails86/Maple-Bus-Saleae-Analyzer
