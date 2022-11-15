@@ -102,6 +102,10 @@ This is generally the setup I have been testing with:
   <img src="images/schematic.png?raw=true" alt="Schematic"/>
 </p>
 
+<p align="center">
+  <img src="images/Dreamcast_Port.png?raw=true" alt="Dreamcast Port"/>
+</p>
+
 ## Generating Maple Bus Output
 
 The [maple_out PIO state machine](src/hal/MapleBus/maple_out.pio) handles Maple Bus output.
