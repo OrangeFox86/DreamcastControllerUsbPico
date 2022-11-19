@@ -13,28 +13,28 @@
 #include "usb_descriptors.h"
 #include "class/hid/hid_device.h"
 
-UsbGamepad usbGamepads[NUMBER_OF_DEVICES] = {
-  UsbGamepad(ITF_NUM_HID1),
-  UsbGamepad(ITF_NUM_HID2),
-  UsbGamepad(ITF_NUM_HID3),
-  UsbGamepad(ITF_NUM_HID4)
+UsbGamepad usbGamepads[NUMBER_OF_GAMEPADS] = {
+  UsbGamepad(ITF_NUM_GAMEPAD1),
+  UsbGamepad(ITF_NUM_GAMEPAD2),
+  UsbGamepad(ITF_NUM_GAMEPAD3),
+  UsbGamepad(ITF_NUM_GAMEPAD4)
 };
 
-UsbGamepadDreamcastControllerObserver usbGamepadDreamcastControllerObservers[NUMBER_OF_DEVICES] = {
+UsbGamepadDreamcastControllerObserver usbGamepadDreamcastControllerObservers[NUMBER_OF_GAMEPADS] = {
   UsbGamepadDreamcastControllerObserver(usbGamepads[0]),
   UsbGamepadDreamcastControllerObserver(usbGamepads[1]),
   UsbGamepadDreamcastControllerObserver(usbGamepads[2]),
   UsbGamepadDreamcastControllerObserver(usbGamepads[3])
 };
 
-UsbControllerDevice* devices[NUMBER_OF_DEVICES] = {
+UsbControllerDevice* devices[NUMBER_OF_GAMEPADS] = {
   &usbGamepads[0],
   &usbGamepads[1],
   &usbGamepads[2],
   &usbGamepads[3]
 };
 
-DreamcastControllerObserver* observers[NUMBER_OF_DEVICES] = {
+DreamcastControllerObserver* observers[NUMBER_OF_GAMEPADS] = {
   &usbGamepadDreamcastControllerObservers[0],
   &usbGamepadDreamcastControllerObservers[1],
   &usbGamepadDreamcastControllerObservers[2],
@@ -48,7 +48,7 @@ DreamcastControllerObserver** get_usb_controller_observers()
 
 uint32_t get_num_usb_controllers()
 {
-  return NUMBER_OF_DEVICES;
+  return NUMBER_OF_GAMEPADS;
 }
 
 bool usbEnabled = false;
@@ -140,10 +140,60 @@ void usb_init()
 #endif
 }
 
+//--------------------------------------------------------------------+
+// USB CDC
+//--------------------------------------------------------------------+
+void cdc_task(void)
+{
+  // connected() check for DTR bit
+  // Most but not all terminal client set this when making connection
+  // if ( tud_cdc_connected() )
+  {
+    // connected and there are data available
+    if ( tud_cdc_available() )
+    {
+      // read datas
+      char buf[64];
+      uint32_t count = tud_cdc_read(buf, sizeof(buf));
+      (void) count;
+
+      // Echo back
+      // Note: Skip echo by commenting out write() and write_flush()
+      // for throughput test e.g
+      //    $ dd if=/dev/zero of=/dev/ttyACM0 count=10000
+      tud_cdc_write(buf, count);
+      tud_cdc_write_flush();
+    }
+  }
+}
+
+// Invoked when cdc when line state changed e.g connected/disconnected
+void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
+{
+  (void) itf;
+  (void) rts;
+
+  // TODO set some indicator
+  if ( dtr )
+  {
+    // Terminal connected
+  }else
+  {
+    // Terminal disconnected
+  }
+}
+
+// Invoked when CDC interface received data from host
+void tud_cdc_rx_cb(uint8_t itf)
+{
+  (void) itf;
+}
+
 void usb_task()
 {
   tud_task(); // tinyusb device task
   led_task();
+  cdc_task();
 }
 
 //--------------------------------------------------------------------+
