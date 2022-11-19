@@ -31,12 +31,11 @@
 // whether host does safe-eject
 static bool ejected = false;
 
-// Some MCU doesn't have enough 8KB SRAM to store the whole disk
-// We will use Flash as read-only disk with board that has
-// CFG_EXAMPLE_MSC_READONLY defined
-
 #define README_CONTENTS \
 "This is where Dreamcast MU data will show up when detected"
+
+// Size of string minus null terminator byte
+#define README_SIZE (sizeof(README_CONTENTS) - 1)
 
 enum
 {
@@ -44,9 +43,6 @@ enum
   DISK_BLOCK_SIZE = 512
 };
 
-#ifdef CFG_EXAMPLE_MSC_READONLY
-const
-#endif
 uint8_t msc_disk[DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
 {
   //------------- Block0: Boot Sector -------------//
@@ -110,7 +106,7 @@ uint8_t msc_disk[DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       // second entry is readme file
       'R' , 'E' , 'A' , 'D' , 'M' , 'E' , ' ' , ' ' , 'T' , 'X' , 'T' , 0x20, 0x00, 0xC6, 0x52, 0x6D,
       0x65, 0x43, 0x65, 0x43, 0x00, 0x00, 0x88, 0x6D, 0x65, 0x43, 0x02, 0x00,
-      sizeof(README_CONTENTS)-1, 0x00, 0x00, 0x00 // readme's files size (4 Bytes)
+      U32_TO_U8S_LE(README_SIZE) // readme's files size (4 Bytes)
   },
 
   //------------- Block3: Readme Content -------------//
