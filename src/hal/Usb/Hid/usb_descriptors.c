@@ -180,7 +180,7 @@ uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
 char const *string_desc_arr[] =
 {
     (const char[]) {0x09, 0x04}, // 0: is supported language is English (0x0409)
-    "DIY"  ,                     // 1: Manufacturer
+    "OrangeFox86",               // 1: Manufacturer
     "Dreamcast Controller USB",  // 2: Product
     NULL,                        // 3: Serial (special case; get pico serial)
     "P1",                        // 4: Gamepad 1

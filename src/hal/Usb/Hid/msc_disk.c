@@ -123,8 +123,8 @@ void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8], uint8_t product_id[16
 {
   (void) lun;
 
-  const char vid[] = "TinyUSB";
-  const char pid[] = "Mass Storage";
+  const char vid[] = "OngFx86";
+  const char pid[] = "Dreamcast Ctrlr";
   const char rev[] = "1.0";
 
   memcpy(vendor_id  , vid, strlen(vid));
