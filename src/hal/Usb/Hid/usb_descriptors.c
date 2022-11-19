@@ -42,8 +42,12 @@ tusb_desc_device_t const desc_device =
     .bDeviceProtocol    = 0x00,
     .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
 
-    .idVendor           = 0xCafe,
-    .idProduct          = 0xF00d,
+    // VID 1209 comes from https://pid.codes/
+    // PID 2F07 is a subassignment granted through github
+    // https://github.com/pidcodes/pidcodes.github.com/blob/74f95539d2ad737c1ba2871eeb25b3f5f5d5c790/1209/2F07/index.md
+    .idVendor           = 0x1209,
+    .idProduct          = 0x2F07,
+
     .bcdDevice          = 0x0100,
 
     .iManufacturer      = 0x01,
