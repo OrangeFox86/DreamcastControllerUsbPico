@@ -197,11 +197,11 @@ enum {
       HID_REPORT_SIZE   ( 16                                     ) ,\
       /* Eng Lin:Time */ \
       HID_UNIT_N        ( 0x1003, 2                              ) ,\
-      /* -3 */
+      /* -3 */ \
       HID_UNIT_EXPONENT ( 16 - 3                                 ) ,\
       HID_REPORT_COUNT  ( 2                                      ) ,\
       HID_OUTPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
-      /* -6 */
+      /* -6 */ \
       HID_UNIT_EXPONENT ( 16 - 6                                 ) ,\
       HID_USAGE         ( HID_USAGE_PID_SAMPLE_PERIOD            ) ,\
       HID_REPORT_COUNT  ( 1                                      ) ,\
@@ -253,11 +253,11 @@ enum {
       HID_USAGE_PAGE    ( HID_USAGE_PAGE_PID                     ) ,\
       HID_USAGE         ( HID_USAGE_PID_TYPE_SPECIFIC_BLOCK_OFFSET ) ,\
       HID_COLLECTION    ( HID_COLLECTION_LOGICAL                 ) ,\
-        /* Ordinals:Instance 1 */
+        /* Ordinals:Instance 1 */ \
         HID_USAGE_N       ( 0x000A0001, 3                          ) ,\
-        /* Ordinals:Instance 2 */
+        /* Ordinals:Instance 2 */ \
         HID_USAGE_N       ( 0x000A0002, 3                          ) ,\
-        /* 32K RAM or ROM max. */
+        /* 32K RAM or ROM max. */ \
         HID_LOGICAL_MAX_N ( 32765, 2                               ) ,\
         HID_REPORT_SIZE   ( 16                                     ) ,\
         HID_REPORT_COUNT  ( 2                                      ) ,\
