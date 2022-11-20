@@ -37,6 +37,47 @@ static bool ejected = false;
 // Size of string minus null terminator byte
 #define README_SIZE (sizeof(README_CONTENTS) - 1)
 
+#define CHAR_TO_UPPER(c) ((c >= 'a' && c <= 'z') ? (c - ('a' - 'A')) : c)
+// Computes the seconds increment for a given seconds value (seconds may be floating point)
+#define DIRECTORY_ENTRY_TIME_SEC_INC(seconds) (int)(((seconds - ((int)seconds - ((int)seconds % 2))) * 100) + 0.5)
+#define DIRECTORY_ENTRY_TIME(hours, minutes, seconds) ((((hours - 1) & 0x1F) << 11) | ((minutes & 0x3F) << 5) | (((int)seconds / 2) & 0x1F))
+#define DIRECTORY_ENTRY_DATE(year, month, day) ((((year - 1980) & 0x7F) << 9) | ((month & 0x0F) << 5) | (day & 0x1F))
+
+#define DIRECTORY_ENTRY(name8, ext3, attr1, attr2, creation_time_sec_inc, creation_time, creation_date, access_date, file_attr, mod_time, mod_date, starting_page, file_size) \
+      CHAR_TO_UPPER(name8[0]), CHAR_TO_UPPER(name8[1]), CHAR_TO_UPPER(name8[2]), CHAR_TO_UPPER(name8[3]), \
+      CHAR_TO_UPPER(name8[4]), CHAR_TO_UPPER(name8[5]), CHAR_TO_UPPER(name8[6]), CHAR_TO_UPPER(name8[7]), \
+      CHAR_TO_UPPER(ext3[0]), CHAR_TO_UPPER(ext3[1]), CHAR_TO_UPPER(ext3[2]),         \
+      attr1, attr2,                                                                   \
+      creation_time_sec_inc,                                                          \
+      U16_TO_U8S_LE(creation_time),                                                   \
+      U16_TO_U8S_LE(creation_date),                                                   \
+      U16_TO_U8S_LE(access_date),                                                     \
+      U16_TO_U8S_LE(file_attr),                                                       \
+      U16_TO_U8S_LE(mod_time),                                                        \
+      U16_TO_U8S_LE(mod_date),                                                        \
+      U16_TO_U8S_LE(starting_page),                                                   \
+      U32_TO_U8S_LE(file_size)
+
+#define DEFAULT_FILE_TIME_SECONDS 4
+#define DEFAULT_FILE_TIME_SEC_INC DIRECTORY_ENTRY_TIME_SEC_INC(DEFAULT_FILE_TIME_SECONDS)
+#define DEFAULT_FILE_TIME DIRECTORY_ENTRY_TIME(7, 1, DEFAULT_FILE_TIME_SECONDS)
+#define DEFAULT_FILE_DATE DIRECTORY_ENTRY_DATE(1999, 9, 9)
+
+#define SIMPLE_DIR_ENTRY(name8, ext3, starting_page, file_size) \
+      DIRECTORY_ENTRY(name8,                      \
+                      ext3,                       \
+                      0x20,                       \
+                      0,                          \
+                      DEFAULT_FILE_TIME_SEC_INC,  \
+                      DEFAULT_FILE_TIME,          \
+                      DEFAULT_FILE_DATE,          \
+                      DEFAULT_FILE_DATE,          \
+                      0,                          \
+                      DEFAULT_FILE_TIME,          \
+                      DEFAULT_FILE_DATE,          \
+                      starting_page,              \
+                      file_size)
+
 enum
 {
   DISK_BLOCK_NUM  = 16, // 8KB is the smallest size that windows allow to mount
@@ -46,18 +87,49 @@ enum
 uint8_t msc_disk[DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
 {
   //------------- Block0: Boot Sector -------------//
-  // byte_per_sector    = DISK_BLOCK_SIZE; fat12_sector_num_16  = DISK_BLOCK_NUM;
-  // sector_per_cluster = 1; reserved_sectors = 1;
-  // fat_num            = 1; fat12_root_entry_num = 16;
-  // sector_per_fat     = 1; sector_per_track = 1; head_num = 1; hidden_sectors = 0;
-  // drive_number       = 0x80; media_type = 0xf8; extended_boot_signature = 0x29;
-  // filesystem_type    = "FAT12   "; volume_serial_number = 0x1234; volume_label = "TinyUSB MSC";
-  // FAT magic code at offset 510-511
   {
-      0xEB, 0x3C, 0x90, 0x4D, 0x53, 0x44, 0x4F, 0x53, 0x35, 0x2E, 0x30, 0x00, 0x02, 0x01, 0x01, 0x00,
-      0x01, 0x10, 0x00, 0x10, 0x00, 0xF8, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x29, 0x34, 0x12, 0x00, 0x00, 'D' , 'r' , 'e' , 'a' , 'm' ,
-      'c' , 'a' , 's' , 't' , 'M' , 'U' , 0x46, 0x41, 0x54, 0x31, 0x32, 0x20, 0x20, 0x20, 0x00, 0x00,
+      // Jump instruction
+      0xEB, 0x3C, 0x90,
+      // OEM Name
+      'M', 'S', 'D', 'O', 'S', '5', '.', '0',
+
+      // BIOS Parameter Block
+      // Bytes per sector
+      U16_TO_U8S_LE(DISK_BLOCK_SIZE),
+      // Sectors per cluster
+      0x01,
+      // Reserved sectors
+      U16_TO_U8S_LE(1),
+      // Number of copies of the file allocation tables
+      0x01,
+      // Number of root entries (maximum number of files under root)
+      U16_TO_U8S_LE(16),
+      // Number of sectors (small)
+      U16_TO_U8S_LE(DISK_BLOCK_NUM),
+      // Media type (hard disk)
+      0xF8,
+      // Sectors per FAT
+      U16_TO_U8S_LE(1),
+      // Sectors per track
+      U16_TO_U8S_LE(1),
+      // Number of heads
+      U16_TO_U8S_LE(1),
+      // Hidden sectors
+      U32_TO_U8S_LE(0),
+      // Number of sectors (large) (only used if small value is 0)
+      U32_TO_U8S_LE(0),
+      // Physical disk number
+      0x80,
+      // Current head
+      0x00,
+      // signature (must be either 0x28 or 0x29)
+      0x29,
+      // Volume serial number
+      0x34, 0x12, 0x00, 0x00,
+      // Volume label (11 bytes) (no longer actually used)
+      'D' , 'r' , 'e' , 'a' , 'm' , 'c' , 'a' , 's' , 't' , 'M' , 'U' ,
+      // System ID (8 bytes)
+      'F', 'A', 'T', '1', '6', ' ', ' ', ' ',
 
       // Zero up to 2 last bytes of FAT magic code
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -90,27 +162,33 @@ uint8_t msc_disk[DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x55, 0xAA
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+      // FAT magic code
+      0x55, 0xAA
   },
 
   //------------- Block1: FAT12 Table -------------//
   {
-      0xF8, 0xFF, 0xFF, 0xFF, 0x0F // // first 2 entries must be F8FF, third entry is cluster end of readme file
+      // first 16 bit entry must be FFF8
+      U16_TO_U8S_LE(0xFFF8),
+      // End of chain indicator / maintenance flags
+      U16_TO_U8S_LE(0xFFFF),
+      // The rest is pointers to next cluster number of 0xFFFF if end (for page 2+)
+      U16_TO_U8S_LE(0xFFFF)
   },
 
-  //------------- Block2: Root Directory -------------//
+  //------------- Block2-5: Root Directory -------------//
   {
       // first entry is volume label
       'D' , 'r' , 'e' , 'a' , 'm' , 'c' , 'a' , 's' , 't' , 'M' , 'U' , 0x08, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4F, 0x6D, 0x65, 0x43, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       // second entry is readme file
-      'R' , 'E' , 'A' , 'D' , 'M' , 'E' , ' ' , ' ' , 'T' , 'X' , 'T' , 0x20, 0x00, 0xC6, 0x52, 0x6D,
-      0x65, 0x43, 0x65, 0x43, 0x00, 0x00, 0x88, 0x6D, 0x65, 0x43, 0x02, 0x00,
-      U32_TO_U8S_LE(README_SIZE) // readme's files size (4 Bytes)
+      SIMPLE_DIR_ENTRY("README  ", "TXT", 2, README_SIZE)
   },
 
-  //------------- Block3: Readme Content -------------//
-  README_CONTENTS
+  //------------- Block6+: File Content -------------//
+  {README_CONTENTS}
 };
 
 // Invoked when received SCSI_CMD_INQUIRY
