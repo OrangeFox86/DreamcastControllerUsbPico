@@ -144,7 +144,7 @@ delay other controller operations.\
 enum
 {
   ALLOCATED_DISK_BLOCK_NUM  = 13, // Number of actual blocks reserved in RAM disk
-  EXTERNAL_DISK_BLOCK_NUM = 2301, // Number of blocks that exist outside of RAM
+  EXTERNAL_DISK_BLOCK_NUM = 32768, // Number of blocks that exist outside of RAM (large enough to force FAT16 parsing)
   DISK_BLOCK_SIZE = 512           // Size in bytes of each block
 };
 #define REPORTED_BLOCK_NUM (ALLOCATED_DISK_BLOCK_NUM + EXTERNAL_DISK_BLOCK_NUM)
@@ -167,7 +167,7 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       // Reserved sectors
       U16_TO_U8S_LE(1),
       // Number of file allocation tables
-      9,
+      1,
       // Number of root entries (maximum number of files under root)
       U16_TO_U8S_LE(16),
       // Number of sectors (small)
@@ -175,7 +175,7 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       // Media type (hard disk)
       0xF8,
       // Sectors per FAT
-      U16_TO_U8S_LE(1),
+      U16_TO_U8S_LE(9),
       // Sectors per track
       U16_TO_U8S_LE(1),
       // Number of heads
