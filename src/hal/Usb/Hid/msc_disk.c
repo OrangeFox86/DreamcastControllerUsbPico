@@ -144,10 +144,12 @@ delay other controller operations.\
 enum
 {
   ALLOCATED_DISK_BLOCK_NUM  = 13, // Number of actual blocks reserved in RAM disk
-  EXTERNAL_DISK_BLOCK_NUM = 32768, // Number of blocks that exist outside of RAM (large enough to force FAT16 parsing)
+  BAD_SECTOR_DISK_BLOCK_NUM = 253, // Used to line up memory files starting at address 0x0100
+  EXTERNAL_DISK_BLOCK_NUM = 2048, // Number of blocks that exist outside of RAM
+  FAKE_DISK_BLOCK_NUM = 32768,    // Report extra space in order to force FAT16 formatting
   DISK_BLOCK_SIZE = 512           // Size in bytes of each block
 };
-#define REPORTED_BLOCK_NUM (ALLOCATED_DISK_BLOCK_NUM + EXTERNAL_DISK_BLOCK_NUM)
+#define REPORTED_BLOCK_NUM (ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM + EXTERNAL_DISK_BLOCK_NUM + FAKE_DISK_BLOCK_NUM)
 
 // The ramdisk
 uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
@@ -194,7 +196,7 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       0x34, 0x12, 0x00, 0x00,
       // Volume label (11 bytes) (no longer actually used)
       CHARACTERIFY11(VOLUME_LABEL11_STR),
-      // System ID (8 bytes)
+      // System ID (8 bytes) (host doesn't even use this)
       CHARACTERIFY8("FAT16   "),
 
       // Zero up to 2 last bytes of FAT magic code
@@ -234,14 +236,79 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       0x55, 0xAA
   },
 
-  //------------- Block1-10: FAT16 Table -------------//
+  //------------- Block1-9: FAT16 Table -------------//
   {
       // first 16 bit entry must be FFF8
       U16_TO_U8S_LE(0xFFF8),
       // End of chain indicator / maintenance flags (reserved for cluster 1)
       U16_TO_U8S_LE(0xFFFF),
-      // The rest is pointers to next cluster number of 0xFFFF if end (for page 2+)
-      U16_TO_U8S_LE(0xFFFF)
+      // The rest is pointers to next cluster number or 0xFFFF if end (for page 2+)
+      U16_TO_U8S_LE(0xFFFF),
+      // Bad sectors for the rest of this block of addresses
+      U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7)
   },
   // Each one of these blocks address the 128KB needed for each memory file
   {
@@ -773,7 +840,7 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       U16_TO_U8S_LE(0x08FD), U16_TO_U8S_LE(0x08FE), U16_TO_U8S_LE(0x08FF), U16_TO_U8S_LE(0xFFFF)
   },
 
-  //------------- Block11: Root Directory -------------//
+  //------------- Block10: Root Directory -------------//
   {
       // first entry is volume label
       VOLUME_ENTRY(),
@@ -790,7 +857,7 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       SIMPLE_DIR_ENTRY("MU4-2   ", "BIN", ATTR1_ARCHIVE, 0x0800, 0),
   },
 
-  //------------- Block12+: File Content -------------//
+  //------------- Block11+: File Content -------------//
   {README_CONTENTS}
 };
 
@@ -863,19 +930,40 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
 {
   (void) lun;
 
-  // out of ramdisk
-  if ( lba >= ALLOCATED_DISK_BLOCK_NUM )
+  uint32_t numRead = 0;
+
+  if (lba < ALLOCATED_DISK_BLOCK_NUM)
   {
-    // TODO: get memory from external component if outside of RAM disk
+    // RAM disk area
+    uint8_t const* addr = msc_disk[lba] + offset;
+    memcpy(buffer, addr, bufsize);
+    numRead = bufsize;
+  }
+  else if (lba < ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM)
+  {
+    // Attempt to read bad sectors
     memset(buffer, 0, bufsize);
+    numRead = bufsize;
+  }
+  else if (lba < ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM + EXTERNAL_DISK_BLOCK_NUM)
+  {
+    // TODO: Read data from external source
+    memset(buffer, 0, bufsize);
+    numRead = bufsize;
+  }
+  else if (lba < REPORTED_BLOCK_NUM)
+  {
+    // Fake data (host shouldn't attempt to read here, but return data anyway)
+    memset(buffer, 0, bufsize);
+    numRead = bufsize;
   }
   else
   {
-    uint8_t const* addr = msc_disk[lba] + offset;
-    memcpy(buffer, addr, bufsize);
+    // Attempt to read out of bounds
+    numRead = 0;
   }
 
-  return bufsize;
+  return numRead;
 }
 
 bool tud_msc_is_writable_cb (uint8_t lun)
