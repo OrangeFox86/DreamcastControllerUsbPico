@@ -143,13 +143,26 @@ delay other controller operations.\
 
 enum
 {
-  ALLOCATED_DISK_BLOCK_NUM  = 13, // Number of actual blocks reserved in RAM disk
-  BAD_SECTOR_DISK_BLOCK_NUM = 253, // Used to line up memory files starting at address 0x0100
+  ALLOCATED_DISK_BLOCK_NUM  = 12, // Number of actual blocks reserved in RAM disk
+  BAD_SECTOR_DISK_BLOCK_NUM = 254, // Used to line up memory files starting at address 0x0100
   EXTERNAL_DISK_BLOCK_NUM = 2048, // Number of blocks that exist outside of RAM
   FAKE_DISK_BLOCK_NUM = 32768,    // Report extra space in order to force FAT16 formatting
   DISK_BLOCK_SIZE = 512           // Size in bytes of each block
 };
 #define REPORTED_BLOCK_NUM (ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM + EXTERNAL_DISK_BLOCK_NUM + FAKE_DISK_BLOCK_NUM)
+
+#define NUM_RESERVED_SECTORS 1
+#define NUM_FAT_COPIES 1
+#define SECTORS_PER_FAT 9
+#define NUM_ROOT_ENTRIES 16
+
+#define NUM_FAT_SECTORS (NUM_FAT_COPIES * SECTORS_PER_FAT)
+#define NUM_ROOT_SECTORS ((NUM_ROOT_ENTRIES * 32) / DISK_BLOCK_SIZE)
+#define NUM_HEADER_SECTORS (NUM_RESERVED_SECTORS + NUM_FAT_SECTORS + NUM_ROOT_SECTORS)
+
+#define FIRST_VALID_FAT_ADDRESS 2
+
+#define VMUS_PER_PLAYER 2
 
 // The ramdisk
 uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
@@ -167,17 +180,17 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       // Sectors per cluster
       0x01,
       // Reserved sectors
-      U16_TO_U8S_LE(1),
-      // Number of file allocation tables
-      1,
+      U16_TO_U8S_LE(NUM_RESERVED_SECTORS),
+      // Number of copies of file allocation tables
+      NUM_FAT_COPIES,
       // Number of root entries (maximum number of files under root)
-      U16_TO_U8S_LE(16),
+      U16_TO_U8S_LE(NUM_ROOT_ENTRIES),
       // Number of sectors (small)
       U16_TO_U8S_LE(REPORTED_BLOCK_NUM),
       // Media type (hard disk)
       0xF8,
       // Sectors per FAT
-      U16_TO_U8S_LE(9),
+      U16_TO_U8S_LE(SECTORS_PER_FAT),
       // Sectors per track
       U16_TO_U8S_LE(1),
       // Number of heads
@@ -845,16 +858,16 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       // first entry is volume label
       VOLUME_ENTRY(),
       // second entry is readme file (will always be read only)
-      SIMPLE_DIR_ENTRY("_README ", "TXT", ATTR1_READ_ONLY, 2, README_SIZE),
+      SIMPLE_DIR_ENTRY("_README ", "TXT", ATTR1_READ_ONLY, FIRST_VALID_FAT_ADDRESS, README_SIZE),
       // The rest are placeholders for all of the memory unit contents (will be writeable in the future)
-      SIMPLE_DIR_ENTRY("MU1-1   ", "BIN", ATTR1_ARCHIVE, 0x0100, 0),
-      SIMPLE_DIR_ENTRY("MU1-2   ", "BIN", ATTR1_ARCHIVE, 0x0200, 0),
-      SIMPLE_DIR_ENTRY("MU2-1   ", "BIN", ATTR1_ARCHIVE, 0x0300, 0),
-      SIMPLE_DIR_ENTRY("MU2-2   ", "BIN", ATTR1_ARCHIVE, 0x0400, 0),
-      SIMPLE_DIR_ENTRY("MU3-1   ", "BIN", ATTR1_ARCHIVE, 0x0500, 0),
-      SIMPLE_DIR_ENTRY("MU3-2   ", "BIN", ATTR1_ARCHIVE, 0x0600, 0),
-      SIMPLE_DIR_ENTRY("MU4-1   ", "BIN", ATTR1_ARCHIVE, 0x0700, 0),
-      SIMPLE_DIR_ENTRY("MU4-2   ", "BIN", ATTR1_ARCHIVE, 0x0800, 0),
+      SIMPLE_DIR_ENTRY("MU1-1   ", "BIN", ATTR1_ARCHIVE, 0x0100, 128 * 1024),
+      SIMPLE_DIR_ENTRY("MU1-2   ", "BIN", ATTR1_ARCHIVE, 0x0200, 128 * 1024),
+      SIMPLE_DIR_ENTRY("MU2-1   ", "BIN", ATTR1_ARCHIVE, 0x0300, 128 * 1024),
+      SIMPLE_DIR_ENTRY("MU2-2   ", "BIN", ATTR1_ARCHIVE, 0x0400, 128 * 1024),
+      SIMPLE_DIR_ENTRY("MU3-1   ", "BIN", ATTR1_ARCHIVE, 0x0500, 128 * 1024),
+      SIMPLE_DIR_ENTRY("MU3-2   ", "BIN", ATTR1_ARCHIVE, 0x0600, 128 * 1024),
+      SIMPLE_DIR_ENTRY("MU4-1   ", "BIN", ATTR1_ARCHIVE, 0x0700, 128 * 1024),
+      SIMPLE_DIR_ENTRY("MU4-2   ", "BIN", ATTR1_ARCHIVE, 0x0800, 128 * 1024),
   },
 
   //------------- Block11+: File Content -------------//
@@ -948,7 +961,15 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
   else if (lba < ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM + EXTERNAL_DISK_BLOCK_NUM)
   {
     // TODO: Read data from external source
-    memset(buffer, 0, bufsize);
+    // This actually works out perfectly since each read will be up to 1 block of data, our block of
+    // data is 512 bytes, and a VMU block of data is also 512 bytes.
+    uint32_t realAddr = lba + FIRST_VALID_FAT_ADDRESS - NUM_HEADER_SECTORS;
+    uint32_t vmuIdx = (realAddr >> 8) - 1;
+    uint32_t playerIdx = vmuIdx / VMUS_PER_PLAYER;
+    uint32_t vmuSubindex = vmuIdx % VMUS_PER_PLAYER;
+    uint32_t vmuAddr = realAddr & 0xFF;
+    memset(buffer, ' ', bufsize);
+    snprintf(buffer, bufsize, "\nVMU %lu-%lu; block %02lX; len %lu", playerIdx + 1, vmuSubindex + 1, vmuAddr, bufsize);
     numRead = bufsize;
   }
   else if (lba < REPORTED_BLOCK_NUM)
