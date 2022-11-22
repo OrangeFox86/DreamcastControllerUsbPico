@@ -224,9 +224,9 @@ The following addresses are used for all components on the bus.
 | 3 | 0x80 | 0xA0* | 0x81 | 0x82 | 0x84 | 0x88 | 0x90 |
 | 4 | 0xC0 | 0xE0* | 0xC1 | 0xC2 | 0xC4 | 0xC8 | 0xD0 |
 
-*When the main peripheral sets its sender address, it also sets the bits corresponding to which sub-peripherals are attached. For example, if sub-peripherals 1 and 2 are attached to player 1's main peripheral, the main peripheral's sender address will be 0x23. This informs the host what else is attached.
+*When the main peripheral responds with its sender address, it also sets the bits corresponding to which sub-peripherals are attached. For example, if sub-peripherals 1 and 2 are attached to player 1's main peripheral, the main peripheral will set its sender address to 0x23. This informs the host what else is attached. The host should still set the recipient address to 0x20 when sending data to this peripheral though.
 
-The peripheral may respond with a source address as if it is player 1. As such, the host should ignore whatever the upper 2 bits that the device uses as its source address.
+In testing, there have been cases where a peripheral will respond with a source address as if it is player 1. As such, the host should ignore whatever the upper 2 bits that the device uses as its source address.
 
 #### Commands
 
