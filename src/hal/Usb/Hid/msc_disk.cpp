@@ -26,10 +26,13 @@
 #include "bsp/board.h"
 #include "tusb.h"
 
-#if CFG_TUD_MSC
+#include <string.h>
+
+#include "hal/Usb/usb_interface.hpp"
 
 // whether host does safe-eject
-static bool ejected = false;
+static bool ejected = true;
+static bool new_data = false;
 
 // README contents stored on ramdisk - must not be greater than 512 bytes
 #define README_CONTENTS "\
@@ -60,7 +63,7 @@ delay other controller operations.\
 #define ATTR1_DEVICE 0x40
 #define ATTR1_RESERVED 0x80
 
-#define CHAR_TO_UPPER(c) ((c >= 'a' && c <= 'z') ? (c - ('a' - 'A')) : c)
+#define CHAR_TO_UPPER(c) (uint8_t)((c >= 'a' && c <= 'z') ? (c - ('a' - 'A')) : c)
 
 // Converts a set length string to a list of characters
 #define CHARACTERIFY1(str) str[0]
@@ -151,13 +154,15 @@ enum
 };
 #define REPORTED_BLOCK_NUM (ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM + EXTERNAL_DISK_BLOCK_NUM + FAKE_DISK_BLOCK_NUM)
 
+#define BYTES_PER_ROOT_ENTRY 32
+
 #define NUM_RESERVED_SECTORS 1
 #define NUM_FAT_COPIES 1
 #define SECTORS_PER_FAT 9
 #define NUM_ROOT_ENTRIES 16
 
 #define NUM_FAT_SECTORS (NUM_FAT_COPIES * SECTORS_PER_FAT)
-#define NUM_ROOT_SECTORS ((NUM_ROOT_ENTRIES * 32) / DISK_BLOCK_SIZE)
+#define NUM_ROOT_SECTORS ((NUM_ROOT_ENTRIES * BYTES_PER_ROOT_ENTRY) / DISK_BLOCK_SIZE)
 #define NUM_HEADER_SECTORS (NUM_RESERVED_SECTORS + NUM_FAT_SECTORS + NUM_ROOT_SECTORS)
 
 #define FIRST_VALID_FAT_ADDRESS 2
@@ -858,21 +863,76 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       // first entry is volume label
       VOLUME_ENTRY(),
       // second entry is readme file (will always be read only)
-      SIMPLE_DIR_ENTRY("_README ", "TXT", ATTR1_READ_ONLY, FIRST_VALID_FAT_ADDRESS, README_SIZE),
+      SIMPLE_DIR_ENTRY("README  ", "TXT", ATTR1_READ_ONLY, FIRST_VALID_FAT_ADDRESS, README_SIZE),
       // The rest are placeholders for all of the memory unit contents (will be writeable in the future)
-      SIMPLE_DIR_ENTRY("MU1-1   ", "BIN", ATTR1_ARCHIVE, 0x0100, 128 * 1024),
-      SIMPLE_DIR_ENTRY("MU1-2   ", "BIN", ATTR1_ARCHIVE, 0x0200, 128 * 1024),
-      SIMPLE_DIR_ENTRY("MU2-1   ", "BIN", ATTR1_ARCHIVE, 0x0300, 128 * 1024),
-      SIMPLE_DIR_ENTRY("MU2-2   ", "BIN", ATTR1_ARCHIVE, 0x0400, 128 * 1024),
-      SIMPLE_DIR_ENTRY("MU3-1   ", "BIN", ATTR1_ARCHIVE, 0x0500, 128 * 1024),
-      SIMPLE_DIR_ENTRY("MU3-2   ", "BIN", ATTR1_ARCHIVE, 0x0600, 128 * 1024),
-      SIMPLE_DIR_ENTRY("MU4-1   ", "BIN", ATTR1_ARCHIVE, 0x0700, 128 * 1024),
-      SIMPLE_DIR_ENTRY("MU4-2   ", "BIN", ATTR1_ARCHIVE, 0x0800, 128 * 1024),
+      // SIMPLE_DIR_ENTRY("vmu0    ", "BIN", ATTR1_ARCHIVE, 0x0100, 128 * 1024),
+      // SIMPLE_DIR_ENTRY("vmu0-2  ", "BIN", ATTR1_ARCHIVE, 0x0200, 128 * 1024),
+      // SIMPLE_DIR_ENTRY("vmu1    ", "BIN", ATTR1_ARCHIVE, 0x0300, 128 * 1024),
+      // SIMPLE_DIR_ENTRY("vmu1-2  ", "BIN", ATTR1_ARCHIVE, 0x0400, 128 * 1024),
+      // SIMPLE_DIR_ENTRY("vmu2    ", "BIN", ATTR1_ARCHIVE, 0x0500, 128 * 1024),
+      // SIMPLE_DIR_ENTRY("vmu2-2  ", "BIN", ATTR1_ARCHIVE, 0x0600, 128 * 1024),
+      // SIMPLE_DIR_ENTRY("vmu3    ", "BIN", ATTR1_ARCHIVE, 0x0700, 128 * 1024),
+      // SIMPLE_DIR_ENTRY("vmu3-2  ", "BIN", ATTR1_ARCHIVE, 0x0800, 128 * 1024),
   },
 
   //------------- Block11+: File Content -------------//
   {README_CONTENTS}
 };
+
+void usb_msc_add(UsbMscFile* file)
+{
+  // TODO: this is a friggen mess that was written up very quickly CLEAN ME!
+
+  const char* filename = file->getFileName();
+  if (strlen(filename) > 0)
+  {
+    uint8_t* rootDir = msc_disk[NUM_RESERVED_SECTORS + NUM_FAT_SECTORS];
+    uint8_t const * rootEnd = msc_disk[NUM_HEADER_SECTORS];
+    // Move past first 2 entries
+    rootDir += (2 * BYTES_PER_ROOT_ENTRY);
+
+    uint16_t addr = 0x0100;
+    while (*rootDir != '\0' && rootDir < rootEnd)
+    {
+      addr += 0x0100;
+      rootDir += BYTES_PER_ROOT_ENTRY;
+    }
+
+    if (rootDir < rootEnd)
+    {
+      // Found a spot in root dir
+      uint8_t name8[9] = "        ";
+      uint8_t ext3[4] = "bin";
+      const char* dotPos = strchr(filename, '.');
+      if (dotPos)
+      {
+        int32_t n = dotPos - filename;
+        if (n > 8) n = 8;
+        memcpy(name8, filename, n);
+        memcpy(ext3, filename + n + 1, strlen(filename) - n - 1);
+      }
+      else
+      {
+        int32_t n = strlen(filename);
+        if (n > 8) n = 8;
+        memcpy(name8, filename, n);
+      }
+
+      uint32_t size = file->getFileSize();
+      if (size > 128 * 1024) size = 128 * 1024;
+      uint8_t fileEntry[BYTES_PER_ROOT_ENTRY] = {
+        SIMPLE_DIR_ENTRY(name8, ext3, ATTR1_ARCHIVE, addr, size)
+      };
+      memcpy(rootDir, fileEntry, sizeof(fileEntry));
+      new_data = true;
+    }
+  }
+}
+
+void usb_msc_remove(UsbMscFile* file)
+{
+  // TODO
+}
 
 // Invoked when received SCSI_CMD_INQUIRY
 // Application fill vendor id, product id and revision with string up to 8, 16, 4 characters respectively
@@ -895,8 +955,23 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun)
 {
   (void) lun;
 
-  // RAM disk is ready until ejected
-  if (ejected) {
+  if (new_data)
+  {
+    if (ejected)
+    {
+      ejected = false;
+      new_data = false;
+      tud_msc_set_sense(lun, SCSI_SENSE_UNIT_ATTENTION, 0x28, 0x00);
+    }
+    else
+    {
+      // Workaround: eject media first so host is forced to refresh
+      ejected = true;
+    }
+  }
+
+  if (ejected)
+  {
     tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3a, 0x00);
     return false;
   }
@@ -969,7 +1044,7 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
     uint32_t vmuSubindex = vmuIdx % VMUS_PER_PLAYER;
     uint32_t vmuAddr = realAddr & 0xFF;
     memset(buffer, ' ', bufsize);
-    snprintf(buffer, bufsize, "\nVMU %lu-%lu; block %02lX; len %lu", playerIdx + 1, vmuSubindex + 1, vmuAddr, bufsize);
+    snprintf((char*)buffer, bufsize, "\nVMU %lu-%lu; block %02lX; len %lu", playerIdx + 1, vmuSubindex + 1, vmuAddr, bufsize);
     numRead = bufsize;
   }
   else if (lba < REPORTED_BLOCK_NUM)
@@ -1056,5 +1131,3 @@ int32_t tud_msc_scsi_cb (uint8_t lun, uint8_t const scsi_cmd[16], void* buffer, 
 
   return resplen;
 }
-
-#endif
