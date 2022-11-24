@@ -63,4 +63,6 @@ class DreamcastStorage : public DreamcastPeripheral, UsbMscFile
     private:
         //! File name for this storage device
         char mFileName[12];
+        uint32_t mReadingTxId;
+        std::shared_ptr<const MaplePacket> mReadPacket;
 };

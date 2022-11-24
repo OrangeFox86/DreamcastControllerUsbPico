@@ -33,6 +33,7 @@
 // whether host does safe-eject
 static bool ejected = true;
 static bool new_data = false;
+static UsbMscFile* the_file = nullptr;
 
 // README contents stored on ramdisk - must not be greater than 512 bytes
 #define README_CONTENTS "\
@@ -926,12 +927,19 @@ void usb_msc_add(UsbMscFile* file)
       memcpy(rootDir, fileEntry, sizeof(fileEntry));
       new_data = true;
     }
+
+    the_file = file;
   }
 }
 
 void usb_msc_remove(UsbMscFile* file)
 {
   // TODO
+
+  if (file == the_file)
+  {
+    the_file = nullptr;
+  }
 }
 
 // Invoked when received SCSI_CMD_INQUIRY
@@ -1001,7 +1009,11 @@ bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, boo
   {
     if (start)
     {
-      // load disk storage
+      if (ejected)
+      {
+        tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3a, 0x00);
+        return false;
+      }
     }else
     {
       // unload disk storage
@@ -1029,7 +1041,7 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
   }
   else if (lba < ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM)
   {
-    // Attempt to read bad sectors
+    // Attempt to read bad sectors (just send back zeros)
     memset(buffer, 0, bufsize);
     numRead = bufsize;
   }
@@ -1043,9 +1055,17 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
     uint32_t playerIdx = vmuIdx / VMUS_PER_PLAYER;
     uint32_t vmuSubindex = vmuIdx % VMUS_PER_PLAYER;
     uint32_t vmuAddr = realAddr & 0xFF;
-    memset(buffer, ' ', bufsize);
-    snprintf((char*)buffer, bufsize, "\nVMU %lu-%lu; block %02lX; len %lu", playerIdx + 1, vmuSubindex + 1, vmuAddr, bufsize);
-    numRead = bufsize;
+
+    if (the_file)
+    {
+      return the_file->read(vmuAddr, buffer, bufsize, 20000);
+    }
+    else
+    {
+      memset(buffer, ' ', bufsize);
+      snprintf((char*)buffer, bufsize, "\nVMU %lu-%lu; block %02lX; len %lu", playerIdx + 1, vmuSubindex + 1, vmuAddr, bufsize);
+      numRead = bufsize;
+    }
   }
   else if (lba < REPORTED_BLOCK_NUM)
   {

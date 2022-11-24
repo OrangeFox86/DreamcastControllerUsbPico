@@ -14,6 +14,11 @@ if(NOT DREAMCAST_CONTROLLER_USB_PICO_TEST)
   )
 endif()
 
+target_link_libraries(coreLib
+  PUBLIC
+    hal-System
+)
+
 target_include_directories(coreLib
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
