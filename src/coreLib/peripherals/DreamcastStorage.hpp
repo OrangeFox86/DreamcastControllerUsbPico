@@ -2,9 +2,10 @@
 
 #include "DreamcastPeripheral.hpp"
 #include "PlayerData.hpp"
+#include "hal/Usb/usb_interface.hpp"
 
 //! Handles communication with the Dreamcast storage peripheral
-class DreamcastStorage : public DreamcastPeripheral
+class DreamcastStorage : public DreamcastPeripheral, UsbMscFile
 {
     public:
         //! Constructor
@@ -34,9 +35,35 @@ class DreamcastStorage : public DreamcastPeripheral
         virtual void txComplete(std::shared_ptr<const MaplePacket> packet,
                                 std::shared_ptr<const Transmission> tx) final;
 
+        // The following are inherited from UsbMscFile
+
+        //! @returns file name
+        virtual const char* getFileName() final;
+
+        //! @returns file size in bytes (currently only up to 128KB supported)
+        virtual uint32_t getFileSize() final;
+
+        //! Blocking read (must only be called from the core not operating maple bus)
+        //! @param[in] blockNum  Block number to read (block is 512 bytes)
+        //! @param[out] buffer  Buffer output
+        //! @param[in] bufferLen  The length of buffer (but only up to 512 bytes will be written)
+        //! @param[in] timeoutUs  Timeout in microseconds
+        //! @returns Positive value indicating how many bytes were read
+        //! @returns Zero if read failure occurred
+        //! @returns Negative value if timeout elapsed
+        virtual int32_t read(uint8_t blockNum,
+                             void* buffer,
+                             uint16_t bufferLen,
+                             uint32_t timeoutUs) final;
+
     public:
         //! Function code for storage
         static const uint32_t FUNCTION_CODE = DEVICE_FN_STORAGE;
 
     private:
+        bool exiting;
+        //! File name for this storage device
+        char mFileName[12];
+        uint32_t mReadingTxId;
+        std::shared_ptr<const MaplePacket> mReadPacket;
 };
