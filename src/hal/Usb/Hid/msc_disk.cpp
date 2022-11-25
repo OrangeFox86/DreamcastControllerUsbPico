@@ -31,6 +31,9 @@
 #include <string.h>
 
 #include "hal/Usb/usb_interface.hpp"
+#include "hal/Usb/UsbFileSystem.hpp"
+#include "hal/Usb/UsbFile.hpp"
+#include "hal/System/MutexInterface.hpp"
 
 #include <mutex>
 
@@ -46,7 +49,7 @@ struct FileEntry
   uint16_t numBlocks;
   uint32_t size;
   const char* filename;
-  UsbMscFile* handle;
+  UsbFile* handle;
 };
 
 static FileEntry fileEntries[8] = {};
@@ -982,7 +985,7 @@ void set_file_entries()
     }
 }
 
-void usb_msc_add(UsbMscFile* file)
+void usb_msc_add(UsbFile* file)
 {
   std::lock_guard<MutexInterface> lockGuard(*fileMutex);
 
@@ -1014,7 +1017,7 @@ void usb_msc_add(UsbMscFile* file)
   }
 }
 
-void usb_msc_remove(UsbMscFile* file)
+void usb_msc_remove(UsbFile* file)
 {
   std::lock_guard<MutexInterface> lockGuard(*fileMutex);
 
@@ -1036,6 +1039,28 @@ void usb_msc_remove(UsbMscFile* file)
         break;
       }
   }
+}
+
+class UsbMscFileSystem : public UsbFileSystem
+{
+  public:
+    virtual void add(UsbFile* file) final
+    {
+      usb_msc_add(file);
+    }
+
+    virtual void remove(UsbFile* file) final
+    {
+      usb_msc_remove(file);
+    }
+
+};
+
+static UsbMscFileSystem fileSystem;
+
+UsbFileSystem& usb_msc_get_file_system()
+{
+  return fileSystem;
 }
 
 void usb_msc_set_mutex(MutexInterface* mutex)

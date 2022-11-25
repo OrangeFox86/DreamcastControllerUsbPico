@@ -1,15 +1,15 @@
 #include "DreamcastStorage.hpp"
 #include "dreamcast_constants.h"
 
-#include "hal/System/timing.hpp"
-
 #include <string.h>
 
 DreamcastStorage::DreamcastStorage(uint8_t addr,
                                    std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                                    PlayerData playerData) :
     DreamcastPeripheral("storage", addr, scheduler, playerData.playerIndex),
-    exiting(false),
+    mExiting(false),
+    mClock(playerData.clock),
+    mUsbFileSystem(playerData.fileSystem),
     mFileName{},
     mReadingTxId(0),
     mReadPacket(nullptr)
@@ -19,22 +19,22 @@ DreamcastStorage::DreamcastStorage(uint8_t addr,
     {
         if (idx == 0)
         {
-            snprintf(mFileName, sizeof(mFileName), "vmu%lu.bin", mPlayerIndex);
+            snprintf(mFileName, sizeof(mFileName), "vmu%lu.bin", (long unsigned int)mPlayerIndex);
         }
         else
         {
-            snprintf(mFileName, sizeof(mFileName), "vmu%lu-%li.bin", mPlayerIndex, idx);
+            snprintf(mFileName, sizeof(mFileName), "vmu%lu-%li.bin", (long unsigned int)mPlayerIndex, (long int)idx);
         }
 
-        usb_msc_add(this);
+        mUsbFileSystem.add(this);
     }
 }
 
 DreamcastStorage::~DreamcastStorage()
 {
-    exiting = true;
+    mExiting = true;
     // The following is externally serialized with any read() call
-    usb_msc_remove(this);
+    mUsbFileSystem.remove(this);
 }
 
 void DreamcastStorage::task(uint64_t currentTimeUs)
@@ -75,13 +75,13 @@ int32_t DreamcastStorage::read(uint8_t blockNum,
                                uint32_t timeoutUs)
 {
     int32_t numRead = -1;
-    uint64_t startTimeUs = get_time_us();
+    uint64_t startTimeUs = mClock.getTimeUs();
     mReadPacket.reset();
     uint32_t payload[2] = {FUNCTION_CODE, blockNum};
     mReadingTxId = mEndpointTxScheduler->add(0, this, COMMAND_BLOCK_READ, payload, 2, true, 130);
 
-    // TODO: exit if object is being deleted
-    while ((get_time_us() - startTimeUs) < timeoutUs && !exiting)
+    // I'm not too happy about this blocking operation, but it works
+    while ((mClock.getTimeUs() - startTimeUs) < timeoutUs && !mExiting)
     {
         if (mReadPacket != nullptr)
         {
