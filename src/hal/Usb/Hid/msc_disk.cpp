@@ -64,9 +64,9 @@ static bool new_data = false;
 
 // README contents stored on ramdisk - must not be greater than 512 bytes
 #define README_CONTENTS "\
-This is where Dreamcast memory unit data may be viewed when a one is inserted\n\
-into a controller. All memory here is read only. Files here are compatible with\n\
-VMU data in redream emulator.\n\
+This is where Dreamcast memory unit data may be viewed when one or more are\n\
+inserted into any controller. All memory here is read only. Files are compatible\n\
+with the redream emulator.\n\
 \n\
 It is important to note that any operation done on the mass storage device will\n\
 delay other controller operations.\
