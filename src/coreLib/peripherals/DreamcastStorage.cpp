@@ -9,6 +9,7 @@ DreamcastStorage::DreamcastStorage(uint8_t addr,
                                    std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                                    PlayerData playerData) :
     DreamcastPeripheral("storage", addr, scheduler, playerData.playerIndex),
+    exiting(false),
     mFileName{},
     mReadingTxId(0),
     mReadPacket(nullptr)
@@ -31,6 +32,8 @@ DreamcastStorage::DreamcastStorage(uint8_t addr,
 
 DreamcastStorage::~DreamcastStorage()
 {
+    exiting = true;
+    // The following is externally serialized with any read() call
     usb_msc_remove(this);
 }
 
@@ -71,12 +74,14 @@ int32_t DreamcastStorage::read(uint8_t blockNum,
                                uint16_t bufferLen,
                                uint32_t timeoutUs)
 {
+    int32_t numRead = -1;
     uint64_t startTimeUs = get_time_us();
     mReadPacket.reset();
     uint32_t payload[2] = {FUNCTION_CODE, blockNum};
     mReadingTxId = mEndpointTxScheduler->add(0, this, COMMAND_BLOCK_READ, payload, 2, true, 130);
 
-    while (get_time_us() - startTimeUs < timeoutUs)
+    // TODO: exit if object is being deleted
+    while ((get_time_us() - startTimeUs) < timeoutUs && !exiting)
     {
         if (mReadPacket != nullptr)
         {
@@ -93,10 +98,9 @@ int32_t DreamcastStorage::read(uint8_t blockNum,
                 memcpy(buffer8, &flippedWord, 4);
                 buffer8 += 4;
             }
-            return copyLen;
+            numRead = copyLen;
         }
     }
 
-    // timeout
-    return -1;
+    return numRead;
 }

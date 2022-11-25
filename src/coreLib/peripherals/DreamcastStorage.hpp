@@ -61,6 +61,7 @@ class DreamcastStorage : public DreamcastPeripheral, UsbMscFile
         static const uint32_t FUNCTION_CODE = DEVICE_FN_STORAGE;
 
     private:
+        bool exiting;
         //! File name for this storage device
         char mFileName[12];
         uint32_t mReadingTxId;

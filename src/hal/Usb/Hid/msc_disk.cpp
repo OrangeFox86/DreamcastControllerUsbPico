@@ -32,9 +32,13 @@
 
 #include "hal/Usb/usb_interface.hpp"
 
+#include <mutex>
+
 #define MAX_FILE_SIZE_BYTES (128 * 1024)
 #define BLOCKS_PER_FILE 0x100
 #define START_EXTERNAL_FILE_BLOCK 0x100
+
+static MutexInterface* fileMutex = nullptr;
 
 struct FileEntry
 {
@@ -49,7 +53,7 @@ static FileEntry fileEntries[8] = {};
 static uint32_t numFileEntries = 0;
 
 // whether host does safe-eject
-static bool ejected = false;
+static bool ejected = true;
 static bool new_data = false;
 
 // 1 README included in root directory
@@ -57,10 +61,9 @@ static bool new_data = false;
 
 // README contents stored on ramdisk - must not be greater than 512 bytes
 #define README_CONTENTS "\
-This is where Dreamcast MU data may be viewed when a memory unit is inserted\n\
-into the controller. All files here will show a size of 0 bytes until a memory\n\
-unit is detected. Then the size will change to 128 KB. You may need to refresh\n\
-(F5) within a file explorer to see file size updates.\n\
+This is where Dreamcast memory unit data may be viewed when a one is inserted\n\
+into a controller. All memory here is read only. Files here are compatible with\n\
+VMU data in redream emulator.\n\
 \n\
 It is important to note that any operation done on the mass storage device will\n\
 delay other controller operations.\
@@ -162,7 +165,7 @@ delay other controller operations.\
                       starting_page,              \
                       file_size)
 
-#define VOLUME_LABEL11_STR "DreamcastMU"
+#define VOLUME_LABEL11_STR "DC-Memory  "
 #define VOLUME_ENTRY() SIMPLE_VOL_ENTRY(VOLUME_LABEL11_STR)
 
 enum
@@ -981,6 +984,8 @@ void set_file_entries()
 
 void usb_msc_add(UsbMscFile* file)
 {
+  std::lock_guard<MutexInterface> lockGuard(*fileMutex);
+
   const char* filename = file->getFileName();
   if (*filename != '\0')
   {
@@ -1011,6 +1016,8 @@ void usb_msc_add(UsbMscFile* file)
 
 void usb_msc_remove(UsbMscFile* file)
 {
+  std::lock_guard<MutexInterface> lockGuard(*fileMutex);
+
   // Find entry with matching file and remove it
   for (uint32_t i = 0;
        i < (sizeof(fileEntries) / sizeof(fileEntries[0]));
@@ -1029,6 +1036,11 @@ void usb_msc_remove(UsbMscFile* file)
         break;
       }
   }
+}
+
+void usb_msc_set_mutex(MutexInterface* mutex)
+{
+  fileMutex = mutex;
 }
 
 // Invoked when received SCSI_CMD_INQUIRY
@@ -1054,19 +1066,17 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun)
 
   if (new_data)
   {
-    if (ejected)
+    new_data = false;
+    // Only cause drive to reattach iff there is at least 1 file present
+    if (numFileEntries > 0)
     {
-      new_data = false;
-      // Only cause drive to reattach iff there is at least 1 file present
-      if (numFileEntries > 0)
-      {
-        ejected = false;
-        tud_msc_set_sense(lun, SCSI_SENSE_UNIT_ATTENTION, 0x28, 0x00);
-      }
+      ejected = false;
+      tud_msc_set_sense(lun, SCSI_SENSE_UNIT_ATTENTION, 0x28, 0x00);
+      return false;
     }
     else
     {
-      // Workaround: eject media first so host is forced to refresh
+      // Cause eject if no files present
       ejected = true;
     }
   }
@@ -1102,7 +1112,12 @@ bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, boo
   {
     if (start)
     {
-      ejected = false;
+      ejected = (numFileEntries == 0);
+      if (ejected)
+      {
+        tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3a, 0x00);
+        return false;
+      }
     }
     else
     {
@@ -1137,6 +1152,9 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
   }
   else if (lba < ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM + EXTERNAL_DISK_BLOCK_NUM)
   {
+    // Serialize this section with file add/remove
+    std::lock_guard<MutexInterface> lockGuard(*fileMutex);
+
     // This actually works out perfectly since each read will be up to 1 block of data, our block of
     // data is 512 bytes, and a VMU block of data is also 512 bytes.
 

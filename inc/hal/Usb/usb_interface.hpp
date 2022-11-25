@@ -2,6 +2,7 @@
 #define __USB_INTERFACE_H__
 
 #include "DreamcastControllerObserver.hpp"
+#include "hal/System/MutexInterface.hpp"
 
 //! @returns array of the USB controller observers
 DreamcastControllerObserver** get_usb_controller_observers();
@@ -40,6 +41,9 @@ class UsbMscFile
 void usb_msc_add(UsbMscFile* file);
 //! Remove a file from the mass storage device
 void usb_msc_remove(UsbMscFile* file);
+//! Set mutex to use between the above two calls and file access
+void usb_msc_set_mutex(MutexInterface* mutex);
+
 
 
 #endif // __USB_INTERFACE_H__

@@ -71,6 +71,9 @@ int main()
     stdio_init_all();
 #endif
 
+    CriticalSectionMutex fileMutex;
+    usb_msc_set_mutex(&fileMutex);
+
     multicore_launch_core1(core1);
 
     usb_init();
