@@ -155,7 +155,7 @@ uint8_t const desc_configuration[] =
     // Only doing transfer at full speed since each file will only be about 2kB, max of 8 files
 
     // Interface number, string index, EP Out & EP In address, EP size
-    TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 9, EPOUT_MSC, EPIN_MSC, 64),
+    TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 8, EPOUT_MSC, EPIN_MSC, 64),
 };
 
 // Invoked when received GET CONFIGURATION DESCRIPTOR
@@ -181,8 +181,7 @@ char const *string_desc_arr[] =
     "P2",                        // 5: Gamepad 2
     "P3",                        // 6: Gamepad 3
     "P4",                        // 7: Gamepad 4
-    "CDC",                       // 8: Communication Device Class
-    "MSC"                        // 9: Mass Storage Class
+    "MSC"                        // 8: Mass Storage Class
 };
 
 static uint16_t _desc_str[32];
