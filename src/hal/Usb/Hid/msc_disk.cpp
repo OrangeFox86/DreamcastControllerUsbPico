@@ -26,6 +26,8 @@
 #include "bsp/board.h"
 #include "tusb.h"
 
+#include "utils.h"
+
 #include <string.h>
 
 #include "hal/Usb/usb_interface.hpp"
@@ -36,7 +38,8 @@
 
 struct FileEntry
 {
-  uint16_t startAddr;
+  uint16_t startBlock;
+  uint16_t numBlocks;
   uint32_t size;
   const char* filename;
   UsbMscFile* handle;
@@ -165,7 +168,7 @@ delay other controller operations.\
 enum
 {
   ALLOCATED_DISK_BLOCK_NUM  = 12, // Number of actual blocks reserved in RAM disk
-  BAD_SECTOR_DISK_BLOCK_NUM = 254, // Used to line up memory files starting at address 0x0100
+  BAD_SECTOR_DISK_BLOCK_NUM = 253, // Used to line up memory files starting at address 0x0100
   EXTERNAL_DISK_BLOCK_NUM = 2048, // Number of blocks that exist outside of RAM
   FAKE_DISK_BLOCK_NUM = 32768,    // Report extra space in order to force FAT16 formatting
   DISK_BLOCK_SIZE = 512           // Size in bytes of each block
@@ -961,7 +964,7 @@ void set_file_entries()
         // Parse filename into the name and extension fields
         parse_filename(fileEntries[i].filename, rootDirEntry, rootDirEntry + 8);
         // Set address and size
-        uint8_t addrAndSize[6] = {U16_TO_U8S_LE(fileEntries[i].startAddr),
+        uint8_t addrAndSize[6] = {U16_TO_U8S_LE(fileEntries[i].startBlock),
                                   U32_TO_U8S_LE(fileEntries[i].size)};
         memcpy(rootDirEntry + (BYTES_PER_ROOT_ENTRY - 6), addrAndSize, 6);
         // Move to next entry in FAT
@@ -995,7 +998,8 @@ void usb_msc_add(UsbMscFile* file)
         {
           fileEntries[i].size = MAX_FILE_SIZE_BYTES;
         }
-        fileEntries[i].startAddr = START_EXTERNAL_FILE_BLOCK + (i * BLOCKS_PER_FILE);
+        fileEntries[i].startBlock = START_EXTERNAL_FILE_BLOCK + (i * BLOCKS_PER_FILE);
+        fileEntries[i].numBlocks = INT_DIVIDE_CEILING(fileEntries[i].size, DISK_BLOCK_SIZE);
         ++numFileEntries;
         set_file_entries();
         new_data = true;
@@ -1017,7 +1021,7 @@ void usb_msc_remove(UsbMscFile* file)
         fileEntries[i].handle = nullptr;
         fileEntries[i].filename = nullptr;
         fileEntries[i].size = 0;
-        fileEntries[i].startAddr = 0;
+        fileEntries[i].startBlock = 0;
         --numFileEntries;
         set_file_entries();
         // Only tell host to update data if device isn't ejected
@@ -1136,15 +1140,16 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
     // This actually works out perfectly since each read will be up to 1 block of data, our block of
     // data is 512 bytes, and a VMU block of data is also 512 bytes.
 
+    uint32_t realAddr = lba + FIRST_VALID_FAT_ADDRESS - NUM_HEADER_SECTORS;
+
     // Find the file which contains this address
     for (uint32_t i = 0;
         i < (sizeof(fileEntries) / sizeof(fileEntries[0]));
         ++i)
     {
-        if (lba >= fileEntries[i].startAddr && lba < (fileEntries[i].startAddr + fileEntries[i].size))
+        if (realAddr >= fileEntries[i].startBlock && realAddr < (fileEntries[i].startBlock + fileEntries[i].numBlocks))
         {
           // Found the matching file!
-          uint32_t realAddr = lba + FIRST_VALID_FAT_ADDRESS - NUM_HEADER_SECTORS;
           uint32_t vmuAddr = realAddr & 0xFF;
           numRead = fileEntries[i].handle->read(vmuAddr, buffer, bufsize, 20000);
           break;
