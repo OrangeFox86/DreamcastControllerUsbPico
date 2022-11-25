@@ -8,6 +8,7 @@
 #include "DreamcastMainNode.hpp"
 #include "PlayerData.hpp"
 #include "CriticalSectionMutex.hpp"
+#include "Clock.hpp"
 
 #include "hal/MapleBus/MapleBusInterface.hpp"
 #include "hal/Usb/usb_interface.hpp"
@@ -40,10 +41,15 @@ void core1()
     DreamcastControllerObserver** observers = get_usb_controller_observers();
     std::shared_ptr<MapleBusInterface> buses[numDevices];
     std::shared_ptr<DreamcastMainNode> dreamcastMainNodes[numDevices];
+    Clock clock;
     for (uint32_t i = 0; i < numDevices; ++i)
     {
         screenData[i] = std::make_shared<ScreenData>(screenMutexes[i]);
-        playerData[i] = std::make_shared<PlayerData>(i, *(observers[i]), *screenData[i]);
+        playerData[i] = std::make_shared<PlayerData>(i,
+                                                     *(observers[i]),
+                                                     *screenData[i],
+                                                     clock,
+                                                     usb_msc_get_file_system());
         buses[i] = create_maple_bus(maplePins[i], MAPLE_HOST_ADDRESSES[i]);
         dreamcastMainNodes[i] = std::make_shared<DreamcastMainNode>(
             *buses[i],

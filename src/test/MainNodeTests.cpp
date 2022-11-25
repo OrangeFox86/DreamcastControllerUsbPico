@@ -2,6 +2,8 @@
 #include "MockDreamcastControllerObserver.hpp"
 #include "MockDreamcastPeripheral.hpp"
 #include "MockMutex.hpp"
+#include "MockClock.hpp"
+#include "MockUsbFileSystem.hpp"
 
 #include "DreamcastMainNode.hpp"
 #include "DreamcastSubNode.hpp"
@@ -112,7 +114,7 @@ class MainNodeTest : public ::testing::Test
             mDreamcastControllerObserver(),
             mMutex(),
             mScreenData(mMutex),
-            mPlayerData{0, mDreamcastControllerObserver, mScreenData},
+            mPlayerData{0, mDreamcastControllerObserver, mScreenData, mClock, mUsbFileSystem},
             mMapleBus(),
             mPrioritizedTxScheduler(std::make_shared<PrioritizedTxScheduler>(DreamcastMainNode::MAX_PRIORITY)),
             mDreamcastMainNode(mMapleBus, mPlayerData, mPrioritizedTxScheduler)
@@ -121,6 +123,8 @@ class MainNodeTest : public ::testing::Test
     protected:
         MockDreamcastControllerObserver mDreamcastControllerObserver;
         MockMutex mMutex;
+        MockClock mClock;
+        MockUsbFileSystem mUsbFileSystem;
         ScreenData mScreenData;
         PlayerData mPlayerData;
         MockMapleBus mMapleBus;

@@ -2,6 +2,8 @@
 #include "MockDreamcastControllerObserver.hpp"
 #include "MockDreamcastPeripheral.hpp"
 #include "MockMutex.hpp"
+#include "MockClock.hpp"
+#include "MockUsbFileSystem.hpp"
 
 #include "DreamcastMainNode.hpp"
 #include "DreamcastSubNode.hpp"
@@ -72,7 +74,7 @@ class SubNodeTest : public ::testing::Test
             mDreamcastControllerObserver(),
             mMutex(),
             mScreenData(mMutex),
-            mPlayerData{1, mDreamcastControllerObserver, mScreenData},
+            mPlayerData{1, mDreamcastControllerObserver, mScreenData, mClock, mUsbFileSystem},
             mPrioritizedTxScheduler(std::make_shared<PrioritizedTxScheduler>(DreamcastMainNode::MAX_PRIORITY)),
             mEndpointTxScheduler(std::make_shared<EndpointTxScheduler>(
                 mPrioritizedTxScheduler, 0, DreamcastPeripheral::getRecipientAddress(1, 0x01))),
@@ -82,6 +84,8 @@ class SubNodeTest : public ::testing::Test
     protected:
         MockDreamcastControllerObserver mDreamcastControllerObserver;
         MockMutex mMutex;
+        MockClock mClock;
+        MockUsbFileSystem mUsbFileSystem;
         ScreenData mScreenData;
         PlayerData mPlayerData;
         std::shared_ptr<PrioritizedTxScheduler> mPrioritizedTxScheduler;

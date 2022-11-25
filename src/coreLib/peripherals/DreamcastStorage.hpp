@@ -2,10 +2,12 @@
 
 #include "DreamcastPeripheral.hpp"
 #include "PlayerData.hpp"
-#include "hal/Usb/usb_interface.hpp"
+#include "hal/Usb/UsbFile.hpp"
+#include "hal/Usb/UsbFileSystem.hpp"
+#include "hal/System/ClockInterface.hpp"
 
 //! Handles communication with the Dreamcast storage peripheral
-class DreamcastStorage : public DreamcastPeripheral, UsbMscFile
+class DreamcastStorage : public DreamcastPeripheral, UsbFile
 {
     public:
         //! Constructor
@@ -35,7 +37,7 @@ class DreamcastStorage : public DreamcastPeripheral, UsbMscFile
         virtual void txComplete(std::shared_ptr<const MaplePacket> packet,
                                 std::shared_ptr<const Transmission> tx) final;
 
-        // The following are inherited from UsbMscFile
+        // The following are inherited from UsbFile
 
         //! @returns file name
         virtual const char* getFileName() final;
@@ -61,9 +63,16 @@ class DreamcastStorage : public DreamcastPeripheral, UsbMscFile
         static const uint32_t FUNCTION_CODE = DEVICE_FN_STORAGE;
 
     private:
-        bool exiting;
+        //! Initialized false and set to true when destructor called
+        bool mExiting;
+        //! Reference to a clock which allows us to keep track of time for timeout
+        ClockInterface& mClock;
+        //! Reference to a file system where this object may be added to
+        UsbFileSystem& mUsbFileSystem;
         //! File name for this storage device
         char mFileName[12];
+        //! The transmission ID of the current read operation
         uint32_t mReadingTxId;
+        //! Packet filled in as a result of a read operation
         std::shared_ptr<const MaplePacket> mReadPacket;
 };
