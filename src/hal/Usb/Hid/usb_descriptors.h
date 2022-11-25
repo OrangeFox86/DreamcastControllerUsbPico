@@ -9,8 +9,6 @@ enum {
     ITF_NUM_GAMEPAD2,
     ITF_NUM_GAMEPAD1,
     // For mass storage device
-    ITF_NUM_CDC,
-    ITF_NUM_CDC_DATA,
     ITF_NUM_MSC,
 
     ITF_COUNT
