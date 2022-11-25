@@ -30,10 +30,27 @@
 
 #include "hal/Usb/usb_interface.hpp"
 
+#define MAX_FILE_SIZE_BYTES (128 * 1024)
+#define BLOCKS_PER_FILE 0x100
+#define START_EXTERNAL_FILE_BLOCK 0x100
+
+struct FileEntry
+{
+  uint16_t startAddr;
+  uint32_t size;
+  const char* filename;
+  UsbMscFile* handle;
+};
+
+static FileEntry fileEntries[8] = {};
+static uint32_t numFileEntries = 0;
+
 // whether host does safe-eject
-static bool ejected = true;
+static bool ejected = false;
 static bool new_data = false;
-static UsbMscFile* the_file = nullptr;
+
+// 1 README included in root directory
+#define NUM_INTERNAL_FILES 1
 
 // README contents stored on ramdisk - must not be greater than 512 bytes
 #define README_CONTENTS "\
@@ -169,6 +186,8 @@ enum
 #define FIRST_VALID_FAT_ADDRESS 2
 
 #define VMUS_PER_PLAYER 2
+
+const uint8_t defaultRootEntry[BYTES_PER_ROOT_ENTRY] = {SIMPLE_DIR_ENTRY("        ", "   ", ATTR1_ARCHIVE, 0, 0)};
 
 // The ramdisk
 uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
@@ -880,65 +899,131 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
   {README_CONTENTS}
 };
 
+// Parses a filename string into name and extension fields
+void parse_filename(const char* filename, uint8_t* name8, uint8_t* ext3)
+{
+  // Make sure characters not set are padded with spaces
+  memset(name8, ' ', 8);
+  memset(ext3, ' ', 8);
+
+  const char* dotPos = strchr(filename, '.');
+  if (dotPos)
+  {
+    // File has extension
+    // Copy name
+    uint32_t nameLen = dotPos - filename;
+    if (nameLen > 8) nameLen = 8;
+    for (uint8_t i = 0; i < nameLen; ++i)
+    {
+      *name8++ = CHAR_TO_UPPER(*filename);
+      filename++;
+    }
+    // Copy extension
+    const char* extStart = dotPos + 1;
+    uint32_t extLen = strlen(extStart);
+    if (extLen > 3) extLen = 3;
+    for (uint8_t i = 0; i < extLen; ++i)
+    {
+      *ext3++ = CHAR_TO_UPPER(*extStart);
+      extStart++;
+    }
+  }
+  else
+  {
+    // No extension
+    // Copy name
+    int32_t n = strlen(filename);
+    if (n > 8) n = 8;
+    for (uint8_t i = 0; i < n; ++i)
+    {
+      name8[i] = CHAR_TO_UPPER(*filename++);
+    }
+    // Leave extension empty
+  }
+}
+
+void set_file_entries()
+{
+    uint8_t* rootDirEntry = msc_disk[NUM_RESERVED_SECTORS + NUM_FAT_SECTORS];
+    uint8_t const * rootEnd = msc_disk[NUM_HEADER_SECTORS];
+    // Move past volume label and internal files
+    rootDirEntry += ((1 + NUM_INTERNAL_FILES) * BYTES_PER_ROOT_ENTRY);
+
+    // Set all files in fileEntries
+    for (uint32_t i = 0;
+         i < (sizeof(fileEntries) / sizeof(fileEntries[0])) && (rootDirEntry < rootEnd);
+         ++i)
+    {
+      // File entry is only considered set if handle is set
+      if (fileEntries[i].handle != nullptr)
+      {
+        memcpy(rootDirEntry, defaultRootEntry, sizeof(defaultRootEntry));
+        // Parse filename into the name and extension fields
+        parse_filename(fileEntries[i].filename, rootDirEntry, rootDirEntry + 8);
+        // Set address and size
+        uint8_t addrAndSize[6] = {U16_TO_U8S_LE(fileEntries[i].startAddr),
+                                  U32_TO_U8S_LE(fileEntries[i].size)};
+        memcpy(rootDirEntry + (BYTES_PER_ROOT_ENTRY - 6), addrAndSize, 6);
+        // Move to next entry in FAT
+        rootDirEntry += BYTES_PER_ROOT_ENTRY;
+      }
+    }
+
+    // Empty out everything else
+    if (rootDirEntry < rootEnd)
+    {
+      memset(rootDirEntry, 0, rootEnd - rootDirEntry);
+    }
+}
+
 void usb_msc_add(UsbMscFile* file)
 {
-  // TODO: this is a friggen mess that was written up very quickly CLEAN ME!
-
   const char* filename = file->getFileName();
-  if (strlen(filename) > 0)
+  if (*filename != '\0')
   {
-    uint8_t* rootDir = msc_disk[NUM_RESERVED_SECTORS + NUM_FAT_SECTORS];
-    uint8_t const * rootEnd = msc_disk[NUM_HEADER_SECTORS];
-    // Move past first 2 entries
-    rootDir += (2 * BYTES_PER_ROOT_ENTRY);
-
-    uint16_t addr = 0x0100;
-    while (*rootDir != '\0' && rootDir < rootEnd)
+    // Find first empty slot and add file
+    for (uint32_t i = 0;
+         i < (sizeof(fileEntries) / sizeof(fileEntries[0]));
+         ++i)
     {
-      addr += 0x0100;
-      rootDir += BYTES_PER_ROOT_ENTRY;
-    }
-
-    if (rootDir < rootEnd)
-    {
-      // Found a spot in root dir
-      uint8_t name8[9] = "        ";
-      uint8_t ext3[4] = "bin";
-      const char* dotPos = strchr(filename, '.');
-      if (dotPos)
+      if (fileEntries[i].handle == nullptr)
       {
-        int32_t n = dotPos - filename;
-        if (n > 8) n = 8;
-        memcpy(name8, filename, n);
-        memcpy(ext3, filename + n + 1, strlen(filename) - n - 1);
+        fileEntries[i].handle = file;
+        fileEntries[i].filename = file->getFileName();
+        fileEntries[i].size = file->getFileSize();
+        if (fileEntries[i].size > MAX_FILE_SIZE_BYTES)
+        {
+          fileEntries[i].size = MAX_FILE_SIZE_BYTES;
+        }
+        fileEntries[i].startAddr = START_EXTERNAL_FILE_BLOCK + (i * BLOCKS_PER_FILE);
+        ++numFileEntries;
+        set_file_entries();
+        new_data = true;
+        break;
       }
-      else
-      {
-        int32_t n = strlen(filename);
-        if (n > 8) n = 8;
-        memcpy(name8, filename, n);
-      }
-
-      uint32_t size = file->getFileSize();
-      if (size > 128 * 1024) size = 128 * 1024;
-      uint8_t fileEntry[BYTES_PER_ROOT_ENTRY] = {
-        SIMPLE_DIR_ENTRY(name8, ext3, ATTR1_ARCHIVE, addr, size)
-      };
-      memcpy(rootDir, fileEntry, sizeof(fileEntry));
-      new_data = true;
     }
-
-    the_file = file;
   }
 }
 
 void usb_msc_remove(UsbMscFile* file)
 {
-  // TODO
-
-  if (file == the_file)
+  // Find entry with matching file and remove it
+  for (uint32_t i = 0;
+       i < (sizeof(fileEntries) / sizeof(fileEntries[0]));
+       ++i)
   {
-    the_file = nullptr;
+      if (fileEntries[i].handle == file)
+      {
+        fileEntries[i].handle = nullptr;
+        fileEntries[i].filename = nullptr;
+        fileEntries[i].size = 0;
+        fileEntries[i].startAddr = 0;
+        --numFileEntries;
+        set_file_entries();
+        // Only tell host to update data if device isn't ejected
+        new_data = true;
+        break;
+      }
   }
 }
 
@@ -967,9 +1052,13 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun)
   {
     if (ejected)
     {
-      ejected = false;
       new_data = false;
-      tud_msc_set_sense(lun, SCSI_SENSE_UNIT_ATTENTION, 0x28, 0x00);
+      // Only cause drive to reattach iff there is at least 1 file present
+      if (numFileEntries > 0)
+      {
+        ejected = false;
+        tud_msc_set_sense(lun, SCSI_SENSE_UNIT_ATTENTION, 0x28, 0x00);
+      }
     }
     else
     {
@@ -1009,12 +1098,9 @@ bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, boo
   {
     if (start)
     {
-      if (ejected)
-      {
-        tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3a, 0x00);
-        return false;
-      }
-    }else
+      ejected = false;
+    }
+    else
     {
       // unload disk storage
       ejected = true;
@@ -1030,7 +1116,7 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
 {
   (void) lun;
 
-  uint32_t numRead = 0;
+  int32_t numRead = -1;
 
   if (lba < ALLOCATED_DISK_BLOCK_NUM)
   {
@@ -1047,24 +1133,22 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
   }
   else if (lba < ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM + EXTERNAL_DISK_BLOCK_NUM)
   {
-    // TODO: Read data from external source
     // This actually works out perfectly since each read will be up to 1 block of data, our block of
     // data is 512 bytes, and a VMU block of data is also 512 bytes.
-    uint32_t realAddr = lba + FIRST_VALID_FAT_ADDRESS - NUM_HEADER_SECTORS;
-    uint32_t vmuIdx = (realAddr >> 8) - 1;
-    uint32_t playerIdx = vmuIdx / VMUS_PER_PLAYER;
-    uint32_t vmuSubindex = vmuIdx % VMUS_PER_PLAYER;
-    uint32_t vmuAddr = realAddr & 0xFF;
 
-    if (the_file)
+    // Find the file which contains this address
+    for (uint32_t i = 0;
+        i < (sizeof(fileEntries) / sizeof(fileEntries[0]));
+        ++i)
     {
-      return the_file->read(vmuAddr, buffer, bufsize, 20000);
-    }
-    else
-    {
-      memset(buffer, ' ', bufsize);
-      snprintf((char*)buffer, bufsize, "\nVMU %lu-%lu; block %02lX; len %lu", playerIdx + 1, vmuSubindex + 1, vmuAddr, bufsize);
-      numRead = bufsize;
+        if (lba >= fileEntries[i].startAddr && lba < (fileEntries[i].startAddr + fileEntries[i].size))
+        {
+          // Found the matching file!
+          uint32_t realAddr = lba + FIRST_VALID_FAT_ADDRESS - NUM_HEADER_SECTORS;
+          uint32_t vmuAddr = realAddr & 0xFF;
+          numRead = fileEntries[i].handle->read(vmuAddr, buffer, bufsize, 20000);
+          break;
+        }
     }
   }
   else if (lba < REPORTED_BLOCK_NUM)
