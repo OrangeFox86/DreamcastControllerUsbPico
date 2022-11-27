@@ -99,6 +99,7 @@ int32_t DreamcastStorage::read(uint8_t blockNum,
                 buffer8 += 4;
             }
             numRead = copyLen;
+            break;
         }
     }
 

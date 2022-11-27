@@ -48,7 +48,7 @@ void ScreenData::readData(uint32_t* out)
     }
     else
     {
-        DEBUG_PRINT("FAULT: failed to set screen data\n");
+        DEBUG_PRINT("FAULT: failed to properly read screen data\n");
     }
     // Allow this to happen, even if locking failed
     memcpy(out, mScreenData, sizeof(mScreenData));
