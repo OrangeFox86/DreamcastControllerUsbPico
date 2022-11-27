@@ -78,7 +78,6 @@ int main()
     stdio_uart_init();
 #endif
 
-    // complete read operations! Use a regular mutex instead.
     Mutex fileMutex;
     usb_msc_set_mutex(&fileMutex);
 
