@@ -27,6 +27,7 @@
 #include "usb_descriptors.h"
 #include "class/hid/hid_device.h"
 #include "pico/unique_id.h"
+#include "configuration.h"
 #include <string.h>
 
 //--------------------------------------------------------------------+
@@ -111,15 +112,24 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
 // Configuration Descriptor
 //--------------------------------------------------------------------+
 
-#define  CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + (NUMBER_OF_GAMEPADS * TUD_HID_DESC_LEN) + TUD_MSC_DESC_LEN)
+#if CDC_ENABLED
+    #define DEBUG_CONFIG_LEN TUD_CDC_DESC_LEN
+#else
+    #define DEBUG_CONFIG_LEN 0
+#endif
+
+#define  CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + (NUMBER_OF_GAMEPADS * TUD_HID_DESC_LEN) + DEBUG_CONFIG_LEN + TUD_MSC_DESC_LEN)
 
 // Endpoint definitions (must all be unique)
 #define EPIN_GAMEPAD1   (0x84)
 #define EPIN_GAMEPAD2   (0x83)
 #define EPIN_GAMEPAD3   (0x82)
 #define EPIN_GAMEPAD4   (0x81)
-#define EPOUT_MSC       (0x07)
-#define EPIN_MSC        (0x87)
+#define EPOUT_MSC       (0x05)
+#define EPIN_MSC        (0x85)
+#define EPIN_CDC_NOTIF  (0x86)
+#define EPOUT_CDC       (0x07)
+#define EPIN_CDC        (0x87)
 
 #define GAMEPAD_REPORT_SIZE (1 + sizeof(hid_gamepad_report_t))
 
@@ -149,13 +159,22 @@ uint8_t const desc_configuration[] =
                                 EPIN_GAMEPAD1, GAMEPAD_REPORT_SIZE, 1),
 
     // *************************************************************************
-    // * Storage Device Descriptors                                            *
+    // * Storage Device Descriptor                                             *
     // *************************************************************************
 
-    // Only doing transfer at full speed since each file will only be about 2kB, max of 8 files
+    // Only doing transfer at full speed since each file will only be about 128KB, max of 8 files
 
     // Interface number, string index, EP Out & EP In address, EP size
     TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 8, EPOUT_MSC, EPIN_MSC, 64),
+
+    // *************************************************************************
+    // * Communication Device Descriptor  (for debug messaging)                *
+    // *************************************************************************
+
+#if CDC_ENABLED
+    // Interface number, string index, EP notification address and size, EP data address (out, in) and size.
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 9, EPIN_CDC_NOTIF, 8, EPOUT_CDC, EPIN_CDC, 64),
+#endif
 };
 
 // Invoked when received GET CONFIGURATION DESCRIPTOR
@@ -181,7 +200,8 @@ char const *string_desc_arr[] =
     "P2",                        // 5: Gamepad 2
     "P3",                        // 6: Gamepad 3
     "P4",                        // 7: Gamepad 4
-    "MSC"                        // 8: Mass Storage Class
+    "MSC",                       // 8: Mass Storage Class
+    "CDC",                       // 9: Communication Device Class
 };
 
 static uint16_t _desc_str[32];

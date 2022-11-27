@@ -12,6 +12,8 @@
 #include "device/dcd.h"
 #include "usb_descriptors.h"
 #include "class/hid/hid_device.h"
+#include "msc_disk.hpp"
+#include "cdc.hpp"
 
 UsbGamepad usbGamepads[NUMBER_OF_GAMEPADS] = {
   UsbGamepad(ITF_NUM_GAMEPAD1),
@@ -123,11 +125,13 @@ void led_task()
 
 }
 
-void usb_init()
+void usb_init(MutexInterface* mscMutex, MutexInterface* cdcMutex)
 {
   set_usb_devices(devices, sizeof(devices) / sizeof(devices[1]));
   board_init();
   tusb_init();
+  msc_init(mscMutex);
+  cdc_init(cdcMutex);
 
 #if USB_LED_PIN >= 0
   gpio_init(USB_LED_PIN);
@@ -144,6 +148,7 @@ void usb_task()
 {
   tud_task(); // tinyusb device task
   led_task();
+  cdc_task();
 }
 
 //--------------------------------------------------------------------+

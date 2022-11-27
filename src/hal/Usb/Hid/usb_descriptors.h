@@ -1,6 +1,14 @@
 #ifndef __USB_DESCRITORS_H__
 #define __USB_DESCRITORS_H__
 
+#include "configuration.h"
+
+#if SHOW_DEBUG_MESSAGES
+#define CDC_ENABLED true
+#else
+#define CDC_ENABLED false
+#endif
+
 // Going in reverse order because the host seems to usually enumerate the highest value first
 enum {
     // Gamepads
@@ -10,6 +18,11 @@ enum {
     ITF_NUM_GAMEPAD1,
     // For mass storage device
     ITF_NUM_MSC,
+
+#if CDC_ENABLED
+    ITF_NUM_CDC,
+    ITF_NUM_CDC_DATA,
+#endif
 
     ITF_COUNT
 };

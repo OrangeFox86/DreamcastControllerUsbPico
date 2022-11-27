@@ -8,7 +8,7 @@
 //! @returns array of the USB controller observers
 DreamcastControllerObserver** get_usb_controller_observers();
 //! USB initialization
-void usb_init();
+void usb_init(MutexInterface* mscMutex, MutexInterface* cdcMutex);
 //! USB task that needs to be called constantly by main()
 void usb_task();
 //! @returns number of USB controllers
@@ -16,9 +16,6 @@ uint32_t get_num_usb_controllers();
 
 //! Must return the file system
 UsbFileSystem& usb_msc_get_file_system();
-
-//! Set mutex to use between the above two calls and file access
-void usb_msc_set_mutex(MutexInterface* mutex);
 
 
 #endif // __USB_INTERFACE_H__

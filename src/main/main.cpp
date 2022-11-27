@@ -8,6 +8,7 @@
 #include "DreamcastMainNode.hpp"
 #include "PlayerData.hpp"
 #include "CriticalSectionMutex.hpp"
+#include "Mutex.hpp"
 #include "Clock.hpp"
 
 #include "hal/MapleBus/MapleBusInterface.hpp"
@@ -74,15 +75,14 @@ int main()
     set_sys_clock_khz(CPU_FREQ_KHZ, true);
 
 #if SHOW_DEBUG_MESSAGES
-    stdio_init_all();
+    stdio_uart_init();
 #endif
-
-    CriticalSectionMutex fileMutex;
-    usb_msc_set_mutex(&fileMutex);
 
     multicore_launch_core1(core1);
 
-    usb_init();
+    Mutex fileMutex;
+    Mutex cdcMutex;
+    usb_init(&fileMutex, &cdcMutex);
 
     while(true)
     {

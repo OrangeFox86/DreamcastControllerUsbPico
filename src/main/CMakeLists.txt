@@ -12,6 +12,7 @@ target_link_libraries(main
     hal-MapleBus
     hal-System
     hal-Usb-Hid
+    pico_stdio_usb
     coreLib
 )
 target_compile_options(main PRIVATE
