@@ -125,7 +125,7 @@ void led_task()
 
 #if SHOW_DEBUG_MESSAGES
 
-// Can't use stdio_usb_init() because it checks tud_cdc_connected() and that doesn't always return
+// Can't use stdio_usb_init() because it checks tud_cdc_connected(), and that doesn't always return
 // true when a connection is made. Not all terminal client set this when making connection.
 
 #include "pico/stdio.h"

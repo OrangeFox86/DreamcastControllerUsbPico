@@ -8,6 +8,7 @@
 #include "DreamcastMainNode.hpp"
 #include "PlayerData.hpp"
 #include "CriticalSectionMutex.hpp"
+#include "Mutex.hpp"
 #include "Clock.hpp"
 
 #include "hal/MapleBus/MapleBusInterface.hpp"
@@ -77,7 +78,8 @@ int main()
     stdio_uart_init();
 #endif
 
-    CriticalSectionMutex fileMutex;
+    // complete read operations! Use a regular mutex instead.
+    Mutex fileMutex;
     usb_msc_set_mutex(&fileMutex);
 
     multicore_launch_core1(core1);
