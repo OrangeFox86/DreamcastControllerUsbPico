@@ -74,7 +74,7 @@ extern "C" {
 #endif
 
 //------------- CLASS -------------//
-#define CFG_TUD_CDC             1
+#define CFG_TUD_CDC             1 // CDC always defined, even when not used
 #define CFG_TUD_MSC             1
 #define CFG_TUD_HID             NUMBER_OF_GAMEPADS
 #define CFG_TUD_MIDI            0

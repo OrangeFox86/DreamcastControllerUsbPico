@@ -22,6 +22,8 @@ class CriticalSectionMutex : public MutexInterface
 
         virtual void unlock() final;
 
+        virtual int8_t tryLock() final;
+
     private:
         critical_section_t mCriticalSection;
 };

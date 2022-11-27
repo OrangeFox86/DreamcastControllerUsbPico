@@ -23,6 +23,7 @@
  *
  */
 
+#include "msc_disk.hpp"
 #include "bsp/board.h"
 #include "tusb.h"
 
@@ -34,6 +35,7 @@
 #include "hal/Usb/UsbFileSystem.hpp"
 #include "hal/Usb/UsbFile.hpp"
 #include "hal/System/MutexInterface.hpp"
+#include "hal/System/LockGuard.hpp"
 
 #include <mutex>
 
@@ -987,7 +989,15 @@ void set_file_entries()
 
 void usb_msc_add(UsbFile* file)
 {
-  std::lock_guard<MutexInterface> lockGuard(*fileMutex);
+  LockGuard lockGuard(*fileMutex);
+
+  if (!lockGuard.isLocked())
+  {
+    DEBUG_PRINT("Critical Fault: Failed to add file \"%s\" due to lock failure\n",
+                file->getFileName());
+    // Spin forever
+    assert(0);
+  }
 
   const char* filename = file->getFileName();
   if (*filename != '\0')
@@ -1019,7 +1029,15 @@ void usb_msc_add(UsbFile* file)
 
 void usb_msc_remove(UsbFile* file)
 {
-  std::lock_guard<MutexInterface> lockGuard(*fileMutex);
+  LockGuard lockGuard(*fileMutex);
+
+  if (!lockGuard.isLocked())
+  {
+    DEBUG_PRINT("Critical Fault: Failed to remove file \"%s\" due to lock failure\n",
+                file->getFileName());
+    // Spin forever
+    assert(0);
+  }
 
   // Find entry with matching file and remove it
   for (uint32_t i = 0;
@@ -1063,7 +1081,7 @@ UsbFileSystem& usb_msc_get_file_system()
   return fileSystem;
 }
 
-void usb_msc_set_mutex(MutexInterface* mutex)
+void msc_init(MutexInterface* mutex)
 {
   fileMutex = mutex;
 }
@@ -1178,7 +1196,14 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
   else if (lba < ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM + EXTERNAL_DISK_BLOCK_NUM)
   {
     // Serialize this section with file add/remove
-    std::lock_guard<MutexInterface> lockGuard(*fileMutex);
+    LockGuard lockGuard(*fileMutex);
+
+    if (!lockGuard.isLocked())
+    {
+      DEBUG_PRINT("Critical Fault: Failed to read file due to lock failure\n");
+      // Spin forever
+      assert(0);
+    }
 
     // This actually works out perfectly since each read will be up to 1 block of data, our block of
     // data is 512 bytes, and a VMU block of data is also 512 bytes.

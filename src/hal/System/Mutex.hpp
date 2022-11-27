@@ -19,6 +19,8 @@ class Mutex : public MutexInterface
 
         virtual void unlock() final;
 
+        virtual int8_t tryLock() final;
+
     private:
         mutex_t mMutex;
 };

@@ -78,12 +78,11 @@ int main()
     stdio_uart_init();
 #endif
 
-    Mutex fileMutex;
-    usb_msc_set_mutex(&fileMutex);
-
     multicore_launch_core1(core1);
 
-    usb_init();
+    Mutex fileMutex;
+    Mutex cdcMutex;
+    usb_init(&fileMutex, &cdcMutex);
 
     while(true)
     {

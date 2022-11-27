@@ -9,7 +9,7 @@ class ScreenData
 {
     public:
         //! Constructor
-        //! @param[in] mutex  Reference to the mutex to use
+        //! @param[in] mutex  Reference to the mutex to use (critical section mutex recommended)
         ScreenData(MutexInterface& mutex);
 
         //! Set the screen bits

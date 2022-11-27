@@ -112,7 +112,7 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
 // Configuration Descriptor
 //--------------------------------------------------------------------+
 
-#if SHOW_DEBUG_MESSAGES
+#if CDC_ENABLED
     #define DEBUG_CONFIG_LEN TUD_CDC_DESC_LEN
 #else
     #define DEBUG_CONFIG_LEN 0
@@ -171,7 +171,7 @@ uint8_t const desc_configuration[] =
     // * Communication Device Descriptor  (for debug messaging)                *
     // *************************************************************************
 
-#if SHOW_DEBUG_MESSAGES
+#if CDC_ENABLED
     // Interface number, string index, EP notification address and size, EP data address (out, in) and size.
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 9, EPIN_CDC_NOTIF, 8, EPOUT_CDC, EPIN_CDC, 64),
 #endif

@@ -12,6 +12,8 @@
 #include "device/dcd.h"
 #include "usb_descriptors.h"
 #include "class/hid/hid_device.h"
+#include "msc_disk.hpp"
+#include "cdc.hpp"
 
 UsbGamepad usbGamepads[NUMBER_OF_GAMEPADS] = {
   UsbGamepad(ITF_NUM_GAMEPAD1),
@@ -123,65 +125,13 @@ void led_task()
 
 }
 
-#if SHOW_DEBUG_MESSAGES
-
-// Can't use stdio_usb_init() because it checks tud_cdc_connected(), and that doesn't always return
-// true when a connection is made. Not all terminal client set this when making connection.
-
-#include "pico/stdio.h"
-#include "pico/stdio/driver.h"
-extern "C" {
-
-static void stdio_usb_out_chars2(const char *buf, int length) {
-    static uint64_t last_avail_time;
-        for (int i = 0; i < length;) {
-            int n = length - i;
-            int avail = (int) tud_cdc_write_available();
-            if (n > avail) n = avail;
-            if (n) {
-                int n2 = (int) tud_cdc_write(buf + i, (uint32_t)n);
-                tud_task();
-                tud_cdc_write_flush();
-                i += n2;
-                last_avail_time = time_us_64();
-            } else {
-                tud_task();
-                tud_cdc_write_flush();
-                if (!tud_cdc_connected() ||
-                    (!tud_cdc_write_available() && time_us_64() > last_avail_time + 500000)) {
-                    break;
-                }
-            }
-        }
-}
-
-int stdio_usb_in_chars2(char *buf, int length) {
-    int rc = PICO_ERROR_NO_DATA;
-    if (tud_cdc_connected() && tud_cdc_available()) {
-        int count = (int) tud_cdc_read(buf, (uint32_t) length);
-        rc =  count ? count : PICO_ERROR_NO_DATA;
-    }
-    return rc;
-}
-
-
-struct stdio_driver stdio_usb2 = {
-    .out_chars = stdio_usb_out_chars2,
-    .in_chars = stdio_usb_in_chars2,
-#if PICO_STDIO_ENABLE_CRLF_SUPPORT
-    .crlf_enabled = 0
-#endif
-};
-
-}
-
-#endif
-
-void usb_init()
+void usb_init(MutexInterface* mscMutex, MutexInterface* cdcMutex)
 {
   set_usb_devices(devices, sizeof(devices) / sizeof(devices[1]));
   board_init();
   tusb_init();
+  msc_init(mscMutex);
+  cdc_init(cdcMutex);
 
 #if USB_LED_PIN >= 0
   gpio_init(USB_LED_PIN);
@@ -192,59 +142,6 @@ void usb_init()
   gpio_init(SIMPLE_USB_LED_PIN);
   gpio_set_dir_out_masked(1<<SIMPLE_USB_LED_PIN);
 #endif
-
-#if SHOW_DEBUG_MESSAGES
-  stdio_set_driver_enabled(&stdio_usb2, true);
-#endif
-}
-
-//--------------------------------------------------------------------+
-// USB CDC
-//--------------------------------------------------------------------+
-void cdc_task(void)
-{
-  // connected() check for DTR bit
-  // Most but not all terminal client set this when making connection
-  // if ( tud_cdc_connected() )
-  {
-    // connected and there are data available
-    if ( tud_cdc_available() )
-    {
-      // read datas
-      char buf[64];
-      uint32_t count = tud_cdc_read(buf, sizeof(buf));
-      (void) count;
-
-      // Echo back
-      // Note: Skip echo by commenting out write() and write_flush()
-      // for throughput test e.g
-      //    $ dd if=/dev/zero of=/dev/ttyACM0 count=10000
-      tud_cdc_write(buf, count);
-      tud_cdc_write_flush();
-    }
-  }
-}
-
-// Invoked when cdc when line state changed e.g connected/disconnected
-void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
-{
-  (void) itf;
-  (void) rts;
-
-  // TODO set some indicator
-  if ( dtr )
-  {
-    // Terminal connected
-  }else
-  {
-    // Terminal disconnected
-  }
-}
-
-// Invoked when CDC interface received data from host
-void tud_cdc_rx_cb(uint8_t itf)
-{
-  (void) itf;
 }
 
 void usb_task()

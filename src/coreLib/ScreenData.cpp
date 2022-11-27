@@ -1,7 +1,8 @@
 #include "ScreenData.hpp"
 #include <string.h>
 #include <assert.h>
-#include <mutex>
+#include "hal/System/LockGuard.hpp"
+#include "utils.h"
 
 ScreenData::ScreenData(MutexInterface& mutex) :
     mMutex(mutex),
@@ -21,9 +22,16 @@ ScreenData::ScreenData(MutexInterface& mutex) :
 void ScreenData::setData(uint32_t* data, uint32_t startIndex, uint32_t numWords)
 {
     assert(startIndex + numWords <= sizeof(mScreenData));
-    std::lock_guard<MutexInterface> lockGuard(mMutex);
-    memcpy(mScreenData + startIndex, data, numWords);
-    mNewDataAvailable = true;
+    LockGuard lockGuard(mMutex);
+    if (lockGuard.isLocked())
+    {
+        memcpy(mScreenData + startIndex, data, numWords);
+        mNewDataAvailable = true;
+    }
+    else
+    {
+        DEBUG_PRINT("FAULT: failed to set screen data\n");
+    }
 }
 
 bool ScreenData::isNewDataAvailable() const
@@ -33,7 +41,15 @@ bool ScreenData::isNewDataAvailable() const
 
 void ScreenData::readData(uint32_t* out)
 {
-    std::lock_guard<MutexInterface> lockGuard(mMutex);
-    mNewDataAvailable = false;
+    LockGuard lockGuard(mMutex);
+    if (lockGuard.isLocked())
+    {
+        mNewDataAvailable = false;
+    }
+    else
+    {
+        DEBUG_PRINT("FAULT: failed to set screen data\n");
+    }
+    // Allow this to happen, even if locking failed
     memcpy(out, mScreenData, sizeof(mScreenData));
 }

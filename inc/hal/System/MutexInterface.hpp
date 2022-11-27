@@ -1,6 +1,8 @@
 #ifndef __MUTEX_INTERFACE_H__
 #define __MUTEX_INTERFACE_H__
 
+#include <stdint.h>
+
 //! This interface is used to decouple mutex functionality in HAL from the Dreamcast functionality.
 class MutexInterface
 {
@@ -16,6 +18,12 @@ class MutexInterface
 
         //! Releases the previously locked mutex
         virtual void unlock() = 0;
+
+        //! Tries to obtain mutex without blocking
+        //! @returns 1 if mutex was obtained
+        //! @returns 0 if mutex was not obtained, and blocking would be valid in this context
+        //! @returns -1 if mutex was not obtained, and blocking would cause deadlock
+        virtual int8_t tryLock() = 0;
 };
 
 #endif // __MUTEX_INTERFACE_H__
