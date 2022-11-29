@@ -465,7 +465,7 @@ bool upper_found(const char* name, uint32_t len)
 
 // Parses a filename string into name and extension fields
 // Returns attribute 2 value
-uint8_t parse_filename(const char* filename, uint8_t* const name8, uint8_t* const ext3)
+uint8_t parse_filename(const char* filename, uint8_t* name8, uint8_t* ext3)
 {
   uint8_t rv = 0;
 
@@ -473,11 +473,18 @@ uint8_t parse_filename(const char* filename, uint8_t* const name8, uint8_t* cons
   memset(name8, ' ', 8);
   memset(ext3, ' ', 3);
 
+  // Find extension position
   const char* dotPos = strchr(filename, '.');
+  const char* extStart = nullptr;
   if (dotPos == NULL)
   {
     // Put pointer at end of string
     dotPos = filename + strlen(filename);
+    extStart = dotPos;
+  }
+  else
+  {
+    extStart = dotPos + 1;
   }
 
   // Copy name
@@ -489,11 +496,11 @@ uint8_t parse_filename(const char* filename, uint8_t* const name8, uint8_t* cons
   }
   for (uint8_t i = 0; i < nameLen; ++i)
   {
-    name8[i] = CHAR_TO_UPPER(*filename);
-    filename++;
+    *name8++ = CHAR_TO_UPPER(*filename);
+    ++filename;
   }
+
   // Copy extension
-  const char* extStart = dotPos + 1;
   uint32_t extLen = strlen(extStart);
   if (extLen > 3) extLen = 3;
   if (!upper_found(extStart, 3))
@@ -502,8 +509,8 @@ uint8_t parse_filename(const char* filename, uint8_t* const name8, uint8_t* cons
   }
   for (uint8_t i = 0; i < extLen; ++i)
   {
-    ext3[i] = CHAR_TO_UPPER(*extStart);
-    extStart++;
+    *ext3++ = CHAR_TO_UPPER(*extStart);
+    ++extStart;
   }
 
   return rv;
