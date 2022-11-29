@@ -92,6 +92,9 @@ delay other controller operations.\
 #define ATTR1_DEVICE 0x40
 #define ATTR1_RESERVED 0x80
 
+#define ATTR2_LOWERCASE_BASENAME 0x08
+#define ATTR2_LOWERCASE_EXT 0x10
+
 #define CHAR_TO_UPPER(c) (uint8_t)((c >= 'a' && c <= 'z') ? (c - ('a' - 'A')) : c)
 
 // Converts a set length string to a list of characters
@@ -155,11 +158,11 @@ delay other controller operations.\
 
 #define SIMPLE_VOL_ENTRY(name11) VOLUME_LABEL_ENTRY(name11, DEFAULT_FILE_TIME, DEFAULT_FILE_DATE)
 
-#define SIMPLE_DIR_ENTRY(name8, ext3, attr, starting_page, file_size) \
+#define SIMPLE_DIR_ENTRY(name8, ext3, attr1, attr2, starting_page, file_size) \
       DIRECTORY_ENTRY(name8,                      \
                       ext3,                       \
-                      attr,                       \
-                      0,                          \
+                      attr1,                      \
+                      attr2,                      \
                       DEFAULT_FILE_TIME_SEC_INC,  \
                       DEFAULT_FILE_TIME,          \
                       DEFAULT_FILE_DATE,          \
@@ -198,7 +201,8 @@ enum
 
 #define VMUS_PER_PLAYER 2
 
-const uint8_t defaultRootEntry[BYTES_PER_ROOT_ENTRY] = {SIMPLE_DIR_ENTRY("        ", "   ", ATTR1_ARCHIVE, 0, 0)};
+const uint8_t defaultRootEntry[BYTES_PER_ROOT_ENTRY] =
+  {SIMPLE_DIR_ENTRY("        ", "   ", ATTR1_ARCHIVE, ATTR2_LOWERCASE_BASENAME | ATTR2_LOWERCASE_EXT, 0, 0)};
 
 // The ramdisk
 uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
@@ -894,28 +898,34 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       // first entry is volume label
       VOLUME_ENTRY(),
       // second entry is readme file (will always be read only)
-      SIMPLE_DIR_ENTRY("README  ", "TXT", ATTR1_READ_ONLY, FIRST_VALID_FAT_ADDRESS, README_SIZE),
-      // The rest are placeholders for all of the memory unit contents (will be writeable in the future)
-      // SIMPLE_DIR_ENTRY("vmu0    ", "BIN", ATTR1_ARCHIVE, 0x0100, 128 * 1024),
-      // SIMPLE_DIR_ENTRY("vmu0-2  ", "BIN", ATTR1_ARCHIVE, 0x0200, 128 * 1024),
-      // SIMPLE_DIR_ENTRY("vmu1    ", "BIN", ATTR1_ARCHIVE, 0x0300, 128 * 1024),
-      // SIMPLE_DIR_ENTRY("vmu1-2  ", "BIN", ATTR1_ARCHIVE, 0x0400, 128 * 1024),
-      // SIMPLE_DIR_ENTRY("vmu2    ", "BIN", ATTR1_ARCHIVE, 0x0500, 128 * 1024),
-      // SIMPLE_DIR_ENTRY("vmu2-2  ", "BIN", ATTR1_ARCHIVE, 0x0600, 128 * 1024),
-      // SIMPLE_DIR_ENTRY("vmu3    ", "BIN", ATTR1_ARCHIVE, 0x0700, 128 * 1024),
-      // SIMPLE_DIR_ENTRY("vmu3-2  ", "BIN", ATTR1_ARCHIVE, 0x0800, 128 * 1024),
+      SIMPLE_DIR_ENTRY("README  ", "TXT", ATTR1_READ_ONLY, ATTR2_LOWERCASE_EXT, FIRST_VALID_FAT_ADDRESS, README_SIZE),
   },
 
   //------------- Block11+: File Content -------------//
   {README_CONTENTS}
 };
 
-// Parses a filename string into name and extension fields
-void parse_filename(const char* filename, uint8_t* name8, uint8_t* ext3)
+bool upper_found(const char* name, uint32_t len)
 {
+  for (uint32_t i = 0; i < len; ++i)
+  {
+    if (name[i] >= 'A' && name[i] <= 'Z')
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Parses a filename string into name and extension fields
+// Returns attribute 2 value
+uint8_t parse_filename(const char* filename, uint8_t* const name8, uint8_t* const ext3)
+{
+  uint8_t rv = 0;
+
   // Make sure characters not set are padded with spaces
   memset(name8, ' ', 8);
-  memset(ext3, ' ', 8);
+  memset(ext3, ' ', 3);
 
   const char* dotPos = strchr(filename, '.');
   if (dotPos)
@@ -924,18 +934,26 @@ void parse_filename(const char* filename, uint8_t* name8, uint8_t* ext3)
     // Copy name
     uint32_t nameLen = dotPos - filename;
     if (nameLen > 8) nameLen = 8;
+    if (!upper_found(filename, nameLen))
+    {
+      rv = rv | ATTR2_LOWERCASE_BASENAME;
+    }
     for (uint8_t i = 0; i < nameLen; ++i)
     {
-      *name8++ = CHAR_TO_UPPER(*filename);
+      name8[i] = CHAR_TO_UPPER(*filename);
       filename++;
     }
     // Copy extension
     const char* extStart = dotPos + 1;
     uint32_t extLen = strlen(extStart);
     if (extLen > 3) extLen = 3;
+    if (!upper_found(extStart, 3))
+    {
+      rv = rv | ATTR2_LOWERCASE_EXT;
+    }
     for (uint8_t i = 0; i < extLen; ++i)
     {
-      *ext3++ = CHAR_TO_UPPER(*extStart);
+      ext3[i] = CHAR_TO_UPPER(*extStart);
       extStart++;
     }
   }
@@ -945,12 +963,18 @@ void parse_filename(const char* filename, uint8_t* name8, uint8_t* ext3)
     // Copy name
     int32_t n = strlen(filename);
     if (n > 8) n = 8;
+    if (!upper_found(filename, n))
+    {
+      rv = rv | ATTR2_LOWERCASE_BASENAME;
+    }
     for (uint8_t i = 0; i < n; ++i)
     {
       name8[i] = CHAR_TO_UPPER(*filename++);
     }
     // Leave extension empty
   }
+
+  return rv;
 }
 
 void set_file_entries()
@@ -970,7 +994,7 @@ void set_file_entries()
       {
         memcpy(rootDirEntry, defaultRootEntry, sizeof(defaultRootEntry));
         // Parse filename into the name and extension fields
-        parse_filename(fileEntries[i].filename, rootDirEntry, rootDirEntry + 8);
+        rootDirEntry[12] = parse_filename(fileEntries[i].filename, rootDirEntry, rootDirEntry + 8);
         // Set address and size
         uint8_t addrAndSize[6] = {U16_TO_U8S_LE(fileEntries[i].startBlock),
                                   U32_TO_U8S_LE(fileEntries[i].size)};
