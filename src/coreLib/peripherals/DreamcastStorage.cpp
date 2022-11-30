@@ -56,6 +56,9 @@ void DreamcastStorage::txComplete(std::shared_ptr<const MaplePacket> packet,
     if (tx->transmissionId == mReadingTxId)
     {
         mReadPacket = packet;
+        // I would be using compare_exchange_strong here if I could, but it causes linker issues
+        // (see note about potential race condition in read())
+        mReadingTxId = 0;
     }
 }
 
@@ -75,15 +78,14 @@ int32_t DreamcastStorage::read(uint8_t blockNum,
                                uint32_t timeoutUs)
 {
     int32_t numRead = -1;
-    uint64_t startTimeUs = mClock.getTimeUs();
-    mReadPacket.reset();
+    uint64_t endTimeUs = mClock.getTimeUs() + timeoutUs;
     uint32_t payload[2] = {FUNCTION_CODE, blockNum};
     mReadingTxId = mEndpointTxScheduler->add(0, this, COMMAND_BLOCK_READ, payload, 2, true, 130);
 
     // I'm not too happy about this blocking operation, but it works
-    while ((mClock.getTimeUs() - startTimeUs) < timeoutUs && !mExiting)
+    do
     {
-        if (mReadPacket != nullptr)
+        if (mReadingTxId == 0)
         {
             uint16_t copyLen = (bufferLen > (mReadPacket->payload.size() * 4)) ? (mReadPacket->payload.size() * 4) : bufferLen;
             // Need to flip each word before copying
@@ -101,7 +103,11 @@ int32_t DreamcastStorage::read(uint8_t blockNum,
             numRead = copyLen;
             break;
         }
-    }
+    } while (mClock.getTimeUs() < endTimeUs && !mExiting);
+
+    // Note: I understand that this introduces a very, very unlikely possibility of race condition
+    // if mReadingTxId is still non-zero by this point. I'm not going to worry about it though.
+    mReadingTxId = 0;
 
     return numRead;
 }

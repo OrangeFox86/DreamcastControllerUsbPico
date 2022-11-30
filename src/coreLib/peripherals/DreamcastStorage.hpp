@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include "DreamcastPeripheral.hpp"
 #include "PlayerData.hpp"
 #include "hal/Usb/UsbFile.hpp"
@@ -72,7 +73,7 @@ class DreamcastStorage : public DreamcastPeripheral, UsbFile
         //! File name for this storage device
         char mFileName[12];
         //! The transmission ID of the current read operation
-        uint32_t mReadingTxId;
+        std::atomic<uint32_t> mReadingTxId;
         //! Packet filled in as a result of a read operation
         std::shared_ptr<const MaplePacket> mReadPacket;
 };
