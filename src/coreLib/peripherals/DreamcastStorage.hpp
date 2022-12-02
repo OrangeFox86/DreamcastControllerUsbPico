@@ -11,6 +11,14 @@
 class DreamcastStorage : public DreamcastPeripheral, UsbFile
 {
     public:
+        enum State : uint8_t
+        {
+            IDLE = 0,
+            READ_STARTED,
+            READ_SENT,
+            READ_PROCESSING
+        };
+
         //! Constructor
         //! @param[in] addr  This peripheral's address
         //! @param[in] scheduler  The transmission scheduler this peripheral is to add to
@@ -72,8 +80,18 @@ class DreamcastStorage : public DreamcastPeripheral, UsbFile
         UsbFileSystem& mUsbFileSystem;
         //! File name for this storage device
         char mFileName[12];
-        //! The transmission ID of the current read operation
-        std::atomic<uint32_t> mReadingTxId;
+
+        //! The current state in the read state machine
+        //! When READ_*: peripheral callbacks can read and write the data below
+        //! When IDLE: read() can read and write the data below
+        std::atomic<State> mReadState;
+
+        //! Transmission ID of the read operation sent (or 0)
+        uint32_t mReadingTxId;
+        //! The block number of the current read operation
+        uint8_t mReadingBlock;
         //! Packet filled in as a result of a read operation
         std::shared_ptr<const MaplePacket> mReadPacket;
+        //! Time at which read must be killed
+        uint64_t mReadKillTime;
 };
