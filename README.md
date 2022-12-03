@@ -1,5 +1,6 @@
 # DreamcastControllerUsbPico
- Dreamcast to USB Gamepad Converter for Raspberry Pi Pico
+
+Dreamcast to USB Gamepad Converter for Raspberry Pi Pico
 
 Goals for this project:
 - Detect and interact with the following:
@@ -24,16 +25,33 @@ This is a work in progress. Current progress:
     - C and Z buttons on arcade stick also work
   - Screen interface is working (the "V" in "VMU")
     - Currently just a default screen is sent on connection
+  - Memory interface is working (the "MU" in "VMU") for read operations to a USB mass storage device
   - Vibration peripheral is working (not yet implemented on USB side)
     - I'm looking into how to support force feedback on an HID gamepad (more universal but likely less supported) while also looking into supporting XInput as a secondary option
   - Stubs added for all other peripherals (some to be filled in later)
 - Added transmission timeliner so that any peripheral addition is scalable without worrying much about how peripherals may interfere with each other
 
-## Why the RP2040 is a Game Changer
+## Why the RP2040 is a Game Changer (and what makes this project different from others)
 
 To emulate a bespoke bus such as the Maple Bus on an MCU, one would usually either need to add extra hardware or bit bang the interface. This is not true with the RP2040 and its PIO. Think of it as several extra small processors on the side using a special machine language purpose-built for handling I/O. This means I can offload communication to the PIO and only check on them after an interrupt is activated or a timeout has elapsed. Check out [maple_in.pio](src/hal/maple_in.pio) and [maple_out.pio](src/hal/maple_out.pio) to see the PIO code.
 
 Luckily, the RP2040 comes with 2 PIO blocks each with 4 separate state machines. This means that the RP2040 can easily emulate 4 separate controller interfaces! This project uses one PIO block for writing and one for reading. This is necessary because each PIO block can only hold up to 32 instructions. The write state machine is completely stopped before starting the read state machine for the targeted bus. This wouldn't be necessary if read was done on separate pins from write as each PIO needs to take ownership of the pins. More simplistic wiring is desired if possible though. Switching state machines is fast enough that there shouldn't be a problem, especially since the "write" state machine intentionally doesn't bring the bus back to neutral before it notifies the application. Then the application side kills the "write" state machine and brings the bus to neutral just before switching to "read". The application-side write completion process should happen within a microsecond. A device on the Maple Bus usually starts responding after 50 microseconds from the point of the bus going neutral at the end of an end sequence. This ensures that a response is always captured.
+
+# Connecting the Hardware
+
+The Dreamcast uses 36 ohm resistors and small fuses in series between the 8 chip I/O and the 8 controller port I/O. I have decided to use lower value resistors because some resistance is built into the pico's outputs already. There is some weirdness with plugging in a VMU without a battery installed which gets worse with higher resistor values. I'm using littelfuse 1/16 A quick burning fuses, and none of them have blown during my tests. They're mostly optional, but I'd suggest using higher value resistors if they are omitted as a safety measure. Anything higher than 100-ohm starts to cause communication errors though due to capacitances on the I/O.
+
+This is generally the setup I have been testing with:
+
+<p align="center">
+  <img src="images/schematic.png?raw=true" alt="Schematic"/>
+</p>
+
+For reference, the following is the pinout for the Dreamcast controller port. Take note that many other sources found online refer to one of the grounds connections as a sense, but both of the ground pins are hard wired together to ground at the controller port module on the Dreamcast. As such, this project doesn't rely on any such sense.
+
+<p align="center">
+  <img src="images/Dreamcast_Port.png?raw=true" alt="Dreamcast Port"/>
+</p>
 
 # Build Instructions (for Linux and Windows)
 
@@ -90,20 +108,6 @@ A Maple Bus consists of 2 signal/clock lines that are labeled SDCKA and SDCKB. H
 
 <p align="center">
   <img src="images/Maple_Bus_Hardware_Communication.png?raw=true" alt="Maple Bus Hardware Communication"/>
-</p>
-
-### Connecting the Hardware
-
-The Dreamcast uses 36 ohm resistors and small fuses in series between the 8 chip I/O and the 8 controller port I/O. I have decided to use lower value resistors because some resistance is built into the pico's outputs already. There is some weirdness with plugging in a VMU without a battery installed which gets worse with higher resistor values. I'm using littelfuse 1/16 A quick burning fuses, and none of them have blown during my tests. They're mostly optional, but I'd suggest using higher value resistors if they are omitted as a safety measure. Anything higher than 100-ohm starts to cause communication errors though due to capacitances on the I/O.
-
-This is generally the setup I have been testing with:
-
-<p align="center">
-  <img src="images/schematic.png?raw=true" alt="Schematic"/>
-</p>
-
-<p align="center">
-  <img src="images/Dreamcast_Port.png?raw=true" alt="Dreamcast Port"/>
 </p>
 
 ## Generating Maple Bus Output
@@ -351,21 +355,45 @@ CRC byte transmits last, just before the end sequence is transmitted. It is the 
 
 ## Controller
 
-(TODO)
+The "get condition" command (0x09) with controller function code is used to poll controller state. A "data transfer" command (0x08) is returned with controller function code word plus 2 words of data.
+
+### First Data Transfer Word
+
+All button bits are 0 when pressed and 1 when released.
+
+| Byte 0 (LSB) | Byte 1 | Byte 2 | Byte 3 (MSB) |
+| :---: | :---: | :---: | :---: |
+| Left analog trigger 0 to 255<br>0: fully released<br>255: fully pressed | Right analog trigger 0 to 255<br>0: fully released<br>255: fully pressed | Button bits<br>0x01: Z<br>0x02: Y<br>0x04: X | Button bits<br>0x01: C<br>0x02: B<br>0x04: A<br>0x08: Start<br>0x10: Up<br>0x20: Down<br>0x40: Left<br>0x80: Right |
+
+### Second Data Transfer Word
+
+| Byte 0 (LSB) | Byte 1 | Byte 2 | Byte 3 (MSB) |
+| :---: | :---: | :---: | :---: |
+| Right analog stick up/down<br>Always 128<br>(no controller uses this) | Right analog stick left/right<br>Always 128<br>(no controller uses this) | Left analog up/down<br>0: fully up<br>128: center<br>255: fully down | Left analog left/right<br>0: fully left<br>128: center<br>255: fully right
 
 ## Screen
 
-(TODO)
+The "block write" command (0x0C) with screen function code and 48 data words is used to write monochrome images to the screen. A screen is 48 bits wide and 32 bits tall. For each bit in the 48 data words, a value of 1 means the pixel is on (black) and 0 means the pixel is off (white). Data is written from left to right and top to bottom. The most significant bit of the first word sets the pixel on the top, left of the screen. The two most significant bytes write to the 33rd through 48th bit of the first row. The next two bytes write to the 1st through 16th bits of the second row. This is repeated for the right of the 48 words like pictured below.
+
+<p align="center">
+  <img src="images/Dreamcast_Screen_Words.png?raw=true" alt="Screen Words"/>
+</p>
+
+## Storage
+
+The "block read" and "block write" commands (0x0B and 0x0C) with storage function code are used to read and write the 256 blocks of memory in the storage peripheral. There are 256 pages of memory that make up the entire storage space. Each page consists of 512 bytes. That makes a total of 128 KB of memory.
 
 ## Vibration
 
-The "set condition" command is used to activate vibration. A lot of trial and error went into reverse engineering the structure of the vibration condition word. First, every value in the range 0x00000000 to 0xFFFFFFFF was sent from some test code to the peripheral, and all that received an ACKNOWLEDGE response was logged. This helped get an idea of how each byte value is broken down with their valid ranges. Then the meaning of each value was determined by a lot of trial and error.
+The "set condition" command (0x0E) with vibration function code and 1 condition word is used to activate vibration.
 
-The following are the two devices that were used for testing.
+Take note that the following understanding was made from a lot of trial and error, so it is very possible this isn't completely correct. This has been thoroughly tested to work well enough on the following devices though.
 - Sega OEM Puru Puru Pack
 - Performance TremorPak
 
 ### Condition Word
+
+The following describes the layout of the condition word in the vibration "set condition" command.
 
 | Byte 0 (LSB) | Byte 1 | Byte 2 | Byte 3 (MSB) |
 | :---: | :---: | :---: | :---: |
@@ -373,7 +401,9 @@ The following are the two devices that were used for testing.
 
 #### Vibration Cycles
 
-This value represents how many pulsation cycles to execute per inclination intensity. The number of cycles to execute is 1 more than the value specified. This value must be 0 when no inclination is set, so only a single cycle will execute in that case. With inclination set, this value can be set to a maximum of 255.
+This value represents how many pulsation cycles to execute per inclination intensity. The number of cycles to execute is 1 more than the value specified. With inclination set, this value can be set to a maximum of 255. This value must be 0 without inclination set, so only a single cycle will execute in that case.*
+
+*The Performance TremorPak allows this value to be set to up to 255 when inclination is 0, but the OEM pack enforces this limitation.
 
 #### Pulsation Frequency
 

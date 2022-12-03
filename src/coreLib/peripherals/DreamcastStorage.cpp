@@ -1,6 +1,7 @@
 #include "DreamcastStorage.hpp"
 #include "dreamcast_constants.h"
 
+#include <assert.h>
 #include <string.h>
 
 DreamcastStorage::DreamcastStorage(uint8_t addr,
@@ -11,7 +12,9 @@ DreamcastStorage::DreamcastStorage(uint8_t addr,
     mClock(playerData.clock),
     mUsbFileSystem(playerData.fileSystem),
     mFileName{},
+    mReadState(READ_IDLE),
     mReadingTxId(0),
+    mReadingBlock(-1),
     mReadPacket(nullptr)
 {
     int32_t idx = subPeripheralIndex(mAddr);
@@ -38,27 +41,62 @@ DreamcastStorage::~DreamcastStorage()
 }
 
 void DreamcastStorage::task(uint64_t currentTimeUs)
-{}
+{
+    switch(mReadState)
+    {
+        case READ_STARTED:
+        {
+            uint32_t payload[2] = {FUNCTION_CODE, mReadingBlock};
+            mReadingTxId = mEndpointTxScheduler->add(0, this, COMMAND_BLOCK_READ, payload, 2, true, 130);
+            mReadState = READ_SENT;
+        }
+        break;
+
+        case READ_SENT:
+        {
+            if (currentTimeUs >= mReadKillTime)
+            {
+                // Timeout
+                mEndpointTxScheduler->cancelById(mReadingTxId);
+                mReadState = READ_IDLE;
+            }
+        }
+        break;
+
+        case READ_PROCESSING:
+            // Already processing, so no need to check timeout value
+        default:
+            break;
+    }
+}
 
 void DreamcastStorage::txStarted(std::shared_ptr<const Transmission> tx)
 {
+    if (mReadState != READ_IDLE && tx->transmissionId == mReadingTxId)
+    {
+        mReadState = READ_PROCESSING;
+    }
 }
 
 void DreamcastStorage::txFailed(bool writeFailed,
                                 bool readFailed,
                                 std::shared_ptr<const Transmission> tx)
 {
+    if (mReadState != READ_IDLE && tx->transmissionId == mReadingTxId)
+    {
+        // Failure
+        mReadState = READ_IDLE;
+    }
 }
 
 void DreamcastStorage::txComplete(std::shared_ptr<const MaplePacket> packet,
                                   std::shared_ptr<const Transmission> tx)
 {
-    if (tx->transmissionId == mReadingTxId)
+    if (mReadState != READ_IDLE && tx->transmissionId == mReadingTxId)
     {
+        // Complete!
         mReadPacket = packet;
-        // I would be using compare_exchange_strong here if I could, but it causes linker issues
-        // (see note about potential race condition in read())
-        mReadingTxId = 0;
+        mReadState = READ_IDLE;
     }
 }
 
@@ -77,37 +115,39 @@ int32_t DreamcastStorage::read(uint8_t blockNum,
                                uint16_t bufferLen,
                                uint32_t timeoutUs)
 {
-    int32_t numRead = -1;
-    uint64_t endTimeUs = mClock.getTimeUs() + timeoutUs;
-    uint32_t payload[2] = {FUNCTION_CODE, blockNum};
-    mReadingTxId = mEndpointTxScheduler->add(0, this, COMMAND_BLOCK_READ, payload, 2, true, 130);
-
-    // I'm not too happy about this blocking operation, but it works
-    do
-    {
-        if (mReadingTxId == 0)
-        {
-            uint16_t copyLen = (bufferLen > (mReadPacket->payload.size() * 4)) ? (mReadPacket->payload.size() * 4) : bufferLen;
-            // Need to flip each word before copying
-            uint8_t* buffer8 = (uint8_t*)buffer;
-            for (uint32_t i = 2; i < (2U + (bufferLen / 4)); ++i)
-            {
-                const uint32_t& originalWord = mReadPacket->payload[i];
-                uint32_t flippedWord = ((originalWord << 24) & 0xFF000000)
-                                       | ((originalWord << 8) & 0x00FF0000)
-                                       | ((originalWord >> 8) & 0x0000FF00)
-                                       | ((originalWord >> 24) & 0x000000FF);
-                memcpy(buffer8, &flippedWord, 4);
-                buffer8 += 4;
-            }
-            numRead = copyLen;
-            break;
-        }
-    } while (mClock.getTimeUs() < endTimeUs && !mExiting);
-
-    // Note: I understand that this introduces a very, very unlikely possibility of race condition
-    // if mReadingTxId is still non-zero by this point. I'm not going to worry about it though.
+    assert(mReadState == READ_IDLE);
+    // Set data
     mReadingTxId = 0;
+    mReadingBlock = blockNum;
+    mReadPacket = nullptr;
+    mReadKillTime = mClock.getTimeUs() + timeoutUs;
+    // Commit it
+    mReadState = READ_STARTED;
+
+    // Wait for maple bus state machine to finish read
+    // I'm not too happy about this blocking operation, but it works
+    while(mReadState != READ_IDLE && !mExiting);
+
+    int32_t numRead = -1;
+    if (mReadPacket)
+    {
+        uint16_t copyLen = (bufferLen > (mReadPacket->payload.size() * 4)) ? (mReadPacket->payload.size() * 4) : bufferLen;
+        // Need to flip each word before copying
+        uint8_t* buffer8 = (uint8_t*)buffer;
+        for (uint32_t i = 2; i < (2U + (bufferLen / 4)); ++i)
+        {
+            const uint32_t& originalWord = mReadPacket->payload[i];
+            uint32_t flippedWord = ((originalWord << 24) & 0xFF000000)
+                                    | ((originalWord << 8) & 0x00FF0000)
+                                    | ((originalWord >> 8) & 0x0000FF00)
+                                    | ((originalWord >> 24) & 0x000000FF);
+            memcpy(buffer8, &flippedWord, 4);
+            buffer8 += 4;
+        }
+        numRead = copyLen;
+    }
+
+    mReadPacket = nullptr;
 
     return numRead;
 }

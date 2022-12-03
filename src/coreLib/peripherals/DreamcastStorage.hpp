@@ -11,6 +11,19 @@
 class DreamcastStorage : public DreamcastPeripheral, UsbFile
 {
     public:
+        //! The current state of the READ state machine
+        enum ReadState : uint8_t
+        {
+            //! Read state machine is idle
+            READ_IDLE = 0,
+            //! read() has been executed, waiting for Maple Bus state machine to start transmission
+            READ_STARTED,
+            //! The Maple Bus state machine has queued the transmission
+            READ_SENT,
+            //! The Maple Bus state machine is currently processing the transmission
+            READ_PROCESSING
+        };
+
         //! Constructor
         //! @param[in] addr  This peripheral's address
         //! @param[in] scheduler  The transmission scheduler this peripheral is to add to
@@ -72,8 +85,18 @@ class DreamcastStorage : public DreamcastPeripheral, UsbFile
         UsbFileSystem& mUsbFileSystem;
         //! File name for this storage device
         char mFileName[12];
-        //! The transmission ID of the current read operation
-        std::atomic<uint32_t> mReadingTxId;
+
+        //! The current state in the read state machine
+        //! When READ_IDLE: read() can read and write the data below
+        //! Otherwise: peripheral callbacks can read and write the data below
+        std::atomic<ReadState> mReadState;
+
+        //! Transmission ID of the read operation sent (or 0)
+        uint32_t mReadingTxId;
+        //! The block number of the current read operation
+        uint8_t mReadingBlock;
         //! Packet filled in as a result of a read operation
         std::shared_ptr<const MaplePacket> mReadPacket;
+        //! Time at which read must be killed
+        uint64_t mReadKillTime;
 };
