@@ -11,11 +11,16 @@
 class DreamcastStorage : public DreamcastPeripheral, UsbFile
 {
     public:
-        enum State : uint8_t
+        //! The current state of the READ state machine
+        enum ReadState : uint8_t
         {
-            IDLE = 0,
+            //! Read state machine is idle
+            READ_IDLE = 0,
+            //! read() has been executed, waiting for Maple Bus state machine to start transmission
             READ_STARTED,
+            //! The Maple Bus state machine has queued the transmission
             READ_SENT,
+            //! The Maple Bus state machine is currently processing the transmission
             READ_PROCESSING
         };
 
@@ -82,9 +87,9 @@ class DreamcastStorage : public DreamcastPeripheral, UsbFile
         char mFileName[12];
 
         //! The current state in the read state machine
-        //! When READ_*: peripheral callbacks can read and write the data below
-        //! When IDLE: read() can read and write the data below
-        std::atomic<State> mReadState;
+        //! When READ_IDLE: read() can read and write the data below
+        //! Otherwise: peripheral callbacks can read and write the data below
+        std::atomic<ReadState> mReadState;
 
         //! Transmission ID of the read operation sent (or 0)
         uint32_t mReadingTxId;

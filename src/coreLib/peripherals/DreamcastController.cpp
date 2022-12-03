@@ -45,11 +45,11 @@ void DreamcastController::txComplete(std::shared_ptr<const MaplePacket> packet,
 
         if (packet->getFrameCommand() == COMMAND_RESPONSE_DATA_XFER
             && packet->payload.size() >= 3
-            && packet->payload[0] == 1)
+            && packet->payload[0] == DEVICE_FN_CONTROLLER)
         {
             // Handle condition data
             DreamcastControllerObserver::ControllerCondition controllerCondition;
-            memcpy(&controllerCondition, &packet->payload[1], 8);
+            memcpy(&controllerCondition, &packet->payload[1], 2 * sizeof(uint32_t));
             mGamepad.setControllerCondition(controllerCondition);
         }
     }

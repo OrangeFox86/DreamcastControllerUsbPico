@@ -12,7 +12,7 @@ DreamcastStorage::DreamcastStorage(uint8_t addr,
     mClock(playerData.clock),
     mUsbFileSystem(playerData.fileSystem),
     mFileName{},
-    mReadState(IDLE),
+    mReadState(READ_IDLE),
     mReadingTxId(0),
     mReadingBlock(-1),
     mReadPacket(nullptr)
@@ -58,7 +58,7 @@ void DreamcastStorage::task(uint64_t currentTimeUs)
             {
                 // Timeout
                 mEndpointTxScheduler->cancelById(mReadingTxId);
-                mReadState = IDLE;
+                mReadState = READ_IDLE;
             }
         }
         break;
@@ -72,7 +72,7 @@ void DreamcastStorage::task(uint64_t currentTimeUs)
 
 void DreamcastStorage::txStarted(std::shared_ptr<const Transmission> tx)
 {
-    if (mReadState != IDLE && tx->transmissionId == mReadingTxId)
+    if (mReadState != READ_IDLE && tx->transmissionId == mReadingTxId)
     {
         mReadState = READ_PROCESSING;
     }
@@ -82,21 +82,21 @@ void DreamcastStorage::txFailed(bool writeFailed,
                                 bool readFailed,
                                 std::shared_ptr<const Transmission> tx)
 {
-    if (mReadState != IDLE && tx->transmissionId == mReadingTxId)
+    if (mReadState != READ_IDLE && tx->transmissionId == mReadingTxId)
     {
         // Failure
-        mReadState = IDLE;
+        mReadState = READ_IDLE;
     }
 }
 
 void DreamcastStorage::txComplete(std::shared_ptr<const MaplePacket> packet,
                                   std::shared_ptr<const Transmission> tx)
 {
-    if (mReadState != IDLE && tx->transmissionId == mReadingTxId)
+    if (mReadState != READ_IDLE && tx->transmissionId == mReadingTxId)
     {
         // Complete!
         mReadPacket = packet;
-        mReadState = IDLE;
+        mReadState = READ_IDLE;
     }
 }
 
@@ -115,7 +115,7 @@ int32_t DreamcastStorage::read(uint8_t blockNum,
                                uint16_t bufferLen,
                                uint32_t timeoutUs)
 {
-    assert(mReadState == IDLE);
+    assert(mReadState == READ_IDLE);
     // Set data
     mReadingTxId = 0;
     mReadingBlock = blockNum;
@@ -126,7 +126,7 @@ int32_t DreamcastStorage::read(uint8_t blockNum,
 
     // Wait for maple bus state machine to finish read
     // I'm not too happy about this blocking operation, but it works
-    while(mReadState != IDLE && !mExiting);
+    while(mReadState != READ_IDLE && !mExiting);
 
     int32_t numRead = -1;
     if (mReadPacket)
