@@ -5,6 +5,9 @@
 // Warning: enabling debug messages drastically degrades communication performance
 #define SHOW_DEBUG_MESSAGES false
 
+// true to enable USB CDC (serial) interface to directly control the maple bus
+#define USB_CDC_ENABLED true
+
 // Adjust the CPU clock frequency here (133 MHz is maximum documented stable frequency)
 #define CPU_FREQ_KHZ 133000
 

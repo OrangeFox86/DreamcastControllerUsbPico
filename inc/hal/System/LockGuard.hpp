@@ -15,21 +15,29 @@ class LockGuard
         LockGuard() = delete;
 
         //! Initializes data and locks mutex as long as it wouldn't cause a deadlock
-        inline LockGuard(MutexInterface& mutex) :
+        inline LockGuard(MutexInterface& mutex, bool allowDeadlock = false) :
             mMutex(mutex),
             mIsLocked(false)
         {
-            int8_t lockValue = mMutex.tryLock();
-            if (lockValue == 0)
+            if (allowDeadlock)
             {
                 mMutex.lock();
                 mIsLocked = true;
             }
-            else if (lockValue > 0)
+            else
             {
-                mIsLocked = true;
+                int8_t lockValue = mMutex.tryLock();
+                if (lockValue == 0)
+                {
+                    mMutex.lock();
+                    mIsLocked = true;
+                }
+                else if (lockValue > 0)
+                {
+                    mIsLocked = true;
+                }
+                // Else: not locked, would cause deadlock - due to simultaneous IRQ access on same core
             }
-            // Else: not locked, would cause deadlock
         }
 
         //! Unlocks mutex if it was previously locked
