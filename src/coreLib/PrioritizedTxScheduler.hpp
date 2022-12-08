@@ -78,6 +78,8 @@ protected:
 public:
     //! Use this for txTime if the packet needs to be sent ASAP
     static const uint64_t TX_TIME_ASAP = 0;
+    //! Transmission ID to use in order to flag no ID
+    static const uint32_t INVALID_TX_ID = 0;
 
 protected:
     //! The next transmission ID to set

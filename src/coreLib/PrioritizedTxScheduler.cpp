@@ -2,6 +2,8 @@
 #include "configuration.h"
 #include "utils.h"
 
+#include <assert.h>
+
 // STL
 #include <algorithm>
 
@@ -16,6 +18,7 @@ PrioritizedTxScheduler::~PrioritizedTxScheduler() {}
 
 uint32_t PrioritizedTxScheduler::add(std::shared_ptr<Transmission> tx)
 {
+    assert(tx->priority < mSchedule.size());
     std::list<std::shared_ptr<Transmission>>& schedule = mSchedule[tx->priority];
     // Keep iterating until correct position is found
     std::list<std::shared_ptr<Transmission>>::const_iterator iter = schedule.cbegin();
@@ -45,6 +48,9 @@ uint32_t PrioritizedTxScheduler::add(uint8_t priority,
     }
 
     uint32_t pktDurationUs = INT_DIVIDE_CEILING(pktDurationNs, 1000);
+
+    // This will happen if minimal communication is made constantly for 20 days
+    assert(mNextId != INVALID_TX_ID);
 
     std::shared_ptr<Transmission> tx =
         std::make_shared<Transmission>(mNextId++,
