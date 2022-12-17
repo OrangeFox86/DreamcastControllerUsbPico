@@ -16,11 +16,24 @@
 #include "class/hid/hid_device.h"
 #include "class/cdc/cdc_device.h"
 
+#include "UsbCdcTtyParser.hpp"
+
+
+UsbCdcTtyParser* ttyParser = nullptr;
+
+TtyParser* usb_cdc_create_parser(MutexInterface* m, char helpChar)
+{
+    if (ttyParser == nullptr)
+    {
+        ttyParser = new UsbCdcTtyParser(*m, helpChar);
+    }
+    return ttyParser;
+}
+
+
 #if CFG_TUD_CDC
 
 static MutexInterface* stdioMutex = nullptr;
-static MutexInterface* rxMutex;
-static std::vector<char>* rx;
 
 // Can't use stdio_usb_init() because it checks tud_cdc_connected(), and that doesn't always return
 // true when a connection is made. Not all terminal client set this when making connection.
@@ -92,14 +105,9 @@ struct stdio_driver stdio_usb2 =
 
 } // extern "C"
 
-void cdc_init(
-    MutexInterface* cdcStdioMutex,
-    MutexInterface* cdcRxMutex,
-    std::vector<char>* cdcRx)
+void cdc_init(MutexInterface* cdcStdioMutex)
 {
     stdioMutex = cdcStdioMutex;
-    rxMutex = cdcRxMutex;
-    rx = cdcRx;
     stdio_set_driver_enabled(&stdio_usb2, true);
 }
 
@@ -107,37 +115,40 @@ void cdc_task()
 {
 #if USB_CDC_ENABLED
     // connected and there are data available
-    if ( tud_cdc_available() )
+    if (tud_cdc_available())
     {
-        char buf[64];
-        uint32_t count = 0;
-
+        if (ttyParser)
         {
-            LockGuard lockGuard(*stdioMutex);
-            if (!lockGuard.isLocked())
-            {
-                return; // would deadlock otherwise; just wait for next loop
-            }
+            char buf[64];
+            uint32_t count = 0;
 
-            // read data
-            count = tud_cdc_read(buf, sizeof(buf));
+            {
+                LockGuard lockGuard(*stdioMutex);
+                if (!lockGuard.isLocked())
+                {
+                    return; // would deadlock otherwise; just wait for next loop
+                }
+
+                // read data
+                count = tud_cdc_read(buf, sizeof(buf));
+
+                if (count > 0)
+                {
+                    // Echo back
+                    tud_cdc_write(buf, count);
+                    tud_cdc_write_flush();
+                }
+            }
 
             if (count > 0)
             {
-                // Echo back
-                tud_cdc_write(buf, count);
-                tud_cdc_write_flush();
+                ttyParser->addChars(buf, count);
             }
         }
-
-        if (count > 0)
+        else
         {
-            LockGuard lockGuard(*stdioMutex, true);
-            rx->reserve(rx->size() + count);
-            for (uint32_t i = 0; i < count; ++i)
-            {
-                rx->push_back(buf[i]);
-            }
+            // Parser not created yet
+            tud_cdc_read_flush();
         }
     }
 #endif

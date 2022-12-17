@@ -7,6 +7,8 @@
 
 #include "DreamcastMainNode.hpp"
 #include "PlayerData.hpp"
+#include "MaplePassthroughCommandParser.hpp"
+
 #include "CriticalSectionMutex.hpp"
 #include "Mutex.hpp"
 #include "Clock.hpp"
@@ -14,6 +16,7 @@
 #include "hal/System/LockGuard.hpp"
 #include "hal/MapleBus/MapleBusInterface.hpp"
 #include "hal/Usb/usb_interface.hpp"
+#include "hal/Usb/TtyParser.hpp"
 
 #include <memory>
 #include <algorithm>
@@ -21,43 +24,6 @@
 #define MAX_DEVICES 4
 
 const uint8_t MAPLE_HOST_ADDRESSES[MAX_DEVICES] = {0x00, 0x40, 0x80, 0xC0};
-
-Mutex cdcRxMutex;
-std::vector<char> cdcRx;
-
-class EchoTransmitter : public Transmitter
-{
-    virtual void txStarted(std::shared_ptr<const Transmission> tx) final
-    {}
-
-    virtual void txFailed(bool writeFailed,
-                          bool readFailed,
-                          std::shared_ptr<const Transmission> tx) final
-    {
-        if (writeFailed)
-        {
-            printf("%lu: failed write\n", tx->transmissionId);
-        }
-        else
-        {
-            printf("%lu: failed read\n", tx->transmissionId);
-        }
-    }
-
-    virtual void txComplete(std::shared_ptr<const MaplePacket> packet,
-                            std::shared_ptr<const Transmission> tx) final
-    {
-        printf("%lu: complete {", tx->transmissionId);
-        printf("%08lX", packet->frameWord);
-        for (std::vector<uint32_t>::const_iterator iter = packet->payload.begin();
-             iter != packet->payload.end();
-             ++iter)
-        {
-            printf(" %08lX", *iter);
-        }
-        printf("}\n");
-    }
-} echoTransmitter;
 
 // Second Core Process
 // The second core is in charge of handling communication with Dreamcast peripherals
@@ -98,122 +64,23 @@ void core1()
             schedulers[i]);
     }
 
-    uint32_t lastSize = 0;
+    // Initialize CDC to Maple Bus interfaces
+    Mutex ttyParserMutex;
+    TtyParser* ttyParser = usb_cdc_create_parser(&ttyParserMutex, 'h');
+    ttyParser->addCommandParser(
+        std::make_shared<MaplePassthroughCommandParser>(
+            &schedulers[0], MAPLE_HOST_ADDRESSES, numDevices));
+
     while(true)
     {
+        // Process each main node
         for (uint32_t i = 0; i < numDevices; ++i)
         {
             // Worst execution duration of below is ~350 us at 133 MHz when debug print is disabled
             dreamcastMainNodes[i]->task(time_us_64());
         }
-
-#if 1
-        {
-            LockGuard lockGuard(cdcRxMutex, true);
-
-            if (lastSize != cdcRx.size())
-            {
-                std::vector<char>::iterator eol = std::find(cdcRx.begin(), cdcRx.end(), '\n');
-                if (eol != cdcRx.end())
-                {
-                    bool valid = false;
-                    std::vector<uint32_t> words;
-                    std::vector<char>::iterator iter = cdcRx.begin();
-                    while(iter != eol)
-                    {
-                        uint32_t word = 0;
-                        uint32_t i = 0;
-                        while (i < 8 && iter != eol)
-                        {
-                            char v = *iter;
-                            if (v >= '0' && v <= '9')
-                            {
-                                word |= ((v - '0') << ((8 - i) * 4 - 4));
-                                ++i;
-                            }
-                            else if (v >= 'a' && v <= 'f')
-                            {
-                                word |= ((v - 'a' + 10) << ((8 - i) * 4 - 4));
-                                ++i;
-                            }
-                            else if (v >= 'A' && v <= 'F')
-                            {
-                                word |= ((v - 'A' + 10) << ((8 - i) * 4 - 4));
-                                ++i;
-                            }
-                            ++iter;
-                        }
-                        valid = ((i == 8) || (i == 0));
-
-                        if (i == 8)
-                        {
-                            words.push_back(word);
-                        }
-                    }
-
-                    if (valid)
-                    {
-                        MaplePacket packet(&words[0], words.size());
-                        if (packet.isValid())
-                        {
-                            uint8_t sender = packet.getFrameSenderAddr();
-                            int32_t idx = -1;
-                            if (sender == 0 && numDevices > 0)
-                            {
-                                idx = 0;
-                            }
-                            else if (sender == 0x40 && numDevices > 1)
-                            {
-                                idx = 1;
-                            }
-                            else if (sender == 0x80 && numDevices > 2)
-                            {
-                                idx = 2;
-                            }
-                            else if (sender == 0xC0 && numDevices > 3)
-                            {
-                                idx = 3;
-                            }
-
-                            if (idx >= 0)
-                            {
-                                uint32_t id = schedulers[idx]->add(
-                                    0,
-                                    PrioritizedTxScheduler::TX_TIME_ASAP,
-                                    &echoTransmitter,
-                                    packet,
-                                    true);
-                                std::vector<uint32_t>::iterator iter = words.begin();
-                                printf("%lu: added {%08lX", id, *iter++);
-                                for(; iter < words.end(); ++iter)
-                                {
-                                    printf(" %08lX", *iter);
-                                }
-                                printf("}\n");
-                            }
-                            else
-                            {
-                                printf("0: failed invalid sender\n");
-                            }
-                        }
-                        else
-                        {
-                            printf("0: failed packet invalid\n");
-                        }
-                    }
-                    else
-                    {
-                        printf("0: failed missing data\n");
-                    }
-
-                    cdcRx.erase(cdcRx.begin(), eol + 1);
-                }
-
-
-                lastSize = cdcRx.size();
-            }
-        }
-#endif
+        // Process any waiting commands in the TTY parser
+        ttyParser->process();
     }
 }
 
@@ -231,7 +98,7 @@ int main()
 
     Mutex fileMutex;
     Mutex cdcStdioMutex;
-    usb_init(&fileMutex, &cdcStdioMutex, &cdcRxMutex, &cdcRx);
+    usb_init(&fileMutex, &cdcStdioMutex);
 
     while(true)
     {

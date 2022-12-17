@@ -11,9 +11,7 @@ DreamcastControllerObserver** get_usb_controller_observers();
 //! USB initialization
 void usb_init(
   MutexInterface* mscMutex,
-  MutexInterface* cdcStdioMutex,
-  MutexInterface* cdcRxMutex,
-  std::vector<char>* cdcRx);
+  MutexInterface* cdcStdioMutex);
 //! USB task that needs to be called constantly by main()
 void usb_task();
 //! @returns number of USB controllers
