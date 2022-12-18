@@ -7,12 +7,16 @@
 
 #include "DreamcastMainNode.hpp"
 #include "PlayerData.hpp"
+#include "MaplePassthroughCommandParser.hpp"
+
 #include "CriticalSectionMutex.hpp"
 #include "Mutex.hpp"
 #include "Clock.hpp"
 
+#include "hal/System/LockGuard.hpp"
 #include "hal/MapleBus/MapleBusInterface.hpp"
 #include "hal/Usb/usb_interface.hpp"
+#include "hal/Usb/TtyParser.hpp"
 
 #include <memory>
 #include <algorithm>
@@ -42,6 +46,7 @@ void core1()
     DreamcastControllerObserver** observers = get_usb_controller_observers();
     std::shared_ptr<MapleBusInterface> buses[numDevices];
     std::shared_ptr<DreamcastMainNode> dreamcastMainNodes[numDevices];
+    std::shared_ptr<PrioritizedTxScheduler> schedulers[numDevices];
     Clock clock;
     for (uint32_t i = 0; i < numDevices; ++i)
     {
@@ -52,19 +57,30 @@ void core1()
                                                      clock,
                                                      usb_msc_get_file_system());
         buses[i] = create_maple_bus(maplePins[i], MAPLE_HOST_ADDRESSES[i]);
+        schedulers[i] = std::make_shared<PrioritizedTxScheduler>();
         dreamcastMainNodes[i] = std::make_shared<DreamcastMainNode>(
             *buses[i],
             *playerData[i],
-            std::make_shared<PrioritizedTxScheduler>(DreamcastMainNode::MAX_PRIORITY));
+            schedulers[i]);
     }
+
+    // Initialize CDC to Maple Bus interfaces
+    Mutex ttyParserMutex;
+    TtyParser* ttyParser = usb_cdc_create_parser(&ttyParserMutex, 'h');
+    ttyParser->addCommandParser(
+        std::make_shared<MaplePassthroughCommandParser>(
+            &schedulers[0], MAPLE_HOST_ADDRESSES, numDevices));
 
     while(true)
     {
+        // Process each main node
         for (uint32_t i = 0; i < numDevices; ++i)
         {
             // Worst execution duration of below is ~350 us at 133 MHz when debug print is disabled
             dreamcastMainNodes[i]->task(time_us_64());
         }
+        // Process any waiting commands in the TTY parser
+        ttyParser->process();
     }
 }
 
@@ -81,8 +97,8 @@ int main()
     multicore_launch_core1(core1);
 
     Mutex fileMutex;
-    Mutex cdcMutex;
-    usb_init(&fileMutex, &cdcMutex);
+    Mutex cdcStdioMutex;
+    usb_init(&fileMutex, &cdcStdioMutex);
 
     while(true)
     {

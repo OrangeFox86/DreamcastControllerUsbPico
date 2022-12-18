@@ -3,12 +3,6 @@
 
 #include "configuration.h"
 
-#if SHOW_DEBUG_MESSAGES
-#define CDC_ENABLED true
-#else
-#define CDC_ENABLED false
-#endif
-
 // Going in reverse order because the host seems to usually enumerate the highest value first
 enum {
     // Gamepads
@@ -19,7 +13,7 @@ enum {
     // For mass storage device
     ITF_NUM_MSC,
 
-#if CDC_ENABLED
+#if USB_CDC_ENABLED
     ITF_NUM_CDC,
     ITF_NUM_CDC_DATA,
 #endif

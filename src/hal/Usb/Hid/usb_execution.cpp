@@ -125,13 +125,15 @@ void led_task()
 
 }
 
-void usb_init(MutexInterface* mscMutex, MutexInterface* cdcMutex)
+void usb_init(
+  MutexInterface* mscMutex,
+  MutexInterface* cdcStdioMutex)
 {
   set_usb_devices(devices, sizeof(devices) / sizeof(devices[1]));
   board_init();
   tusb_init();
   msc_init(mscMutex);
-  cdc_init(cdcMutex);
+  cdc_init(cdcStdioMutex);
 
 #if USB_LED_PIN >= 0
   gpio_init(USB_LED_PIN);

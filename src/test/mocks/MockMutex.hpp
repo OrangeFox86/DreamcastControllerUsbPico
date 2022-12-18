@@ -11,4 +11,6 @@ class MockMutex : public MutexInterface
         MOCK_METHOD(void, lock, (), (override));
 
         MOCK_METHOD(void, unlock, (), (override));
+
+        MOCK_METHOD(int8_t, tryLock, (), (override));
 };

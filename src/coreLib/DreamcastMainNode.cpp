@@ -4,17 +4,13 @@
 #include "DreamcastController.hpp"
 #include "EndpointTxScheduler.hpp"
 
-const uint8_t DreamcastMainNode::MAIN_TRANSMISSION_PRIORITY = 0;
-const uint8_t DreamcastMainNode::SUB_TRANSMISSION_PRIORITY = 1;
-const uint8_t DreamcastMainNode::MAX_PRIORITY = 1;
-
 DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus,
                                      PlayerData playerData,
                                      std::shared_ptr<PrioritizedTxScheduler> prioritizedTxScheduler) :
     DreamcastNode(DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK,
                   std::make_shared<EndpointTxScheduler>(
                     prioritizedTxScheduler,
-                    MAIN_TRANSMISSION_PRIORITY,
+                    PrioritizedTxScheduler::MAIN_TRANSMISSION_PRIORITY,
                     DreamcastPeripheral::getRecipientAddress(
                         playerData.playerIndex, DreamcastPeripheral::MAIN_PERIPHERAL_ADDR_MASK)
                   ),
@@ -32,7 +28,7 @@ DreamcastMainNode::DreamcastMainNode(MapleBusInterface& bus,
             addr,
             std::make_shared<EndpointTxScheduler>(
                 prioritizedTxScheduler,
-                SUB_TRANSMISSION_PRIORITY,
+                PrioritizedTxScheduler::SUB_TRANSMISSION_PRIORITY,
                 DreamcastPeripheral::getRecipientAddress(playerData.playerIndex, addr)),
             mPlayerData));
     }

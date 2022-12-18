@@ -16,11 +16,24 @@
 #include "class/hid/hid_device.h"
 #include "class/cdc/cdc_device.h"
 
+#include "UsbCdcTtyParser.hpp"
+
+
+UsbCdcTtyParser* ttyParser = nullptr;
+
+TtyParser* usb_cdc_create_parser(MutexInterface* m, char helpChar)
+{
+    if (ttyParser == nullptr)
+    {
+        ttyParser = new UsbCdcTtyParser(*m, helpChar);
+    }
+    return ttyParser;
+}
+
+
 #if CFG_TUD_CDC
 
-static MutexInterface* cdcMutex = nullptr;
-
-#if SHOW_DEBUG_MESSAGES
+static MutexInterface* stdioMutex = nullptr;
 
 // Can't use stdio_usb_init() because it checks tud_cdc_connected(), and that doesn't always return
 // true when a connection is made. Not all terminal client set this when making connection.
@@ -32,7 +45,7 @@ extern "C" {
 static void stdio_usb_out_chars2(const char *buf, int length) {
     static uint64_t last_avail_time;
 
-    LockGuard lockGuard(*cdcMutex);
+    LockGuard lockGuard(*stdioMutex);
     if (!lockGuard.isLocked())
     {
         return; // would deadlock otherwise
@@ -65,7 +78,7 @@ static void stdio_usb_out_chars2(const char *buf, int length) {
 
 int stdio_usb_in_chars2(char *buf, int length)
 {
-    LockGuard lockGuard(*cdcMutex);
+    LockGuard lockGuard(*stdioMutex);
     if (!lockGuard.isLocked())
     {
         return PICO_ERROR_NO_DATA; // would deadlock otherwise
@@ -92,39 +105,50 @@ struct stdio_driver stdio_usb2 =
 
 } // extern "C"
 
-#endif // #if SHOW_DEBUG_MESSAGES
-
-void cdc_init(MutexInterface* mutex)
+void cdc_init(MutexInterface* cdcStdioMutex)
 {
-    cdcMutex = mutex;
-#if SHOW_DEBUG_MESSAGES
+    stdioMutex = cdcStdioMutex;
     stdio_set_driver_enabled(&stdio_usb2, true);
-#endif
 }
 
 void cdc_task()
 {
-    // This interface is only currently used when SHOW_DEBUG_MESSAGES is true, so no need to do
-    // anything otherwise
-#if CDC_ENABLED
-    // connected() check for DTR bit
-    // Most but not all terminal client set this when making connection
-    // if ( tud_cdc_connected() )
+#if USB_CDC_ENABLED
+    // connected and there are data available
+    if (tud_cdc_available())
     {
-        // connected and there are data available
-        if ( tud_cdc_available() )
+        if (ttyParser)
         {
-            // TODO: This is where CDC data may be read
+            char buf[64];
+            uint32_t count = 0;
+
+            {
+                LockGuard lockGuard(*stdioMutex);
+                if (!lockGuard.isLocked())
+                {
+                    return; // would deadlock otherwise; just wait for next loop
+                }
+
+                // read data
+                count = tud_cdc_read(buf, sizeof(buf));
+
+                if (count > 0)
+                {
+                    // Echo back
+                    tud_cdc_write(buf, count);
+                    tud_cdc_write_flush();
+                }
+            }
+
+            if (count > 0)
+            {
+                ttyParser->addChars(buf, count);
+            }
+        }
+        else
+        {
+            // Parser not created yet
             tud_cdc_read_flush();
-
-            // // read datas
-            // char buf[64];
-            // uint32_t count = tud_cdc_read(buf, sizeof(buf));
-            // (void) count;
-
-            // // Echo back
-            // tud_cdc_write(buf, count);
-            // tud_cdc_write_flush();
         }
     }
 #endif

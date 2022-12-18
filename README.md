@@ -354,7 +354,7 @@ Below defines a location word which is used to address blocks of memory in some 
 
 ### CRC
 
-CRC byte transmits last, just before the end sequence is transmitted. It is the value after starting with 0 and applying XOR to each other byte in the packet.
+CRC byte transmits last, just before the end sequence is transmitted. It is the value after starting with 0 and applying XOR against each byte in the packet.
 
 ---
 
@@ -380,7 +380,7 @@ All button bits are 0 when pressed and 1 when released.
 
 ## Screen
 
-The "block write" command (0x0C) with screen function code and 48 data words is used to write monochrome images to the screen. A screen is 48 bits wide and 32 bits tall. For each bit in the 48 data words, a value of 1 means the pixel is on (black) and 0 means the pixel is off (white). Data is written from left to right and top to bottom. The most significant bit of the first word sets the pixel on the top, left of the screen. The two most significant bytes write to the 33rd through 48th bit of the first row. The next two bytes write to the 1st through 16th bits of the second row. This is repeated for the right of the 48 words like pictured below.
+The "block write" command (0x0C) with screen function code and 48 data words is used to write monochrome images to the screen. A screen is 48 bits wide and 32 bits tall. For each bit in the 48 data words, a value of 1 means the pixel is on (black) and 0 means the pixel is off (white). Data is written from left to right and top to bottom. The most significant bit of the first word sets the pixel on the top, left of the screen. The two most significant bytes write to the 33rd through 48th bit of the first row. The next two bytes write to the 1st through 16th bits of the second row. This is repeated for the rest of the 48 words like pictured below.
 
 <p align="center">
   <img src="images/Dreamcast_Screen_Words.png?raw=true" alt="Screen Words"/>
@@ -432,7 +432,7 @@ Specifically, the text `Fm:4 - 30Hz`. This correlates to `(value + 1) / 2` and m
     - `0xX0`: single stable vibration (i.e. no inclination) at power X
     - `0xX8`: positive inclination (ramp up) from power X up to max
     - `0x8X`: negative inclination (ramp down) from power X down to min
-- A values of `0x00`, `0x08`, or `0x80` immediately stops the currently executing vibration sequence
+- A value of `0x00`, `0x08`, or `0x80` immediately stops the currently executing vibration sequence
 
 There is a very noticeable change from one vibration power to the next when inclination is used and a long cycle period is selected.
 
@@ -468,8 +468,16 @@ Bit 0 may be set to 1 to augment duration, but the meaning is not completely und
 
 **Maple Bus Resources**
 
+https://archive.org/details/MaplePatent/page/n7/mode/1up
+
 http://mc.pp.se/dc/maplebus.html and http://mc.pp.se/dc/controller.html
 
 https://tech-en.netlify.app/articles/en540236/index.html
 
 https://www.raphnet.net/programmation/dreamcast_usb/index_en.php
+
+https://web.archive.org/web/20100425041817/http://www.maushammer.com/vmu.html
+
+https://hackaday.io/project/170365-blueretro/log/180790-evolution-of-segas-io-interface-from-sg-1000-to-saturn
+
+https://segaretro.org/History_of_the_Sega_Dreamcast/Development
