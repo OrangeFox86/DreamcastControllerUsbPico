@@ -201,11 +201,11 @@ void DreamcastMainNode::writeTask(uint64_t currentTimeUs)
     if (sentTx != nullptr)
     {
         // Send this off to the one who transmitted this
-        Transmitter* transmitter = sentTx->transmitter;
-        if (transmitter != nullptr)
-        {
-            transmitter->txStarted(sentTx);
-        }
+        // Transmitter* transmitter = sentTx->transmitter;
+        // if (transmitter != nullptr)
+        // {
+        //     transmitter->txStarted(sentTx);
+        // }
     }
 }
 

@@ -39,7 +39,7 @@ void DreamcastController::txFailed(bool writeFailed,
 void DreamcastController::txComplete(std::shared_ptr<const MaplePacket> packet,
                                      std::shared_ptr<const Transmission> tx)
 {
-    if (mWaitingForData && packet != nullptr)
+    if (packet != nullptr)
     {
         mWaitingForData = false;
 
@@ -71,5 +71,6 @@ void DreamcastController::task(uint64_t currentTimeUs)
             true,
             3,
             US_PER_CHECK);
+        mWaitingForData = true;
     }
 }
