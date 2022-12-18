@@ -65,6 +65,8 @@ class DreamcastMainNode : public DreamcastNode
     public:
         //! Number of microseconds in between each info request when no peripheral is detected
         static const uint32_t US_PER_CHECK = 16000;
+        //! Number of communication failures before main peripheral is disconnected
+        static const uint32_t MAX_FAILURE_DISCONNECT_COUNT = 3;
 
     protected:
         //! The sub nodes under this node
@@ -73,4 +75,6 @@ class DreamcastMainNode : public DreamcastNode
         TransmissionTimeliner mTransmissionTimeliner;
         //! ID of the device info request auto reload transmission this object added to the schedule
         int64_t mScheduleId;
+        //! Current count of number of communication failures
+        uint32_t mCommFailCount;
 };
