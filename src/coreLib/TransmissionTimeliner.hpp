@@ -47,6 +47,4 @@ protected:
     std::shared_ptr<PrioritizedTxScheduler> mSchedule;
     //! The currently sending transmission
     std::shared_ptr<const Transmission> mCurrentTx;
-    //! Recently popped transmission that is waiting to be sent
-    std::shared_ptr<const Transmission> mNextTx;
 };

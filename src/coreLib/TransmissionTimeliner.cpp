@@ -2,7 +2,7 @@
 #include <assert.h>
 
 TransmissionTimeliner::TransmissionTimeliner(MapleBusInterface& bus, std::shared_ptr<PrioritizedTxScheduler> schedule):
-    mBus(bus), mSchedule(schedule), mCurrentTx(nullptr), mNextTx(nullptr)
+    mBus(bus), mSchedule(schedule), mCurrentTx(nullptr)
 {}
 
 TransmissionTimeliner::ReadStatus TransmissionTimeliner::readTask(uint64_t currentTimeUs)
@@ -34,20 +34,22 @@ std::shared_ptr<const Transmission> TransmissionTimeliner::writeTask(uint64_t cu
 {
     std::shared_ptr<const Transmission> txSent = nullptr;
 
-    // Get next transmission
-    if (mNextTx == nullptr && !mBus.isBusy())
+    if (!mBus.isBusy())
     {
-        mNextTx = mSchedule->popNext(currentTimeUs);
-    }
-
-    // Transmit
-    if (mNextTx != nullptr)
-    {
-        assert(mNextTx->packet->isValid());
-        if (mBus.write(*mNextTx->packet, mNextTx->expectResponse))
+        PrioritizedTxScheduler::ScheduleItem item = mSchedule->peekNext(currentTimeUs);
+        txSent = item.getTx();
+        if (txSent != nullptr)
         {
-            mCurrentTx = txSent = mNextTx;
-            mNextTx = nullptr;
+            assert(txSent->packet->isValid());
+            if (mBus.write(*txSent->packet, txSent->expectResponse))
+            {
+                mCurrentTx = txSent;
+                mSchedule->popItem(item);
+            }
+            else
+            {
+                txSent = nullptr;
+            }
         }
     }
 

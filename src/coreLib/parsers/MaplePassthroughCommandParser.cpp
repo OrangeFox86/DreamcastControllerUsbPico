@@ -16,24 +16,24 @@ public:
     {
         if (writeFailed)
         {
-            printf("%lu: failed write\n", tx->transmissionId);
+            printf("%lu: failed write\n", (long unsigned int)tx->transmissionId);
         }
         else
         {
-            printf("%lu: failed read\n", tx->transmissionId);
+            printf("%lu: failed read\n", (long unsigned int)tx->transmissionId);
         }
     }
 
     virtual void txComplete(std::shared_ptr<const MaplePacket> packet,
                             std::shared_ptr<const Transmission> tx) final
     {
-        printf("%lu: complete {", tx->transmissionId);
-        printf("%08lX", packet->frameWord);
+        printf("%lu: complete {", (long unsigned int)tx->transmissionId);
+        printf("%08lX", (long unsigned int)packet->frameWord);
         for (std::vector<uint32_t>::const_iterator iter = packet->payload.begin();
              iter != packet->payload.end();
              ++iter)
         {
-            printf(" %08lX", *iter);
+            printf(" %08lX", (long unsigned int)*iter);
         }
         printf("}\n");
     }
@@ -126,10 +126,10 @@ void MaplePassthroughCommandParser::submit(const char* chars, uint32_t len)
                     packet,
                     true);
                 std::vector<uint32_t>::iterator iter = words.begin();
-                printf("%lu: added {%08lX", id, *iter++);
+                printf("%lu: added {%08lX", (long unsigned int)id, (long unsigned int)*iter++);
                 for(; iter < words.end(); ++iter)
                 {
-                    printf(" %08lX", *iter);
+                    printf(" %08lX", (long unsigned int)*iter);
                 }
                 printf("}\n");
             }
