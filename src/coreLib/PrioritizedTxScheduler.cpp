@@ -7,11 +7,11 @@
 // STL
 #include <algorithm>
 
-PrioritizedTxScheduler::PrioritizedTxScheduler(uint8_t maxPriority) :
+PrioritizedTxScheduler::PrioritizedTxScheduler() :
     mNextId(1),
     mSchedule()
 {
-    mSchedule.resize(maxPriority + 1);
+    mSchedule.resize(PRIORITY_COUNT);
 }
 
 PrioritizedTxScheduler::~PrioritizedTxScheduler() {}

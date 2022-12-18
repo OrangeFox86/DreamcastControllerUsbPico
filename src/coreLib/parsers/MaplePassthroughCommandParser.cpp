@@ -120,7 +120,7 @@ void MaplePassthroughCommandParser::submit(const char* chars, uint32_t len)
             if (idx >= 0)
             {
                 uint32_t id = mSchedulers[idx]->add(
-                    0,
+                    PrioritizedTxScheduler::EXTERNAL_TRANSMISSION_PRIORITY,
                     PrioritizedTxScheduler::TX_TIME_ASAP,
                     &echoTransmitter,
                     packet,

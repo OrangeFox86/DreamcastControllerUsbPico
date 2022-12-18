@@ -10,8 +10,22 @@
 class PrioritizedTxScheduler
 {
 public:
+    //! Enumerates available priorities to be used with add()
+    enum Priority : uint8_t
+    {
+        //! Priority for external entity taking control of the bus (max)
+        EXTERNAL_TRANSMISSION_PRIORITY = 0,
+        //! Priority for main peripheral
+        MAIN_TRANSMISSION_PRIORITY,
+        //! Priority for sub peripheral (min)
+        SUB_TRANSMISSION_PRIORITY,
+        //! Any selected priority must be less than PRIORITY_COUNT
+        PRIORITY_COUNT
+    };
+
+public:
     //! Default constructor
-    PrioritizedTxScheduler(uint8_t maxPriority);
+    PrioritizedTxScheduler();
 
     //! Virtual destructor
     virtual ~PrioritizedTxScheduler();
