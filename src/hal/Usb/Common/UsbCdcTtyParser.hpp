@@ -29,8 +29,16 @@ private:
     static const uint32_t MAX_QUEUE_SIZE = 2048;
     //! String of characters that are considered whitespace
     static const char* WHITESPACE_CHARS;
+    //! String of characters that are considered end of line characters
+    static const char* INPUT_EOL_CHARS;
+    //! The singular character that is replaced in the RX list as the EOL char
+    static const char RX_EOL_CHAR;
+    //! String of characters that are treated as a backspace
+    static const char* BACKSPACE_CHARS;
     //! Receive queue
     std::vector<char> mParserRx;
+    //! Flag that is set to true if the last read character is an EOL (used to ignore further EOL)
+    bool mLastIsEol;
     //! Mutex used to serialize addChars and process
     MutexInterface& mParserMutex;
     //! Flag when end of line detected on add
