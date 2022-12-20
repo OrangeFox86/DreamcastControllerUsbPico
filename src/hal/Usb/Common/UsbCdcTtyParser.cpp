@@ -5,10 +5,14 @@
 #include <string.h>
 #include <algorithm>
 
-const char* UsbCdcTtyParser::WHITESPACE_CHARS = "\n\r\t ";
+const char* UsbCdcTtyParser::WHITESPACE_CHARS = "\r\n\t ";
+const char* UsbCdcTtyParser::INPUT_EOL_CHARS = "\r\n";
+const char UsbCdcTtyParser::RX_EOL_CHAR = '\n';
+const char* UsbCdcTtyParser::BACKSPACE_CHARS = "\x08\x7F";
 
 UsbCdcTtyParser::UsbCdcTtyParser(MutexInterface& m, char helpChar) :
     mParserRx(),
+    mLastIsEol(false),
     mParserMutex(m),
     mCommandReady(false),
     mHelpChar(helpChar),
@@ -44,12 +48,12 @@ void UsbCdcTtyParser::addChars(const char* chars, uint32_t len)
 
         if (mOverflowDetected)
         {
-            if (*chars == '\n')
+            if (strchr(INPUT_EOL_CHARS, *chars) != NULL)
             {
-                printf("Error: Command input overflow\n");
+                printf("Error: Command input overflow %lu\n", (long unsigned int)mParserRx.size());
                 // Remove only command that overflowed
                 std::vector<char>::reverse_iterator lastEnd =
-                    std::find(mParserRx.rbegin(), mParserRx.rend(), '\n');
+                    std::find(mParserRx.rbegin(), mParserRx.rend(), RX_EOL_CHAR);
                 if (lastEnd == mParserRx.rend())
                 {
                     mParserRx.clear();
@@ -61,22 +65,33 @@ void UsbCdcTtyParser::addChars(const char* chars, uint32_t len)
                 }
                 mOverflowDetected = false;
             }
+            else
+            {
+                mLastIsEol = false;
+            }
         }
-        else if (*chars == 0x08)
+        else if (strchr(BACKSPACE_CHARS, *chars) != NULL)
         {
-            if (!mParserRx.empty())
+            // Can't backspace before EOL character or if list is empty
+            if (!mLastIsEol && !mParserRx.empty())
             {
                 // Backspace
                 mParserRx.pop_back();
             }
         }
-        else
+        else if (strchr(INPUT_EOL_CHARS, *chars) != NULL)
         {
-            if (*chars == '\n')
+            if (!mLastIsEol)
             {
                 mCommandReady = true;
+                mParserRx.push_back(RX_EOL_CHAR);
+                mLastIsEol = true;
             }
+        }
+        else
+        {
             mParserRx.push_back(*chars);
+            mLastIsEol = false;
         }
     }
 }
@@ -89,11 +104,16 @@ void UsbCdcTtyParser::process()
         // Begin lock guard context
         LockGuard lockGuard(mParserMutex);
 
-        mCommandReady = false;
-
         // End of command is at the new line character
         std::vector<char>::iterator eol =
-            std::find(mParserRx.begin(), mParserRx.end(), '\n');
+            std::find(mParserRx.begin(), mParserRx.end(), RX_EOL_CHAR);
+
+        if (eol == mParserRx.end()
+            || std::find(eol + 1, mParserRx.end(), RX_EOL_CHAR) == mParserRx.end())
+        {
+            // No further commands found
+            mCommandReady = false;
+        }
 
         if (eol != mParserRx.end())
         {

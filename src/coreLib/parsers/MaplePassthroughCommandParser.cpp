@@ -131,7 +131,7 @@ void MaplePassthroughCommandParser::submit(const char* chars, uint32_t len)
                 {
                     printf(" %08lX", (long unsigned int)*iter);
                 }
-                printf("}\n");
+                printf("} -> [%li]\n", (long int)idx);
             }
             else
             {
