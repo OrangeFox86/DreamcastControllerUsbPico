@@ -42,7 +42,10 @@ static MutexInterface* stdioMutex = nullptr;
 #include "pico/stdio/driver.h"
 extern "C" {
 
-static void stdio_usb_out_chars2(const char *buf, int length) {
+static void stdio_usb_out_chars2(const char *buf, int length)
+{
+    if (length <= 0) return;
+
     static uint64_t last_avail_time;
 
     LockGuard lockGuard(*stdioMutex);
@@ -51,19 +54,25 @@ static void stdio_usb_out_chars2(const char *buf, int length) {
         return; // would deadlock otherwise
     }
 
-    for (int i = 0; i < length;)
+    for (uint32_t i = 0; i < (uint32_t)length;)
     {
-        int n = length - i;
-        int avail = (int) tud_cdc_write_available();
-        if (n > avail) n = avail;
+        uint32_t n = length - i;
+        uint32_t avail = tud_cdc_write_available();
+
+        if (n > avail)
+        {
+            n = (int)avail;
+        }
+
         if (n)
         {
-            int n2 = (int) tud_cdc_write(buf + i, (uint32_t)n);
+            uint32_t n2 = tud_cdc_write(buf + i, n);
             tud_task();
             tud_cdc_write_flush();
             i += n2;
             last_avail_time = time_us_64();
-        } else
+        }
+        else
         {
             tud_task();
             tud_cdc_write_flush();
@@ -99,7 +108,8 @@ struct stdio_driver stdio_usb2 =
     .out_chars = stdio_usb_out_chars2,
     .in_chars = stdio_usb_in_chars2,
 #if PICO_STDIO_ENABLE_CRLF_SUPPORT
-    .crlf_enabled = 0
+    // Replaces LF with CRLF
+    .crlf_enabled = true
 #endif
 };
 
@@ -122,26 +132,14 @@ void cdc_task()
             char buf[64];
             uint32_t count = 0;
 
-            {
-                LockGuard lockGuard(*stdioMutex);
-                if (!lockGuard.isLocked())
-                {
-                    return; // would deadlock otherwise; just wait for next loop
-                }
-
-                // read data
-                count = tud_cdc_read(buf, sizeof(buf));
-
-                if (count > 0)
-                {
-                    // Echo back
-                    tud_cdc_write(buf, count);
-                    tud_cdc_write_flush();
-                }
-            }
+            // read data (no need to lock this - this is the only place where read is done)
+            count = tud_cdc_read(buf, sizeof(buf));
 
             if (count > 0)
             {
+                // Echo back (no crlf processing since calling directly)
+                stdio_usb_out_chars2(buf, count);
+                // Add to parser
                 ttyParser->addChars(buf, count);
             }
         }
