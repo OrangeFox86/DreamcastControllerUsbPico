@@ -148,7 +148,7 @@ MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
 
 inline void MapleBus::readIsr()
 {
-    // This ISR gets called twice within a read cycle:
+    // This ISR gets called from read PIO twice within a read cycle:
     // - The first time tells us that start sequence was received
     // - The second time tells us that end sequence was received after completion
 
@@ -157,15 +157,18 @@ inline void MapleBus::readIsr()
         mCurrentPhase = Phase::READ_IN_PROGRESS;
         mLastReceivedWordTimeUs = time_us_64();
     }
-    else
+    else if (mCurrentPhase == Phase::READ_IN_PROGRESS)
     {
         mSmIn.stop();
         mCurrentPhase = Phase::READ_COMPLETE;
     }
+    // else: shouldn't have reached here
 }
 
 inline void MapleBus::writeIsr()
 {
+    // This ISR gets called from write PIO once writing has completed
+
     mSmOut.stop();
     if (mExpectingResponse)
     {
