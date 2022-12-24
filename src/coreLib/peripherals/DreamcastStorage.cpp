@@ -12,10 +12,17 @@ DreamcastStorage::DreamcastStorage(uint8_t addr,
     mClock(playerData.clock),
     mUsbFileSystem(playerData.fileSystem),
     mFileName{},
-    mReadState(READ_IDLE),
+    mReadState(READ_WRITE_IDLE),
     mReadingTxId(0),
     mReadingBlock(-1),
-    mReadPacket(nullptr)
+    mReadPacket(nullptr),
+    mReadKillTime(0),
+    mWriteState(READ_WRITE_IDLE),
+    mWritingTxId(0),
+    mWritingBlock(0),
+    mWriteBuffer(nullptr),
+    mWriteBufferLen(0),
+    mWriteKillTime(0)
 {
     int32_t idx = subPeripheralIndex(mAddr);
     if (idx >= 0)
@@ -44,26 +51,71 @@ void DreamcastStorage::task(uint64_t currentTimeUs)
 {
     switch(mReadState)
     {
-        case READ_STARTED:
+        case READ_WRITE_STARTED:
         {
             uint32_t payload[2] = {FUNCTION_CODE, mReadingBlock};
             mReadingTxId = mEndpointTxScheduler->add(0, this, COMMAND_BLOCK_READ, payload, 2, true, 130);
-            mReadState = READ_SENT;
+            mReadState = READ_WRITE_SENT;
         }
         break;
 
-        case READ_SENT:
+        case READ_WRITE_SENT:
         {
             if (currentTimeUs >= mReadKillTime)
             {
                 // Timeout
                 mEndpointTxScheduler->cancelById(mReadingTxId);
-                mReadState = READ_IDLE;
+                mReadState = READ_WRITE_IDLE;
             }
         }
         break;
 
-        case READ_PROCESSING:
+        case READ_WRITE_PROCESSING:
+            // Already processing, so no need to check timeout value
+        default:
+            break;
+    }
+
+    switch(mWriteState)
+    {
+        case READ_WRITE_STARTED:
+        {
+            // Build the payload with write data
+            uint32_t payload[2 + mWriteBufferLen] = {FUNCTION_CODE, mWritingBlock};
+            const uint32_t* pDataIn = static_cast<const uint32_t*>(mWriteBuffer);
+            uint32_t *pDataOut = &payload[2];
+            for (int32_t i = 0; i < mWriteBufferLen; i += 4, ++pDataIn, ++pDataOut)
+            {
+                // Assumption: Data stored as little endian
+                *pDataOut = flipWordBytes(*pDataIn);
+            }
+
+            mWritingTxId = mEndpointTxScheduler->add(
+                0,
+                this,
+                COMMAND_BLOCK_WRITE,
+                payload,
+                sizeof(payload) / sizeof(payload[0]),
+                true,
+                0);
+
+            mWriteState = READ_WRITE_SENT;
+        }
+        break;
+
+        case READ_WRITE_SENT:
+        {
+            if (currentTimeUs >= mWriteKillTime)
+            {
+                // Timeout
+                mEndpointTxScheduler->cancelById(mWritingTxId);
+                mWriteBufferLen = -1;
+                mWriteState = READ_WRITE_IDLE;
+            }
+        }
+        break;
+
+        case READ_WRITE_PROCESSING:
             // Already processing, so no need to check timeout value
         default:
             break;
@@ -72,9 +124,13 @@ void DreamcastStorage::task(uint64_t currentTimeUs)
 
 void DreamcastStorage::txStarted(std::shared_ptr<const Transmission> tx)
 {
-    if (mReadState != READ_IDLE && tx->transmissionId == mReadingTxId)
+    if (mReadState != READ_WRITE_IDLE && tx->transmissionId == mReadingTxId)
     {
-        mReadState = READ_PROCESSING;
+        mReadState = READ_WRITE_PROCESSING;
+    }
+    if (mWriteState != READ_WRITE_IDLE && tx->transmissionId == mWritingTxId)
+    {
+        mWriteState = READ_WRITE_PROCESSING;
     }
 }
 
@@ -82,21 +138,32 @@ void DreamcastStorage::txFailed(bool writeFailed,
                                 bool readFailed,
                                 std::shared_ptr<const Transmission> tx)
 {
-    if (mReadState != READ_IDLE && tx->transmissionId == mReadingTxId)
+    if (mReadState != READ_WRITE_IDLE && tx->transmissionId == mReadingTxId)
     {
         // Failure
-        mReadState = READ_IDLE;
+        mReadState = READ_WRITE_IDLE;
+    }
+    if (mWriteState != READ_WRITE_IDLE && tx->transmissionId == mWritingTxId)
+    {
+        // Failure
+        mWriteBufferLen = 0;
+        mWriteState = READ_WRITE_IDLE;
     }
 }
 
 void DreamcastStorage::txComplete(std::shared_ptr<const MaplePacket> packet,
                                   std::shared_ptr<const Transmission> tx)
 {
-    if (mReadState != READ_IDLE && tx->transmissionId == mReadingTxId)
+    if (mReadState != READ_WRITE_IDLE && tx->transmissionId == mReadingTxId)
     {
         // Complete!
         mReadPacket = packet;
-        mReadState = READ_IDLE;
+        mReadState = READ_WRITE_IDLE;
+    }
+    if (mWriteState != READ_WRITE_IDLE && tx->transmissionId == mWritingTxId)
+    {
+        // Complete!
+        mWriteState = READ_WRITE_IDLE;
     }
 }
 
@@ -115,18 +182,18 @@ int32_t DreamcastStorage::read(uint8_t blockNum,
                                uint16_t bufferLen,
                                uint32_t timeoutUs)
 {
-    assert(mReadState == READ_IDLE);
+    assert(mReadState == READ_WRITE_IDLE);
     // Set data
     mReadingTxId = 0;
     mReadingBlock = blockNum;
     mReadPacket = nullptr;
     mReadKillTime = mClock.getTimeUs() + timeoutUs;
     // Commit it
-    mReadState = READ_STARTED;
+    mReadState = READ_WRITE_STARTED;
 
     // Wait for maple bus state machine to finish read
     // I'm not too happy about this blocking operation, but it works
-    while(mReadState != READ_IDLE && !mExiting);
+    while(mReadState != READ_WRITE_IDLE && !mExiting);
 
     int32_t numRead = -1;
     if (mReadPacket)
@@ -136,11 +203,7 @@ int32_t DreamcastStorage::read(uint8_t blockNum,
         uint8_t* buffer8 = (uint8_t*)buffer;
         for (uint32_t i = 2; i < (2U + (bufferLen / 4)); ++i)
         {
-            const uint32_t& originalWord = mReadPacket->payload[i];
-            uint32_t flippedWord = ((originalWord << 24) & 0xFF000000)
-                                    | ((originalWord << 8) & 0x00FF0000)
-                                    | ((originalWord >> 8) & 0x0000FF00)
-                                    | ((originalWord >> 24) & 0x000000FF);
+            uint32_t flippedWord = flipWordBytes(mReadPacket->payload[i]);
             memcpy(buffer8, &flippedWord, 4);
             buffer8 += 4;
         }
@@ -150,4 +213,32 @@ int32_t DreamcastStorage::read(uint8_t blockNum,
     mReadPacket = nullptr;
 
     return numRead;
+}
+
+int32_t DreamcastStorage::write(uint8_t blockNum,
+                                const void* buffer,
+                                uint16_t bufferLen,
+                                uint32_t timeoutUs)
+{
+    assert(mWriteState == READ_WRITE_IDLE);
+    assert(bufferLen % 4 == 0);
+    // Set data
+    mWritingBlock = blockNum;
+    mWriteBuffer = buffer;
+    mWriteBufferLen = bufferLen;
+    mWritingTxId = 0;
+    mWriteKillTime = mClock.getTimeUs() + timeoutUs;
+    // Commit it
+    mWriteState = READ_WRITE_STARTED;
+
+    // Wait for maple bus state machine to finish read
+    // I'm not too happy about this blocking operation, but it works
+    while(mWriteState != READ_WRITE_IDLE && !mExiting);
+
+    return mWriteBufferLen;
+}
+
+uint32_t DreamcastStorage::flipWordBytes(const uint32_t& word)
+{
+    return (word << 24) | (word << 8 & 0xFF0000) | (word >> 8 & 0xFF00) | (word >> 24);
 }

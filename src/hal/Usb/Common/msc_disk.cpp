@@ -806,8 +806,7 @@ bool tud_msc_is_writable_cb (uint8_t lun)
 {
   (void) lun;
 
-  // Read only drive
-  return false;
+  return true;
 }
 
 // Callback invoked when received WRITE10 command.
@@ -816,14 +815,61 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
 {
   (void) lun;
 
-  // out of ramdisk
-  // TODO: write memory to external component if outside of RAM disk
-  if ( lba >= REPORTED_BLOCK_NUM ) return -1;
+  int32_t numWrite = -1;
 
-  // Read only drive (for now)
-  (void) lba; (void) offset; (void) buffer;
+  if (lba < ALLOCATED_DISK_BLOCK_NUM)
+  {
+    // RAM disk area
+    numWrite = -1;
+  }
+  else if (lba < ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM)
+  {
+    // Attempt to write bad sectors
+    numWrite = -1;
+  }
+  else if (lba < ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM + EXTERNAL_DISK_BLOCK_NUM)
+  {
+    // Serialize this section with file add/remove
+    LockGuard lockGuard(*fileMutex);
 
-  return -1;
+    if (!lockGuard.isLocked())
+    {
+      DEBUG_PRINT("Critical Fault: Failed to read file due to lock failure\n");
+      // Spin forever
+      assert(0);
+    }
+
+    // This actually works out perfectly since each read will be up to 1 block of data, our block of
+    // data is 512 bytes, and a VMU block of data is also 512 bytes.
+
+    uint32_t realAddr = lba + FIRST_VALID_FAT_ADDRESS - NUM_HEADER_SECTORS;
+
+    // Find the file which contains this address
+    for (uint32_t i = 0;
+        i < (sizeof(fileEntries) / sizeof(fileEntries[0]));
+        ++i)
+    {
+        if (realAddr >= fileEntries[i].startBlock && realAddr < (fileEntries[i].startBlock + fileEntries[i].numBlocks))
+        {
+          // Found the matching file!
+          uint32_t vmuAddr = realAddr & 0xFF;
+          numWrite = fileEntries[i].handle->write(vmuAddr, buffer, bufsize, 20000);
+          break;
+        }
+    }
+  }
+  else if (lba < REPORTED_BLOCK_NUM)
+  {
+    // Fake data (host shouldn't attempt to write here)
+    numWrite = -1;
+  }
+  else
+  {
+    // Attempt to read out of bounds
+    numWrite = -1;
+  }
+
+  return numWrite;
 }
 
 // Callback invoked when received an SCSI command not in built-in list below
