@@ -94,6 +94,8 @@ class DreamcastStorage : public DreamcastPeripheral, UsbFile
     public:
         //! Function code for storage
         static const uint32_t FUNCTION_CODE = DEVICE_FN_STORAGE;
+        //! Number of write phases to break up each block write
+        static const uint8_t NUM_WRITE_PHASES = 4;
 
     private:
         //! Initialized false and set to true when destructor called
@@ -124,7 +126,7 @@ class DreamcastStorage : public DreamcastPeripheral, UsbFile
         //! Otherwise: peripheral callbacks can read and write the data below
         std::atomic<ReadWriteState> mWriteState;
 
-        //! Transmission ID of the write operation sent (or 0)
+        //! Transmission IDs of the 4 write operations sent (or 0)
         uint32_t mWritingTxId;
         //! The block number of the current write operation
         uint8_t mWritingBlock;
@@ -134,4 +136,7 @@ class DreamcastStorage : public DreamcastPeripheral, UsbFile
         int32_t mWriteBufferLen;
         //! Time at which write must be killed
         uint64_t mWriteKillTime;
+
+        //! The current write phase
+        uint8_t mWritePhase;
 };

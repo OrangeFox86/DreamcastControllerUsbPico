@@ -178,8 +178,8 @@ delay other controller operations.\
 
 enum
 {
-  ALLOCATED_DISK_BLOCK_NUM  = 12, // Number of actual blocks reserved in RAM disk
-  BAD_SECTOR_DISK_BLOCK_NUM = 253, // Used to line up memory files starting at address 0x0100
+  ALLOCATED_DISK_BLOCK_NUM  = 15, // Number of actual blocks reserved in RAM disk
+  BAD_SECTOR_DISK_BLOCK_NUM = 250, // Used to line up memory files starting at address 0x0100
   EXTERNAL_DISK_BLOCK_NUM = 2048, // Number of blocks that exist outside of RAM
   FAKE_DISK_BLOCK_NUM = 32768,    // Report extra space in order to force FAT16 formatting
   DISK_BLOCK_SIZE = 512           // Size in bytes of each block
@@ -364,8 +364,8 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       // The rest is pointers to next cluster number or 0xFFFF if end (for page 2+)
       U16_TO_U8S_LE(0xFFFF),
       // Bad sectors for the rest of this block of addresses
-      U16_TO_U8S_LE(0xFFF7),
-      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0),
+      U16_TO_U8S_LE(0), U16_TO_U8S_LE(0), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
       U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
       U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
       U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
@@ -437,14 +437,14 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
   {FULL_PAGE_FAT_ENTRY(0x0500)},
   {FULL_PAGE_FAT_ENTRY(0x0600)},
   {FULL_PAGE_FAT_ENTRY(0x0700)},
-  {FULL_PAGE_FAT_ENTRY(0x0800)},
+  {},
 
   //------------- Block10: Root Directory -------------//
   {
       // first entry is volume label
       VOLUME_ENTRY(),
       // second entry is readme file (will always be read only)
-      SIMPLE_DIR_ENTRY("README  ", "TXT", ATTR1_READ_ONLY, ATTR2_LOWERCASE_EXT, FIRST_VALID_FAT_ADDRESS, README_SIZE),
+      SIMPLE_DIR_ENTRY("README  ", "TXT", ATTR1_ARCHIVE, ATTR2_LOWERCASE_EXT, FIRST_VALID_FAT_ADDRESS, README_SIZE),
   },
 
   //------------- Block11+: File Content -------------//
@@ -815,12 +815,20 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
 {
   (void) lun;
 
+    DEBUG_PRINT("Write to RAM disk lba %lu; offset %lu; size %lu\n", lba, offset, bufsize);
+    // for (uint32_t i = 0; i < bufsize; ++i)
+    // {
+    //   DEBUG_PRINT("%02hx", *buffer++);
+    // }
+    // DEBUG_PRINT("\n");
+
   int32_t numWrite = -1;
 
   if (lba < ALLOCATED_DISK_BLOCK_NUM)
   {
     // RAM disk area
-    numWrite = -1;
+    memcpy(msc_disk[lba] + offset, buffer, bufsize);
+    numWrite = bufsize;
   }
   else if (lba < ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM)
   {
@@ -868,6 +876,8 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
     // Attempt to read out of bounds
     numWrite = -1;
   }
+
+  DEBUG_PRINT("Return %li\n", numWrite);
 
   return numWrite;
 }

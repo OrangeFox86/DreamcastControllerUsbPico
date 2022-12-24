@@ -1,5 +1,6 @@
 #include "DreamcastStorage.hpp"
 #include "dreamcast_constants.h"
+#include "utils.h"
 
 #include <assert.h>
 #include <string.h>
@@ -22,7 +23,8 @@ DreamcastStorage::DreamcastStorage(uint8_t addr,
     mWritingBlock(0),
     mWriteBuffer(nullptr),
     mWriteBufferLen(0),
-    mWriteKillTime(0)
+    mWriteKillTime(0),
+    mWritePhase(0)
 {
     int32_t idx = subPeripheralIndex(mAddr);
     if (idx >= 0)
@@ -81,13 +83,16 @@ void DreamcastStorage::task(uint64_t currentTimeUs)
         case READ_WRITE_STARTED:
         {
             // Build the payload with write data
-            uint32_t payload[2 + mWriteBufferLen] = {FUNCTION_CODE, mWritingBlock};
+            mWritePhase = 0;
+            uint32_t numBlockWords = mWriteBufferLen / 4 / NUM_WRITE_PHASES;
+            uint32_t numPayloadWords = 2 + numBlockWords;
+            uint32_t payload[numPayloadWords] = {FUNCTION_CODE, mWritingBlock};
             const uint32_t* pDataIn = static_cast<const uint32_t*>(mWriteBuffer);
             uint32_t *pDataOut = &payload[2];
-            for (int32_t i = 0; i < mWriteBufferLen; i += 4, ++pDataIn, ++pDataOut)
+            for (uint32_t i = 0; i < numBlockWords; ++i, ++pDataIn, ++pDataOut)
             {
                 // Assumption: Data stored as little endian
-                *pDataOut = flipWordBytes(*pDataIn);
+                *pDataOut = *pDataIn;
             }
 
             mWritingTxId = mEndpointTxScheduler->add(
@@ -95,11 +100,12 @@ void DreamcastStorage::task(uint64_t currentTimeUs)
                 this,
                 COMMAND_BLOCK_WRITE,
                 payload,
-                sizeof(payload) / sizeof(payload[0]),
+                numPayloadWords,
                 true,
                 0);
 
             mWriteState = READ_WRITE_SENT;
+            DEBUG_PRINT("Queued phase 0\n");
         }
         break;
 
@@ -147,6 +153,7 @@ void DreamcastStorage::txFailed(bool writeFailed,
     {
         // Failure
         mWriteBufferLen = 0;
+        DEBUG_PRINT("TX Failed w:%i r:%i\n", (int)writeFailed, (int)readFailed);
         mWriteState = READ_WRITE_IDLE;
     }
 }
@@ -162,8 +169,70 @@ void DreamcastStorage::txComplete(std::shared_ptr<const MaplePacket> packet,
     }
     if (mWriteState != READ_WRITE_IDLE && tx->transmissionId == mWritingTxId)
     {
-        // Complete!
-        mWriteState = READ_WRITE_IDLE;
+        if (packet->getFrameCommand() == COMMAND_RESPONSE_ACK)
+        {
+            DEBUG_PRINT("Complete\n");
+            if (++mWritePhase >= NUM_WRITE_PHASES)
+            {
+                if (tx->packet->getFrameCommand() == COMMAND_GET_LAST_ERROR)
+                {
+                    // Complete!
+                    mWriteState = READ_WRITE_IDLE;
+                }
+                else
+                {
+                    // Send COMMAND_GET_LAST_ERROR
+                    uint32_t numPayloadWords = 2;
+                    uint32_t payload[numPayloadWords] = {FUNCTION_CODE, mWritingBlock | ((uint32_t)mWritePhase << 16)};
+
+                    mWritingTxId = mEndpointTxScheduler->add(
+                        0,
+                        this,
+                        COMMAND_GET_LAST_ERROR,
+                        payload,
+                        numPayloadWords,
+                        true,
+                        0);
+
+                    mWriteState = READ_WRITE_SENT;
+                    DEBUG_PRINT("Queued commit %hu\n", mWritePhase);
+                }
+            }
+            else
+            {
+                // Queue up next phase
+                uint32_t numBlockWords = mWriteBufferLen / 4 / NUM_WRITE_PHASES;
+                uint32_t numPayloadWords = 2 + numBlockWords;
+                uint32_t payload[numPayloadWords] = {FUNCTION_CODE, mWritingBlock | ((uint32_t)mWritePhase << 16)};
+                const uint32_t* pDataIn = static_cast<const uint32_t*>(mWriteBuffer);
+                pDataIn += (mWritePhase * numBlockWords);
+                uint32_t *pDataOut = &payload[2];
+                for (uint32_t i = 0; i < numBlockWords; ++i, ++pDataIn, ++pDataOut)
+                {
+                    // Assumption: Data stored as little endian
+                    *pDataOut = *pDataIn;
+                }
+
+                mWritingTxId = mEndpointTxScheduler->add(
+                    0,
+                    this,
+                    COMMAND_BLOCK_WRITE,
+                    payload,
+                    numPayloadWords,
+                    true,
+                    0);
+
+                mWriteState = READ_WRITE_SENT;
+                DEBUG_PRINT("Queued phase %hu\n", mWritePhase);
+            }
+        }
+        else
+        {
+            DEBUG_PRINT("NACK\n");
+
+            mWriteBufferLen = -1;
+            mWriteState = READ_WRITE_IDLE;
+        }
     }
 }
 
@@ -222,6 +291,7 @@ int32_t DreamcastStorage::write(uint8_t blockNum,
 {
     assert(mWriteState == READ_WRITE_IDLE);
     assert(bufferLen % 4 == 0);
+    DEBUG_PRINT("Write block num %hu len %u\n", blockNum, bufferLen);
     // Set data
     mWritingBlock = blockNum;
     mWriteBuffer = buffer;
@@ -230,6 +300,8 @@ int32_t DreamcastStorage::write(uint8_t blockNum,
     mWriteKillTime = mClock.getTimeUs() + timeoutUs;
     // Commit it
     mWriteState = READ_WRITE_STARTED;
+
+
 
     // Wait for maple bus state machine to finish read
     // I'm not too happy about this blocking operation, but it works
