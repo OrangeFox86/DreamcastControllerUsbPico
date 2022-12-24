@@ -2,9 +2,10 @@
 #include "dreamcast_constants.h"
 
 DreamcastScreen::DreamcastScreen(uint8_t addr,
+                                 uint32_t fd,
                                  std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                                  PlayerData playerData) :
-    DreamcastPeripheral("screen", addr, scheduler, playerData.playerIndex),
+    DreamcastPeripheral("screen", addr, fd, scheduler, playerData.playerIndex),
     mNextCheckTime(0),
     mWaitingForData(false),
     mUpdateRequired(true),

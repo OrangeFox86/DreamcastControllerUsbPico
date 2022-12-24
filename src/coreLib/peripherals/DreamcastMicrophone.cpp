@@ -1,9 +1,10 @@
 #include "DreamcastMicrophone.hpp"
 
 DreamcastMicrophone::DreamcastMicrophone(uint8_t addr,
+                                         uint32_t fd,
                                          std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                                          PlayerData playerData) :
-    DreamcastPeripheral("microphone", addr, scheduler, playerData.playerIndex)
+    DreamcastPeripheral("microphone", addr, fd, scheduler, playerData.playerIndex)
 {}
 
 DreamcastMicrophone::~DreamcastMicrophone()

@@ -269,21 +269,25 @@ The structure of a payload is structured based on the command used in the frame 
 
 | Word 0 | Words 1-3 | Word 4 | Words 5-11 | Words 12-26 | Word 27 |
 | :---: | :---: | :---: | :---: | :---: | :---: |
-| Supported [function codes](#function-codes) mask* | ??? | 2 least significant bytes: first two characters of description ASCII string** | The rest of the description ASCII string** | Producer information ASCII string** | ??? |
+| Supported [function codes](#function-codes) mask* | Function definitions for up to 3 devices** | MSB: Region code <br> 2 least significant bytes: first two characters of description ASCII string*** | The rest of the description ASCII string*** | Producer information ASCII string** | 2 most significant bytes: standby current consumption <br> 2 least significant bytes: maximum current consumption |
 
 *The supported function codes mask in device info responses will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage.
 
-**Refer to the [word format](#word-format) section about how to parse ASCII strings.
+**The first word in this set is meant for the most significant bit that is set to 1 in the function codes word
+
+***Refer to the [word format](#word-format) section about how to parse ASCII strings.
 
 #### Extended Device Info Payload Structure (cmd 0x06)
 
 | Word 0 | Words 1-3 | Word 4 | Words 5-11 | Words 12-26 | Word 27 | Words 28-47 |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Supported [function codes](#function-codes) mask* | ??? | 2 least significant bytes: first two characters of description ASCII string** | The rest of the description ASCII string** | Producer information ASCII string** | ??? | Version information and/or capabilities ASCII string** |
+| Supported [function codes](#function-codes) mask* | Function definitions for up to 3 devices** | MSB: Region code <br> 2 least significant bytes: first two characters of description ASCII string*** | The rest of the description ASCII string*** | Producer information ASCII string*** | 2 most significant bytes: standby current consumption <br> 2 least significant bytes: maximum current consumption | Version information and/or capabilities ASCII string*** |
 
 *The supported function codes mask in device info responses will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage.
 
-**Refer to the [word format](#word-format) section about how to parse ASCII strings.
+**The first word in this set is meant for the most significant bit that is set to 1 in the function codes word
+
+***Refer to the [word format](#word-format) section about how to parse ASCII strings.
 
 #### Data Transfer Payload Structure (cmd 0x08)
 
@@ -346,7 +350,7 @@ Below defines a location word which is used to address blocks of memory in some 
 
 | Byte 0 (LSB) | Byte 1 | Byte 2 | Byte 3 (MSB) |
 | :---: | :---: | :---: | :---: |
-| Block | 0x00 | Phase | Partition |
+| Block LSB | Block MSB | Phase | Partition |
 
 * **Block**: Memory block number index
 * **Phase**: Sequence number
