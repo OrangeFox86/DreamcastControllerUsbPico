@@ -1,9 +1,10 @@
 #include "DreamcastTimer.hpp"
 
 DreamcastTimer::DreamcastTimer(uint8_t addr,
+                               uint32_t fd,
                                std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                                PlayerData playerData) :
-    DreamcastPeripheral("timer", addr, scheduler, playerData.playerIndex)
+    DreamcastPeripheral("timer", addr, fd, scheduler, playerData.playerIndex)
 {}
 
 DreamcastTimer::~DreamcastTimer()

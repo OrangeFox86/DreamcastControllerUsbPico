@@ -1,9 +1,10 @@
 #include "DreamcastCamera.hpp"
 
 DreamcastCamera::DreamcastCamera(uint8_t addr,
+                                 uint32_t fd,
                                  std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                                  PlayerData playerData) :
-    DreamcastPeripheral("camera", addr, scheduler, playerData.playerIndex)
+    DreamcastPeripheral("camera", addr, fd, scheduler, playerData.playerIndex)
 {}
 
 DreamcastCamera::~DreamcastCamera()

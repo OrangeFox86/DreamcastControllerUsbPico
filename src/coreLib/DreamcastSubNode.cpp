@@ -24,9 +24,9 @@ void DreamcastSubNode::txComplete(std::shared_ptr<const MaplePacket> packet,
     // If device info received, add the sub peripheral
     if (packet->getFrameCommand() == COMMAND_RESPONSE_DEVICE_INFO)
     {
-        if (packet->payload.size() > 0)
+        if (packet->payload.size() > 3)
         {
-            uint32_t mask = peripheralFactory(packet->payload[0]);
+            uint32_t mask = peripheralFactory(packet->payload);
             if (mPeripherals.size() > 0)
             {
                 DEBUG_PRINT("P%lu-%li connected (",

@@ -6,9 +6,10 @@
 #include <string.h>
 
 DreamcastStorage::DreamcastStorage(uint8_t addr,
+                                   uint32_t fd,
                                    std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                                    PlayerData playerData) :
-    DreamcastPeripheral("storage", addr, scheduler, playerData.playerIndex),
+    DreamcastPeripheral("storage", addr, fd, scheduler, playerData.playerIndex),
     mExiting(false),
     mClock(playerData.clock),
     mUsbFileSystem(playerData.fileSystem),

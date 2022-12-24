@@ -25,7 +25,7 @@
 #define MAPLE_RESPONSE_DELAY_NS 50
 
 // Maximum amount of time waiting for the beginning of a response when one is expected
-#define MAPLE_RESPONSE_TIMEOUT_US 500
+#define MAPLE_RESPONSE_TIMEOUT_US 1000
 
 // Estimated nanoseconds per bit to receive data - this is used for scheduling only
 // 1750 was selected based on the average time it takes a Dreamcast controller to transmit each bit

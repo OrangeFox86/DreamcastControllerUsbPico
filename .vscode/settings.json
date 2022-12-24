@@ -61,7 +61,8 @@
         "unordered_set": "cpp",
         "iomanip": "cpp",
         "variant": "cpp",
-        "printf.h": "c"
+        "printf.h": "c",
+        "bitset": "cpp"
     },
     "cmake.configureOnOpen": false
 }

@@ -10,14 +10,21 @@ class DreamcastPeripheral : public Transmitter
 {
     public:
         //! Constructor
+        //! @param[in] name  Name that the child class defines which is used for logging
         //! @param[in] addr  This peripheral's address (mask bit)
+        //! @param[in] fd  Function definition from the device info for this peripheral
         //! @param[in] scheduler  The transmission scheduler this peripheral is to add to
         //! @param[in] playerIndex  Player index of this peripheral [0,3]
         DreamcastPeripheral(const char* name,
                             uint8_t addr,
+                            uint32_t fd,
                             std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                             uint32_t playerIndex) :
-            mName(name), mEndpointTxScheduler(scheduler), mPlayerIndex(playerIndex), mAddr(addr)
+            mName(name),
+            mEndpointTxScheduler(scheduler),
+            mPlayerIndex(playerIndex),
+            mAddr(addr),
+            mFd(fd)
         {}
 
         //! Virtual destructor
@@ -65,6 +72,9 @@ class DreamcastPeripheral : public Transmitter
         //! @returns peripheral name
         inline const char* const getName() { return mName; }
 
+        //! @returns the function definition of this peripheral
+        inline const uint32_t& getFunctionDefinition() { return mFd; }
+
     public:
         //! The maximum number of sub peripherals that a main peripheral can handle
         static const uint32_t MAX_SUB_PERIPHERALS = 5;
@@ -82,4 +92,6 @@ class DreamcastPeripheral : public Transmitter
         const uint32_t mPlayerIndex;
         //! Address of this device
         const uint8_t mAddr;
+        //! Function definition of this device
+        const uint32_t mFd;
 };
