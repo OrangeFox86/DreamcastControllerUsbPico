@@ -281,7 +281,7 @@ The structure of a payload is structured based on the command used in the frame 
 
 | Word 0 | Words 1-3 | Word 4 | Words 5-11 | Words 12-26 | Word 27 | Words 28-47 |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| Supported [function codes](#function-codes) mask* | Function definitions for up to 3 devices | MSB: Region code <br> 2 least significant bytes: first two characters of description ASCII string*** | The rest of the description ASCII string*** | Producer information ASCII string** | 2 most significant bytes: standby current consumption <br> 2 least significant bytes: maximum current consumption | Version information and/or capabilities ASCII string** |
+| Supported [function codes](#function-codes) mask* | Function definitions for up to 3 devices** | MSB: Region code <br> 2 least significant bytes: first two characters of description ASCII string*** | The rest of the description ASCII string*** | Producer information ASCII string*** | 2 most significant bytes: standby current consumption <br> 2 least significant bytes: maximum current consumption | Version information and/or capabilities ASCII string*** |
 
 *The supported function codes mask in device info responses will contain the bitmask for 1 or more devices ex: a VMU will have a mask of 0x0000000E for Timer, Screen, and Storage.
 
