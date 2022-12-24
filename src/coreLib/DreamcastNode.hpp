@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <vector>
 #include <memory>
+#include <bitset>
 
 //! Base class for an addressable node on a Maple Bus
 class DreamcastNode : public Transmitter
@@ -75,26 +76,35 @@ class DreamcastNode : public Transmitter
         }
 
         //! Factory function which generates peripheral objects for the given function code mask
-        //! @param[in] functionCode  The function code mask
+        //! @param[in] deviceInfoPayload  The payload within the received device info packet
         //! @returns mask items not handled
-        virtual uint32_t peripheralFactory(uint32_t functionCode)
+        virtual uint32_t peripheralFactory(const std::vector<uint32_t>& deviceInfoPayload)
         {
-            mPeripherals.clear();
+            uint32_t functionCode = 0;
+            if (deviceInfoPayload.size() > 3)
+            {
+                // First word is function code, next 3 should be function definitions
+                functionCode = deviceInfoPayload[0];
+                std::vector<uint32_t> functionDefinitions(deviceInfoPayload.cbegin() + 1,
+                                                          deviceInfoPayload.cbegin() + 4);
 
-            peripheralFactoryCheck<DreamcastController>(functionCode);
-            peripheralFactoryCheck<DreamcastStorage>(functionCode);
-            peripheralFactoryCheck<DreamcastScreen>(functionCode);
-            peripheralFactoryCheck<DreamcastTimer>(functionCode);
-            peripheralFactoryCheck<DreamcastVibration>(functionCode);
-            peripheralFactoryCheck<DreamcastMicrophone>(functionCode);
-            peripheralFactoryCheck<DreamcastArGun>(functionCode);
-            peripheralFactoryCheck<DreamcastKeyboard>(functionCode);
-            peripheralFactoryCheck<DreamcastGun>(functionCode);
-            peripheralFactoryCheck<DreamcastMouse>(functionCode);
-            peripheralFactoryCheck<DreamcastExMedia>(functionCode);
-            peripheralFactoryCheck<DreamcastCamera>(functionCode);
+                mPeripherals.clear();
 
-            // TODO: handle other peripherals here
+                peripheralFactoryCheck<DreamcastController>(functionCode, functionDefinitions);
+                peripheralFactoryCheck<DreamcastStorage>(functionCode, functionDefinitions);
+                peripheralFactoryCheck<DreamcastScreen>(functionCode, functionDefinitions);
+                peripheralFactoryCheck<DreamcastTimer>(functionCode, functionDefinitions);
+                peripheralFactoryCheck<DreamcastVibration>(functionCode, functionDefinitions);
+                peripheralFactoryCheck<DreamcastMicrophone>(functionCode, functionDefinitions);
+                peripheralFactoryCheck<DreamcastArGun>(functionCode, functionDefinitions);
+                peripheralFactoryCheck<DreamcastKeyboard>(functionCode, functionDefinitions);
+                peripheralFactoryCheck<DreamcastGun>(functionCode, functionDefinitions);
+                peripheralFactoryCheck<DreamcastMouse>(functionCode, functionDefinitions);
+                peripheralFactoryCheck<DreamcastExMedia>(functionCode, functionDefinitions);
+                peripheralFactoryCheck<DreamcastCamera>(functionCode, functionDefinitions);
+
+                // TODO: handle other peripherals here
+            }
 
             return functionCode;
         }
@@ -110,7 +120,9 @@ class DreamcastNode : public Transmitter
                 {
                     DEBUG_PRINT(", ");
                 }
-                DEBUG_PRINT("%s", (*iter)->getName());
+                DEBUG_PRINT("%s-%08lX",
+                            (*iter)->getName(),
+                            (long unsigned int)(*iter)->getFunctionDefinition());
             }
         }
 
@@ -121,12 +133,28 @@ class DreamcastNode : public Transmitter
         //! Adds a peripheral to peripheral vector
         //! @param[in,out] functionCode  Mask which contains function codes to check; returns mask
         //!                              minus peripheral that was added, if any
+        //! @param[in,out] functionDefinitions  Remaining function definitions; the consumed
+        //!                                     function definition (if any) will be removed
         template <class PeripheralClass>
-        inline void peripheralFactoryCheck(uint32_t& functionCode)
+        inline void peripheralFactoryCheck(uint32_t& functionCode,
+                                           std::vector<uint32_t>& functionDefinitions)
         {
             if (functionCode & PeripheralClass::FUNCTION_CODE)
             {
-                mPeripherals.push_back(std::make_shared<PeripheralClass>(mAddr, mEndpointTxScheduler, mPlayerData));
+                // Get bit mask which contains only the bits to the left of the function code
+                std::bitset<32> leftBits(functionCode & ~(PeripheralClass::FUNCTION_CODE | (PeripheralClass::FUNCTION_CODE - 1)));
+                // cnt is essentially the index in functionDefinitions to go to
+                size_t cnt = leftBits.count();
+                // Get to the target function definition, save value, and delete it
+                uint32_t fd = 0;
+                if (cnt < functionDefinitions.size())
+                {
+                    std::vector<uint32_t>::iterator iter = functionDefinitions.begin() + cnt;
+                    fd = *iter;
+                    functionDefinitions.erase(iter);
+                }
+                // Create the peripheral!
+                mPeripherals.push_back(std::make_shared<PeripheralClass>(mAddr, fd, mEndpointTxScheduler, mPlayerData));
                 functionCode &= ~PeripheralClass::FUNCTION_CODE;
             }
         }
@@ -140,6 +168,6 @@ class DreamcastNode : public Transmitter
         const std::shared_ptr<EndpointTxSchedulerInterface> mEndpointTxScheduler;
         //! Player data on this node
         PlayerData mPlayerData;
-        //! The connected peripherals addressed to this node (usually 0 to 2 items)
+        //! The connected peripherals addressed to this node (usually 0 to 3 items)
         std::vector<std::shared_ptr<DreamcastPeripheral>> mPeripherals;
 };

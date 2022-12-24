@@ -50,9 +50,10 @@ const uint32_t DreamcastVibration::MAX_DURATION_MS_LOOKUP[NUM_FREQ_VALUES] =
 };
 
 DreamcastVibration::DreamcastVibration(uint8_t addr,
-                               std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
-                               PlayerData playerData) :
-    DreamcastPeripheral("vibration", addr, scheduler, playerData.playerIndex),
+                                       uint32_t fd,
+                                       std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
+                                       PlayerData playerData) :
+    DreamcastPeripheral("vibration", addr, fd, scheduler, playerData.playerIndex),
     mTransmissionId(0),
     mFirst(true)
 {

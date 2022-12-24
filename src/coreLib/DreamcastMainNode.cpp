@@ -44,9 +44,9 @@ void DreamcastMainNode::txComplete(std::shared_ptr<const MaplePacket> packet,
     // Handle device info from main peripheral
     if (packet != nullptr && packet->getFrameCommand() == COMMAND_RESPONSE_DEVICE_INFO)
     {
-        if (packet->payload.size() > 0)
+        if (packet->payload.size() > 3)
         {
-            uint32_t mask = peripheralFactory(packet->payload[0]);
+            uint32_t mask = peripheralFactory(packet->payload);
             if (mPeripherals.size() > 0)
             {
                 // Remove the auto reload device info request transmission from schedule
