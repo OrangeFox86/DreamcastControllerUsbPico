@@ -149,13 +149,6 @@ delay other controller operations.\
       U16_TO_U8S_LE(starting_page), \
       U32_TO_U8S_LE(file_size)
 
-// 42200049006e0066006f000f00727200
-// 6d006100740069006f0000006e000000
-// 01530079007300740065000f00726d00
-// 200056006f006c00750000006d006500
-// 53595354454d7e3120202016000116af
-// 98559855000017af9855030000000000
-
 // Default date/time is September 9, 1999 at 00:00:00 (Dreamcast release date in US)
 #define DEFAULT_FILE_TIME_SECONDS 0
 #define DEFAULT_FILE_TIME_SEC_INC DIRECTORY_ENTRY_TIME_SEC_INC(DEFAULT_FILE_TIME_SECONDS)
@@ -185,8 +178,8 @@ delay other controller operations.\
 
 enum
 {
-  ALLOCATED_DISK_BLOCK_NUM  = 15, // Number of actual blocks reserved in RAM disk
-  BAD_SECTOR_DISK_BLOCK_NUM = 250, // Used to line up memory files starting at address 0x0100
+  ALLOCATED_DISK_BLOCK_NUM  = 13, // Number of actual blocks reserved in RAM disk
+  BAD_SECTOR_DISK_BLOCK_NUM = 252, // Used to line up memory files starting at address 0x0100
   EXTERNAL_DISK_BLOCK_NUM = 2048, // Number of blocks that exist outside of RAM
   FAKE_DISK_BLOCK_NUM = 32768,    // Report extra space in order to force FAT16 formatting
   DISK_BLOCK_SIZE = 512           // Size in bytes of each block
@@ -197,7 +190,7 @@ enum
 
 #define NUM_RESERVED_SECTORS 1
 #define NUM_FAT_COPIES 1
-#define SECTORS_PER_FAT 9
+#define SECTORS_PER_FAT 10
 #define NUM_ROOT_ENTRIES 16
 
 #define NUM_FAT_SECTORS (NUM_FAT_COPIES * SECTORS_PER_FAT)
@@ -371,8 +364,8 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       // The rest is pointers to next cluster number or 0xFFFF if end (for page 2+)
       U16_TO_U8S_LE(0xFFFF),
       // Bad sectors for the rest of this block of addresses
-      U16_TO_U8S_LE(0),
-      U16_TO_U8S_LE(0), U16_TO_U8S_LE(0), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7),
+      U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
       U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
       U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
       U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7), U16_TO_U8S_LE(0xFFF7),
@@ -444,9 +437,13 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
   {FULL_PAGE_FAT_ENTRY(0x0500)},
   {FULL_PAGE_FAT_ENTRY(0x0600)},
   {FULL_PAGE_FAT_ENTRY(0x0700)},
+  {FULL_PAGE_FAT_ENTRY(0x0800)},
+  // Some hosts (looking at you, Windows) check if there is empty space available before overwriting
+  // an EXISTING file of the same size. For that fact, 128 kb will look available to fill just so
+  // the host proceeds past that check. This area is not actually writeable.
   {},
 
-  //------------- Block10: Root Directory -------------//
+  //------------- Block11: Root Directory -------------//
   {
       // first entry is volume label
       VOLUME_ENTRY(),
@@ -454,7 +451,7 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       SIMPLE_DIR_ENTRY("README  ", "TXT", ATTR1_READ_ONLY, ATTR2_LOWERCASE_EXT, FIRST_VALID_FAT_ADDRESS, README_SIZE),
   },
 
-  //------------- Block11+: File Content -------------//
+  //------------- Block12+: File Content -------------//
   {README_CONTENTS}
 };
 
@@ -847,7 +844,7 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
         {
           uint32_t entryIdx = idx % BYTES_PER_ROOT_ENTRY;
           // If it touches name field or location, that's bad!
-          if ((entryIdx >= 0 && entryIdx <= 12) || entryIdx == 26 || entryIdx == 27)
+          if ((entryIdx >= 0 && entryIdx <= 10) || entryIdx == 26 || entryIdx == 27)
           {
             DEBUG_PRINT("idx = %lu; entryIdx = %lu; *buffer = %02hx; *addr = %02hx\n", idx, entryIdx, *buffer, *addr);
             ok = false;
@@ -855,14 +852,16 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
           }
         }
       }
-      if (!ok)
+
+      if (ok)
       {
-        tud_msc_set_sense(lun, SCSI_SENSE_DATA_PROTECT, 0x00, 0x06);
-        numWrite = -1;
+        // Tell the host this was successful, but don't actually change anything
+        numWrite = bufsize;
       }
       else
       {
-        numWrite = bufsize;
+        tud_msc_set_sense(lun, SCSI_SENSE_DATA_PROTECT, 0x00, 0x06);
+        numWrite = -1;
       }
     }
     else if (memcmp(addr, buffer, bufsize) == 0)
