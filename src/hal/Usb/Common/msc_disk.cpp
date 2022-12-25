@@ -67,11 +67,13 @@ static bool new_data = false;
 // README contents stored on ramdisk - must not be greater than 512 bytes
 #define README_CONTENTS "\
 This is where Dreamcast memory unit data may be viewed when one or more are\n\
-inserted into any controller. All memory here is read only. Files are compatible\n\
-with the redream emulator.\n\
+inserted into any controller. To write, copy file with the same name as the\n\
+target memory unit. Attempting to write more than 128 kb or to read from/write\n\
+to a VMU not attached will cause a drive error.\n\
 \n\
-It is important to note that any operation done on the mass storage device will\n\
-delay other controller operations.\
+Reading an entire VMU takes about 3 seconds and write takes 15 seconds. It is\n\
+important to note that any operation done on the mass storage device will delay\n\
+other controller operations.\
 "
 
 // Size of string minus null terminator byte
@@ -771,13 +773,7 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
   {
     // Serialize this section with file add/remove
     LockGuard lockGuard(*fileMutex);
-
-    if (!lockGuard.isLocked())
-    {
-      DEBUG_PRINT("Critical Fault: Failed to read file due to lock failure\n");
-      // Spin forever
-      assert(0);
-    }
+    assert(lockGuard.isLocked());
 
     // This actually works out perfectly since each read will be up to 1 block of data, our block of
     // data is 512 bytes, and a VMU block of data is also 512 bytes.
@@ -886,13 +882,7 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
   {
     // Serialize this section with file add/remove
     LockGuard lockGuard(*fileMutex);
-
-    if (!lockGuard.isLocked())
-    {
-      DEBUG_PRINT("Critical Fault: Failed to read file due to lock failure\n");
-      // Spin forever
-      assert(0);
-    }
+    assert(lockGuard.isLocked());
 
     // This actually works out perfectly since each read will be up to 1 block of data, our block of
     // data is 512 bytes, and a VMU block of data is also 512 bytes.
