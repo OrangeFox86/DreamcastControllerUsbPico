@@ -149,6 +149,13 @@ delay other controller operations.\
       U16_TO_U8S_LE(starting_page), \
       U32_TO_U8S_LE(file_size)
 
+// 42200049006e0066006f000f00727200
+// 6d006100740069006f0000006e000000
+// 01530079007300740065000f00726d00
+// 200056006f006c00750000006d006500
+// 53595354454d7e3120202016000116af
+// 98559855000017af9855030000000000
+
 // Default date/time is September 9, 1999 at 00:00:00 (Dreamcast release date in US)
 #define DEFAULT_FILE_TIME_SECONDS 0
 #define DEFAULT_FILE_TIME_SEC_INC DIRECTORY_ENTRY_TIME_SEC_INC(DEFAULT_FILE_TIME_SECONDS)
@@ -444,7 +451,7 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       // first entry is volume label
       VOLUME_ENTRY(),
       // second entry is readme file (will always be read only)
-      SIMPLE_DIR_ENTRY("README  ", "TXT", ATTR1_ARCHIVE, ATTR2_LOWERCASE_EXT, FIRST_VALID_FAT_ADDRESS, README_SIZE),
+      SIMPLE_DIR_ENTRY("README  ", "TXT", ATTR1_READ_ONLY, ATTR2_LOWERCASE_EXT, FIRST_VALID_FAT_ADDRESS, README_SIZE),
   },
 
   //------------- Block11+: File Content -------------//
@@ -749,6 +756,13 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
     uint8_t const* addr = msc_disk[lba] + offset;
     memcpy(buffer, addr, bufsize);
     numRead = bufsize;
+
+    // DEBUG_PRINT("Read to RAM disk lba %lu; offset %lu; size %lu\n", lba, offset, bufsize);
+    // for (uint32_t i = 0; i < bufsize; ++i)
+    // {
+    //   DEBUG_PRINT("%02hx", *addr++);
+    // }
+    // DEBUG_PRINT("\n");
   }
   else if (lba < ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM)
   {
@@ -816,23 +830,57 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
   (void) lun;
 
     DEBUG_PRINT("Write to RAM disk lba %lu; offset %lu; size %lu\n", lba, offset, bufsize);
-    // for (uint32_t i = 0; i < bufsize; ++i)
-    // {
-    //   DEBUG_PRINT("%02hx", *buffer++);
-    // }
-    // DEBUG_PRINT("\n");
 
   int32_t numWrite = -1;
 
   if (lba < ALLOCATED_DISK_BLOCK_NUM)
   {
     // RAM disk area
-    memcpy(msc_disk[lba] + offset, buffer, bufsize);
-    numWrite = bufsize;
+    uint8_t const* addr = msc_disk[lba] + offset;
+    if (lba == NUM_RESERVED_SECTORS + NUM_FAT_SECTORS)
+    {
+      // Special case: allow host to write only if it isn't changing important things
+      bool ok = true;
+      for (uint32_t idx = offset; idx < offset + bufsize; ++idx, ++addr, ++buffer)
+      {
+        if (*addr != *buffer)
+        {
+          uint32_t entryIdx = idx % BYTES_PER_ROOT_ENTRY;
+          // If it touches name field or location, that's bad!
+          if ((entryIdx >= 0 && entryIdx <= 12) || entryIdx == 26 || entryIdx == 27)
+          {
+            DEBUG_PRINT("idx = %lu; entryIdx = %lu; *buffer = %02hx; *addr = %02hx\n", idx, entryIdx, *buffer, *addr);
+            ok = false;
+            break;
+          }
+        }
+      }
+      if (!ok)
+      {
+        tud_msc_set_sense(lun, SCSI_SENSE_DATA_PROTECT, 0x00, 0x06);
+        numWrite = -1;
+      }
+      else
+      {
+        numWrite = bufsize;
+      }
+    }
+    else if (memcmp(addr, buffer, bufsize) == 0)
+    {
+      // Write ok since it matches
+      numWrite = bufsize;
+    }
+    else
+    {
+      // Don't allow the host to write
+      tud_msc_set_sense(lun, SCSI_SENSE_DATA_PROTECT, 0x00, 0x06);
+      numWrite = -1;
+    }
   }
   else if (lba < ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM)
   {
     // Attempt to write bad sectors
+    tud_msc_set_sense(lun, SCSI_SENSE_DATA_PROTECT, 0x00, 0x06);
     numWrite = -1;
   }
   else if (lba < ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM + EXTERNAL_DISK_BLOCK_NUM)
@@ -869,11 +917,13 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
   else if (lba < REPORTED_BLOCK_NUM)
   {
     // Fake data (host shouldn't attempt to write here)
+    tud_msc_set_sense(lun, SCSI_SENSE_DATA_PROTECT, 0x00, 0x06);
     numWrite = -1;
   }
   else
   {
     // Attempt to read out of bounds
+    tud_msc_set_sense(lun, SCSI_SENSE_DATA_PROTECT, 0x00, 0x06);
     numWrite = -1;
   }
 

@@ -178,7 +178,7 @@ void DreamcastStorage::txComplete(std::shared_ptr<const MaplePacket> packet,
                     uint32_t payload[numPayloadWords] = {FUNCTION_CODE, mWritingBlock | ((uint32_t)mWritePhase << 16)};
 
                     mWritingTxId = mEndpointTxScheduler->add(
-                        mClock.getTimeUs() + 10000,
+                        mClock.getTimeUs() + 16000,
                         this,
                         COMMAND_GET_LAST_ERROR,
                         payload,
@@ -193,7 +193,7 @@ void DreamcastStorage::txComplete(std::shared_ptr<const MaplePacket> packet,
             else
             {
                 // Queue up next phase (VMU can't handle fast, consecutive writes)
-                queueNextWritePhase(mClock.getTimeUs() + 10000);
+                queueNextWritePhase(mClock.getTimeUs() + 16000);
             }
         }
         else
