@@ -861,7 +861,7 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
         {
           // Found the matching file!
           uint32_t vmuAddr = realAddr & 0xFF;
-          numWrite = fileEntries[i].handle->write(vmuAddr, buffer, bufsize, 20000);
+          numWrite = fileEntries[i].handle->write(vmuAddr, buffer, bufsize, 100000);
           break;
         }
     }

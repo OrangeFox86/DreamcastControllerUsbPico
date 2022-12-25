@@ -87,17 +87,33 @@ class DreamcastStorage : public DreamcastPeripheral, UsbFile
                               uint16_t bufferLen,
                               uint32_t timeoutUs) final;
 
+        //! @returns number of partitions on this device
+        uint16_t getNumberOfPartitions() { return (mFd >> 24) + 1; }
+        //! @returns the number of bytes per block of data
+        uint16_t getBytesPerBlock() { return (((mFd >> 16) & 0xFF) + 1) * 32;}
+        //! @returns the number of phases required for read access per block of data
+        uint8_t getReadAccessCount() { return (mFd >> 8) & 0x0F; }
+        //! @returns the number of phases required for write access per block of data
+        uint8_t getWriteAccesCount() { return (mFd >> 12) & 0x0F; }
+        //! @returns true iff this memory may be removed at any point
+        bool isRemovable() { return ((mFd >> 7) & 0x01) != 0; }
+        //! @returns true iff CRC calculation is required for reads and writes
+        bool isCrcRequired() { return ((mFd >> 6) & 0x01) != 0; }
+
     private:
         //! Flips the endianness of a word
         //! @param[in] word  Input word
         //! @returns output word
         static uint32_t flipWordBytes(const uint32_t& word);
 
+        //! Queues up write of the next chunk of data
+        void queueNextWritePhase(uint64_t txTime);
+
+
+
     public:
         //! Function code for storage
         static const uint32_t FUNCTION_CODE = DEVICE_FN_STORAGE;
-        //! Number of write phases to break up each block write
-        static const uint8_t NUM_WRITE_PHASES = 4;
 
     private:
         //! Initialized false and set to true when destructor called

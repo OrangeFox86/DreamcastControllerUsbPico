@@ -27,19 +27,24 @@ DreamcastStorage::DreamcastStorage(uint8_t addr,
     mWriteKillTime(0),
     mWritePhase(0)
 {
-    int32_t idx = subPeripheralIndex(mAddr);
-    if (idx >= 0)
+    // Memory access functionality relies on 512 byte blocks and no CRC
+    // Don't add the file if either of these are not true
+    if (getBytesPerBlock() == 512 && !isCrcRequired())
     {
-        if (idx == 0)
+        int32_t idx = subPeripheralIndex(mAddr);
+        if (idx >= 0)
         {
-            snprintf(mFileName, sizeof(mFileName), "vmu%lu.bin", (long unsigned int)mPlayerIndex);
-        }
-        else
-        {
-            snprintf(mFileName, sizeof(mFileName), "vmu%lu-%li.bin", (long unsigned int)mPlayerIndex, (long int)idx);
-        }
+            if (idx == 0)
+            {
+                snprintf(mFileName, sizeof(mFileName), "vmu%lu.bin", (long unsigned int)mPlayerIndex);
+            }
+            else
+            {
+                snprintf(mFileName, sizeof(mFileName), "vmu%lu-%li.bin", (long unsigned int)mPlayerIndex, (long int)idx);
+            }
 
-        mUsbFileSystem.add(this);
+            mUsbFileSystem.add(this);
+        }
     }
 }
 
@@ -57,7 +62,14 @@ void DreamcastStorage::task(uint64_t currentTimeUs)
         case READ_WRITE_STARTED:
         {
             uint32_t payload[2] = {FUNCTION_CODE, mReadingBlock};
-            mReadingTxId = mEndpointTxScheduler->add(0, this, COMMAND_BLOCK_READ, payload, 2, true, 130);
+            mReadingTxId = mEndpointTxScheduler->add(
+                PrioritizedTxScheduler::TX_TIME_ASAP,
+                this,
+                COMMAND_BLOCK_READ,
+                payload,
+                2,
+                true,
+                130);
             mReadState = READ_WRITE_SENT;
         }
         break;
@@ -83,30 +95,9 @@ void DreamcastStorage::task(uint64_t currentTimeUs)
     {
         case READ_WRITE_STARTED:
         {
-            // Build the payload with write data
             mWritePhase = 0;
-            uint32_t numBlockWords = mWriteBufferLen / 4 / NUM_WRITE_PHASES;
-            uint32_t numPayloadWords = 2 + numBlockWords;
-            uint32_t payload[numPayloadWords] = {FUNCTION_CODE, mWritingBlock};
-            const uint32_t* pDataIn = static_cast<const uint32_t*>(mWriteBuffer);
-            uint32_t *pDataOut = &payload[2];
-            for (uint32_t i = 0; i < numBlockWords; ++i, ++pDataIn, ++pDataOut)
-            {
-                // Assumption: Data stored as little endian
-                *pDataOut = *pDataIn;
-            }
-
-            mWritingTxId = mEndpointTxScheduler->add(
-                0,
-                this,
-                COMMAND_BLOCK_WRITE,
-                payload,
-                numPayloadWords,
-                true,
-                0);
-
-            mWriteState = READ_WRITE_SENT;
-            DEBUG_PRINT("Queued phase 0\n");
+            // Build the payload with write data
+            queueNextWritePhase(PrioritizedTxScheduler::TX_TIME_ASAP);
         }
         break;
 
@@ -173,7 +164,7 @@ void DreamcastStorage::txComplete(std::shared_ptr<const MaplePacket> packet,
         if (packet->getFrameCommand() == COMMAND_RESPONSE_ACK)
         {
             DEBUG_PRINT("Complete\n");
-            if (++mWritePhase >= NUM_WRITE_PHASES)
+            if (++mWritePhase >= getWriteAccesCount())
             {
                 if (tx->packet->getFrameCommand() == COMMAND_GET_LAST_ERROR)
                 {
@@ -187,7 +178,7 @@ void DreamcastStorage::txComplete(std::shared_ptr<const MaplePacket> packet,
                     uint32_t payload[numPayloadWords] = {FUNCTION_CODE, mWritingBlock | ((uint32_t)mWritePhase << 16)};
 
                     mWritingTxId = mEndpointTxScheduler->add(
-                        0,
+                        mClock.getTimeUs() + 10000,
                         this,
                         COMMAND_GET_LAST_ERROR,
                         payload,
@@ -201,30 +192,8 @@ void DreamcastStorage::txComplete(std::shared_ptr<const MaplePacket> packet,
             }
             else
             {
-                // Queue up next phase
-                uint32_t numBlockWords = mWriteBufferLen / 4 / NUM_WRITE_PHASES;
-                uint32_t numPayloadWords = 2 + numBlockWords;
-                uint32_t payload[numPayloadWords] = {FUNCTION_CODE, mWritingBlock | ((uint32_t)mWritePhase << 16)};
-                const uint32_t* pDataIn = static_cast<const uint32_t*>(mWriteBuffer);
-                pDataIn += (mWritePhase * numBlockWords);
-                uint32_t *pDataOut = &payload[2];
-                for (uint32_t i = 0; i < numBlockWords; ++i, ++pDataIn, ++pDataOut)
-                {
-                    // Assumption: Data stored as little endian
-                    *pDataOut = *pDataIn;
-                }
-
-                mWritingTxId = mEndpointTxScheduler->add(
-                    0,
-                    this,
-                    COMMAND_BLOCK_WRITE,
-                    payload,
-                    numPayloadWords,
-                    true,
-                    0);
-
-                mWriteState = READ_WRITE_SENT;
-                DEBUG_PRINT("Queued phase %hu\n", mWritePhase);
+                // Queue up next phase (VMU can't handle fast, consecutive writes)
+                queueNextWritePhase(mClock.getTimeUs() + 10000);
             }
         }
         else
@@ -235,6 +204,32 @@ void DreamcastStorage::txComplete(std::shared_ptr<const MaplePacket> packet,
             mWriteState = READ_WRITE_IDLE;
         }
     }
+}
+
+void DreamcastStorage::queueNextWritePhase(uint64_t txTime)
+{
+    uint32_t numBlockWords = mWriteBufferLen / 4 / getWriteAccesCount();
+    uint32_t numPayloadWords = 2 + numBlockWords;
+    uint32_t payload[numPayloadWords] = {FUNCTION_CODE, mWritingBlock | ((uint32_t)mWritePhase << 16)};
+    const uint32_t* pDataIn = static_cast<const uint32_t*>(mWriteBuffer);
+    pDataIn += (mWritePhase * numBlockWords);
+    uint32_t *pDataOut = &payload[2];
+    for (uint32_t i = 0; i < numBlockWords; ++i, ++pDataIn, ++pDataOut)
+    {
+        *pDataOut = flipWordBytes(*pDataIn);
+    }
+
+    mWritingTxId = mEndpointTxScheduler->add(
+        txTime,
+        this,
+        COMMAND_BLOCK_WRITE,
+        payload,
+        numPayloadWords,
+        true,
+        0);
+
+    mWriteState = READ_WRITE_SENT;
+    DEBUG_PRINT("Queued phase %hu\n", mWritePhase);
 }
 
 const char* DreamcastStorage::getFileName()
