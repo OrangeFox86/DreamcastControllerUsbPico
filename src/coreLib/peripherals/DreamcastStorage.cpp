@@ -164,7 +164,6 @@ void DreamcastStorage::txFailed(bool writeFailed,
         if (mLastWriteTimeUs + getWriteAccesCount() * mMinDurationBetweenWrites > mWriteKillTime)
         {
             mWriteBufferLen = -1;
-            DEBUG_PRINT("TX Failed w:%i r:%i\n", (int)writeFailed, (int)readFailed);
             mWriteState = READ_WRITE_IDLE;
         }
         else
@@ -190,8 +189,6 @@ void DreamcastStorage::txComplete(std::shared_ptr<const MaplePacket> packet,
         mLastWriteTimeUs = mClock.getTimeUs();
         if (packet->getFrameCommand() == COMMAND_RESPONSE_ACK)
         {
-            DEBUG_PRINT("Complete\n");
-
             if (++mWritePhase >= getWriteAccesCount())
             {
                 if (tx->packet->getFrameCommand() == COMMAND_GET_LAST_ERROR)
@@ -216,8 +213,6 @@ void DreamcastStorage::txComplete(std::shared_ptr<const MaplePacket> packet,
             mMinDurationBetweenWrites += DURATION_US_BETWEEN_WRITES_INC;
             if (mLastWriteTimeUs + getWriteAccesCount() * mMinDurationBetweenWrites > mWriteKillTime)
             {
-                DEBUG_PRINT("NACK\n");
-
                 mWriteBufferLen = -1;
                 mWriteState = READ_WRITE_IDLE;
             }
@@ -254,7 +249,6 @@ void DreamcastStorage::queueNextWritePhase()
         0);
 
     mWriteState = READ_WRITE_SENT;
-    DEBUG_PRINT("Queued phase %hu\n", mWritePhase);
 }
 
 void DreamcastStorage::queueWriteCommit()
@@ -273,7 +267,6 @@ void DreamcastStorage::queueWriteCommit()
         0);
 
     mWriteState = WRITE_COMMIT_SENT;
-    DEBUG_PRINT("Queued commit %hu\n", mWritePhase);
 }
 
 const char* DreamcastStorage::getFileName()
@@ -331,7 +324,6 @@ int32_t DreamcastStorage::write(uint8_t blockNum,
 {
     assert(mWriteState == READ_WRITE_IDLE);
     assert(bufferLen % 4 == 0);
-    DEBUG_PRINT("Write block num %hu len %u\n", blockNum, bufferLen);
     // Set data
     mWritingBlock = blockNum;
     mWriteBuffer = buffer;

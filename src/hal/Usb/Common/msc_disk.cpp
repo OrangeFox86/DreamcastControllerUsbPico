@@ -60,6 +60,10 @@ static uint32_t numFileEntries = 0;
 // whether host does safe-eject
 static bool ejected = true;
 static bool new_data = false;
+static uint8_t errorCount = 0;
+
+// Once this threshold is reached, drive will be forcibly ejected
+#define MAX_ERROR_COUNT 50
 
 // 1 README included in root directory
 #define NUM_INTERNAL_FILES 1
@@ -559,14 +563,7 @@ void set_file_entries()
 void usb_msc_add(UsbFile* file)
 {
   LockGuard lockGuard(*fileMutex);
-
-  if (!lockGuard.isLocked())
-  {
-    DEBUG_PRINT("Critical Fault: Failed to add file \"%s\" due to lock failure\n",
-                file->getFileName());
-    // Spin forever
-    assert(0);
-  }
+  assert(lockGuard.isLocked());
 
   const char* filename = file->getFileName();
   if (*filename != '\0')
@@ -599,14 +596,10 @@ void usb_msc_add(UsbFile* file)
 void usb_msc_remove(UsbFile* file)
 {
   LockGuard lockGuard(*fileMutex);
+  assert(lockGuard.isLocked());
 
-  if (!lockGuard.isLocked())
-  {
-    DEBUG_PRINT("Critical Fault: Failed to remove file \"%s\" due to lock failure\n",
-                file->getFileName());
-    // Spin forever
-    assert(0);
-  }
+  // Allow the drive to be used again if it ejected due to failure
+  errorCount = 0;
 
   // Find entry with matching file and remove it
   for (uint32_t i = 0;
@@ -676,7 +669,12 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun)
 {
   (void) lun;
 
-  if (new_data)
+  if (errorCount >= MAX_ERROR_COUNT)
+  {
+    // Force eject
+    ejected = true;
+  }
+  else if (new_data)
   {
     new_data = false;
     // Only cause drive to reattach iff there is at least 1 file present
@@ -724,7 +722,7 @@ bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, boo
   {
     if (start)
     {
-      ejected = (numFileEntries == 0);
+      ejected = (numFileEntries == 0 || errorCount >= MAX_ERROR_COUNT);
       if (ejected)
       {
         tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3a, 0x00);
@@ -755,13 +753,6 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
     uint8_t const* addr = msc_disk[lba] + offset;
     memcpy(buffer, addr, bufsize);
     numRead = bufsize;
-
-    // DEBUG_PRINT("Read to RAM disk lba %lu; offset %lu; size %lu\n", lba, offset, bufsize);
-    // for (uint32_t i = 0; i < bufsize; ++i)
-    // {
-    //   DEBUG_PRINT("%02hx", *addr++);
-    // }
-    // DEBUG_PRINT("\n");
   }
   else if (lba < ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM)
   {
@@ -794,6 +785,10 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
           {
             // timeout
             tud_msc_set_sense(lun, SCSI_SENSE_ABORTED_COMMAND, 0x1B, 0x00);
+            if (errorCount < MAX_ERROR_COUNT)
+            {
+              ++errorCount;
+            }
           }
           break;
         }
@@ -827,8 +822,6 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
 {
   (void) lun;
 
-    DEBUG_PRINT("Write to RAM disk lba %lu; offset %lu; size %lu\n", lba, offset, bufsize);
-
   int32_t numWrite = -1;
 
   if (lba < ALLOCATED_DISK_BLOCK_NUM)
@@ -847,7 +840,6 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
           // If it touches name field or location, that's bad!
           if ((entryIdx >= 0 && entryIdx <= 10) || entryIdx == 26 || entryIdx == 27)
           {
-            DEBUG_PRINT("idx = %lu; entryIdx = %lu; *buffer = %02hx; *addr = %02hx\n", idx, entryIdx, *buffer, *addr);
             ok = false;
             break;
           }
@@ -910,6 +902,10 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
           {
             // timeout
             tud_msc_set_sense(lun, SCSI_SENSE_HARDWARE_ERROR, 0x44, 0x00);
+            if (errorCount < MAX_ERROR_COUNT)
+            {
+              ++errorCount;
+            }
           }
           break;
         }
@@ -933,8 +929,6 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
     tud_msc_set_sense(lun, SCSI_SENSE_DATA_PROTECT, 0x00, 0x06);
     numWrite = -1;
   }
-
-  DEBUG_PRINT("Return %li\n", numWrite);
 
   return numWrite;
 }
