@@ -793,7 +793,7 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
           if (numRead < 0)
           {
             // timeout
-            tud_msc_set_sense(lun, SCSI_SENSE_ABORTED_COMMAND, 0x08, 0x01);
+            tud_msc_set_sense(lun, SCSI_SENSE_ABORTED_COMMAND, 0x1B, 0x00);
           }
           break;
         }
@@ -895,6 +895,7 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
     uint32_t realAddr = lba + FIRST_VALID_FAT_ADDRESS - NUM_HEADER_SECTORS;
 
     // Find the file which contains this address
+    bool found = false;
     for (uint32_t i = 0;
         i < (sizeof(fileEntries) / sizeof(fileEntries[0]));
         ++i)
@@ -902,15 +903,22 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
         if (realAddr >= fileEntries[i].startBlock && realAddr < (fileEntries[i].startBlock + fileEntries[i].numBlocks))
         {
           // Found the matching file!
+          found = true;
           uint32_t vmuAddr = realAddr & 0xFF;
           numWrite = fileEntries[i].handle->write(vmuAddr, buffer, bufsize, 250000);
           if (numWrite < 0)
           {
             // timeout
-            tud_msc_set_sense(lun, SCSI_SENSE_ABORTED_COMMAND, 0x08, 0x01);
+            tud_msc_set_sense(lun, SCSI_SENSE_HARDWARE_ERROR, 0x44, 0x00);
           }
           break;
         }
+    }
+
+    if (!found)
+    {
+      tud_msc_set_sense(lun, SCSI_SENSE_DATA_PROTECT, 0x00, 0x06);
+      numWrite = -1;
     }
   }
   else if (lba < REPORTED_BLOCK_NUM)

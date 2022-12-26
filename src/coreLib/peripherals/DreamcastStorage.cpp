@@ -163,7 +163,7 @@ void DreamcastStorage::txFailed(bool writeFailed,
         mMinDurationBetweenWrites += DURATION_US_BETWEEN_WRITES_INC;
         if (mLastWriteTimeUs + getWriteAccesCount() * mMinDurationBetweenWrites > mWriteKillTime)
         {
-            mWriteBufferLen = 0;
+            mWriteBufferLen = -1;
             DEBUG_PRINT("TX Failed w:%i r:%i\n", (int)writeFailed, (int)readFailed);
             mWriteState = READ_WRITE_IDLE;
         }
