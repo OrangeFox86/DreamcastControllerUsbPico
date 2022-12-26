@@ -790,6 +790,11 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
           // Found the matching file!
           uint32_t vmuAddr = realAddr & 0xFF;
           numRead = fileEntries[i].handle->read(vmuAddr, buffer, bufsize, 20000);
+          if (numRead < 0)
+          {
+            // timeout
+            tud_msc_set_sense(lun, SCSI_SENSE_ABORTED_COMMAND, 0x08, 0x01);
+          }
           break;
         }
     }
@@ -898,7 +903,12 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
         {
           // Found the matching file!
           uint32_t vmuAddr = realAddr & 0xFF;
-          numWrite = fileEntries[i].handle->write(vmuAddr, buffer, bufsize, 100000);
+          numWrite = fileEntries[i].handle->write(vmuAddr, buffer, bufsize, 250000);
+          if (numWrite < 0)
+          {
+            // timeout
+            tud_msc_set_sense(lun, SCSI_SENSE_ABORTED_COMMAND, 0x08, 0x01);
+          }
           break;
         }
     }

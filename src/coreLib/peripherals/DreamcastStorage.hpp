@@ -20,6 +20,8 @@ class DreamcastStorage : public DreamcastPeripheral, UsbFile
             READ_WRITE_STARTED,
             //! The Maple Bus state machine has queued r/w
             READ_WRITE_SENT,
+            //! Write commit message was sent
+            WRITE_COMMIT_SENT,
             //! The Maple Bus state machine is currently processing r/w
             READ_WRITE_PROCESSING
         };
@@ -107,13 +109,18 @@ class DreamcastStorage : public DreamcastPeripheral, UsbFile
         static uint32_t flipWordBytes(const uint32_t& word);
 
         //! Queues up write of the next chunk of data
-        void queueNextWritePhase(uint64_t txTime);
+        void queueNextWritePhase();
 
-
+        //! Queues transmission which commits the written set of data
+        void queueWriteCommit();
 
     public:
         //! Function code for storage
         static const uint32_t FUNCTION_CODE = DEVICE_FN_STORAGE;
+        //! The minimum duration between writes
+        static const uint32_t DEFAULT_MIN_DURATION_US_BETWEEN_WRITES = 10000;
+        //! Amount of time to increment time between writes after failure
+        static const uint32_t DURATION_US_BETWEEN_WRITES_INC = 5000;
 
     private:
         //! Initialized false and set to true when destructor called
@@ -157,4 +164,8 @@ class DreamcastStorage : public DreamcastPeripheral, UsbFile
 
         //! The current write phase
         uint8_t mWritePhase;
+        //! Current minimum duration between writes
+        uint32_t mMinDurationBetweenWrites;
+        //! The last time write was completed
+        uint64_t mLastWriteTimeUs;
 };

@@ -25,11 +25,20 @@ DreamcastStorage::DreamcastStorage(uint8_t addr,
     mWriteBuffer(nullptr),
     mWriteBufferLen(0),
     mWriteKillTime(0),
-    mWritePhase(0)
+    mWritePhase(0),
+    mMinDurationBetweenWrites(DEFAULT_MIN_DURATION_US_BETWEEN_WRITES),
+    mLastWriteTimeUs(0)
 {
-    // Memory access functionality relies on 512 byte blocks and no CRC
+    // Memory access functionality relies on:
+    // - 512 byte blocks (for UsbFile)
+    // - No CRC (I'm not bothering with this computation)
+    // - WA count equally divides words (I'm not bothering with partial splits)
+    // - RA count is 1 (I'm not bothering with it otherwise)
     // Don't add the file if either of these are not true
-    if (getBytesPerBlock() == 512 && !isCrcRequired())
+    if (getBytesPerBlock() == 512
+        && !isCrcRequired()
+        && (((512 / sizeof(uint32_t)) % getWriteAccesCount())) == 0
+        && getReadAccessCount() == 1)
     {
         int32_t idx = subPeripheralIndex(mAddr);
         if (idx >= 0)
@@ -87,6 +96,7 @@ void DreamcastStorage::task(uint64_t currentTimeUs)
 
         case READ_WRITE_PROCESSING:
             // Already processing, so no need to check timeout value
+            // FALL THROUGH
         default:
             break;
     }
@@ -96,8 +106,9 @@ void DreamcastStorage::task(uint64_t currentTimeUs)
         case READ_WRITE_STARTED:
         {
             mWritePhase = 0;
+            mMinDurationBetweenWrites = DEFAULT_MIN_DURATION_US_BETWEEN_WRITES;
             // Build the payload with write data
-            queueNextWritePhase(PrioritizedTxScheduler::TX_TIME_ASAP);
+            queueNextWritePhase();
         }
         break;
 
@@ -107,14 +118,18 @@ void DreamcastStorage::task(uint64_t currentTimeUs)
             {
                 // Timeout
                 mEndpointTxScheduler->cancelById(mWritingTxId);
-                mWriteBufferLen = -1;
-                mWriteState = READ_WRITE_IDLE;
+                mWritePhase = getWriteAccesCount();
+                queueWriteCommit();
             }
         }
         break;
 
         case READ_WRITE_PROCESSING:
             // Already processing, so no need to check timeout value
+            // FALL THROUGH
+        case WRITE_COMMIT_SENT:
+            // Don't interrupt commit process
+            // FALL THROUGH
         default:
             break;
     }
@@ -144,9 +159,20 @@ void DreamcastStorage::txFailed(bool writeFailed,
     if (mWriteState != READ_WRITE_IDLE && tx->transmissionId == mWritingTxId)
     {
         // Failure
-        mWriteBufferLen = 0;
-        DEBUG_PRINT("TX Failed w:%i r:%i\n", (int)writeFailed, (int)readFailed);
-        mWriteState = READ_WRITE_IDLE;
+        mLastWriteTimeUs = mClock.getTimeUs();
+        mMinDurationBetweenWrites += DURATION_US_BETWEEN_WRITES_INC;
+        if (mLastWriteTimeUs + getWriteAccesCount() * mMinDurationBetweenWrites > mWriteKillTime)
+        {
+            mWriteBufferLen = 0;
+            DEBUG_PRINT("TX Failed w:%i r:%i\n", (int)writeFailed, (int)readFailed);
+            mWriteState = READ_WRITE_IDLE;
+        }
+        else
+        {
+            // Try again
+            mWritePhase = 0;
+            queueNextWritePhase();
+        }
     }
 }
 
@@ -161,9 +187,11 @@ void DreamcastStorage::txComplete(std::shared_ptr<const MaplePacket> packet,
     }
     if (mWriteState != READ_WRITE_IDLE && tx->transmissionId == mWritingTxId)
     {
+        mLastWriteTimeUs = mClock.getTimeUs();
         if (packet->getFrameCommand() == COMMAND_RESPONSE_ACK)
         {
             DEBUG_PRINT("Complete\n");
+
             if (++mWritePhase >= getWriteAccesCount())
             {
                 if (tx->packet->getFrameCommand() == COMMAND_GET_LAST_ERROR)
@@ -173,40 +201,37 @@ void DreamcastStorage::txComplete(std::shared_ptr<const MaplePacket> packet,
                 }
                 else
                 {
-                    // Send COMMAND_GET_LAST_ERROR
-                    uint32_t numPayloadWords = 2;
-                    uint32_t payload[numPayloadWords] = {FUNCTION_CODE, mWritingBlock | ((uint32_t)mWritePhase << 16)};
-
-                    mWritingTxId = mEndpointTxScheduler->add(
-                        mClock.getTimeUs() + 16000,
-                        this,
-                        COMMAND_GET_LAST_ERROR,
-                        payload,
-                        numPayloadWords,
-                        true,
-                        0);
-
-                    mWriteState = READ_WRITE_SENT;
-                    DEBUG_PRINT("Queued commit %hu\n", mWritePhase);
+                    // Queue the message which commits the written data
+                    queueWriteCommit();
                 }
             }
             else
             {
-                // Queue up next phase (VMU can't handle fast, consecutive writes)
-                queueNextWritePhase(mClock.getTimeUs() + 16000);
+                // Queue up next phase
+                queueNextWritePhase();
             }
         }
         else
         {
-            DEBUG_PRINT("NACK\n");
+            mMinDurationBetweenWrites += DURATION_US_BETWEEN_WRITES_INC;
+            if (mLastWriteTimeUs + getWriteAccesCount() * mMinDurationBetweenWrites > mWriteKillTime)
+            {
+                DEBUG_PRINT("NACK\n");
 
-            mWriteBufferLen = -1;
-            mWriteState = READ_WRITE_IDLE;
+                mWriteBufferLen = -1;
+                mWriteState = READ_WRITE_IDLE;
+            }
+            else
+            {
+                // Try again
+                mWritePhase = 0;
+                queueNextWritePhase();
+            }
         }
     }
 }
 
-void DreamcastStorage::queueNextWritePhase(uint64_t txTime)
+void DreamcastStorage::queueNextWritePhase()
 {
     uint32_t numBlockWords = mWriteBufferLen / 4 / getWriteAccesCount();
     uint32_t numPayloadWords = 2 + numBlockWords;
@@ -220,7 +245,7 @@ void DreamcastStorage::queueNextWritePhase(uint64_t txTime)
     }
 
     mWritingTxId = mEndpointTxScheduler->add(
-        txTime,
+        mLastWriteTimeUs + mMinDurationBetweenWrites,
         this,
         COMMAND_BLOCK_WRITE,
         payload,
@@ -230,6 +255,25 @@ void DreamcastStorage::queueNextWritePhase(uint64_t txTime)
 
     mWriteState = READ_WRITE_SENT;
     DEBUG_PRINT("Queued phase %hu\n", mWritePhase);
+}
+
+void DreamcastStorage::queueWriteCommit()
+{
+    // Send COMMAND_GET_LAST_ERROR which commits written data
+    uint32_t numPayloadWords = 2;
+    uint32_t payload[numPayloadWords] = {FUNCTION_CODE, mWritingBlock | ((uint32_t)mWritePhase << 16)};
+
+    mWritingTxId = mEndpointTxScheduler->add(
+        mLastWriteTimeUs + mMinDurationBetweenWrites,
+        this,
+        COMMAND_GET_LAST_ERROR,
+        payload,
+        numPayloadWords,
+        true,
+        0);
+
+    mWriteState = WRITE_COMMIT_SENT;
+    DEBUG_PRINT("Queued commit %hu\n", mWritePhase);
 }
 
 const char* DreamcastStorage::getFileName()
@@ -296,8 +340,6 @@ int32_t DreamcastStorage::write(uint8_t blockNum,
     mWriteKillTime = mClock.getTimeUs() + timeoutUs;
     // Commit it
     mWriteState = READ_WRITE_STARTED;
-
-
 
     // Wait for maple bus state machine to finish read
     // I'm not too happy about this blocking operation, but it works
