@@ -11,17 +11,19 @@
 class DreamcastStorage : public DreamcastPeripheral, UsbFile
 {
     public:
-        //! The current state of the READ state machine
-        enum ReadState : uint8_t
+        //! The current state of the READ and WRITE state machines
+        enum ReadWriteState : uint8_t
         {
             //! Read state machine is idle
-            READ_IDLE = 0,
-            //! read() has been executed, waiting for Maple Bus state machine to start transmission
-            READ_STARTED,
-            //! The Maple Bus state machine has queued the transmission
-            READ_SENT,
-            //! The Maple Bus state machine is currently processing the transmission
-            READ_PROCESSING
+            READ_WRITE_IDLE = 0,
+            //! read() or write() has been executed, waiting for Maple Bus state machine to start r/w
+            READ_WRITE_STARTED,
+            //! The Maple Bus state machine has queued r/w
+            READ_WRITE_SENT,
+            //! Write commit message was sent
+            WRITE_COMMIT_SENT,
+            //! The Maple Bus state machine is currently processing r/w
+            READ_WRITE_PROCESSING
         };
 
         //! Constructor
@@ -74,9 +76,51 @@ class DreamcastStorage : public DreamcastPeripheral, UsbFile
                              uint16_t bufferLen,
                              uint32_t timeoutUs) final;
 
+        //! Blocking write (must only be called from the core not operating maple bus)
+        //! @param[in] blockNum  Block number to write (block is 512 bytes)
+        //! @param[in] buffer  Buffer
+        //! @param[in] bufferLen  The length of buffer (but only up to 512 bytes will be written)
+        //! @param[in] timeoutUs  Timeout in microseconds
+        //! @returns Positive value indicating how many bytes were written
+        //! @returns Zero if write failure occurred
+        //! @returns Negative value if timeout elapsed
+        virtual int32_t write(uint8_t blockNum,
+                              const void* buffer,
+                              uint16_t bufferLen,
+                              uint32_t timeoutUs) final;
+
+        //! @returns number of partitions on this device
+        uint16_t getNumberOfPartitions() { return (mFd >> 24) + 1; }
+        //! @returns the number of bytes per block of data
+        uint16_t getBytesPerBlock() { return (((mFd >> 16) & 0xFF) + 1) * 32;}
+        //! @returns the number of phases required for read access per block of data
+        uint8_t getReadAccessCount() { return (mFd >> 8) & 0x0F; }
+        //! @returns the number of phases required for write access per block of data
+        uint8_t getWriteAccesCount() { return (mFd >> 12) & 0x0F; }
+        //! @returns true iff this memory may be removed at any point
+        bool isRemovable() { return ((mFd >> 7) & 0x01) != 0; }
+        //! @returns true iff CRC calculation is required for reads and writes
+        bool isCrcRequired() { return ((mFd >> 6) & 0x01) != 0; }
+
+    private:
+        //! Flips the endianness of a word
+        //! @param[in] word  Input word
+        //! @returns output word
+        static uint32_t flipWordBytes(const uint32_t& word);
+
+        //! Queues up write of the next chunk of data
+        void queueNextWritePhase();
+
+        //! Queues transmission which commits the written set of data
+        void queueWriteCommit();
+
     public:
         //! Function code for storage
         static const uint32_t FUNCTION_CODE = DEVICE_FN_STORAGE;
+        //! The minimum duration between writes
+        static const uint32_t DEFAULT_MIN_DURATION_US_BETWEEN_WRITES = 10000;
+        //! Amount of time to increment time between writes after failure
+        static const uint32_t DURATION_US_BETWEEN_WRITES_INC = 5000;
 
     private:
         //! Initialized false and set to true when destructor called
@@ -89,9 +133,9 @@ class DreamcastStorage : public DreamcastPeripheral, UsbFile
         char mFileName[12];
 
         //! The current state in the read state machine
-        //! When READ_IDLE: read() can read and write the data below
+        //! When READ_WRITE_IDLE: read() can read and write the data below
         //! Otherwise: peripheral callbacks can read and write the data below
-        std::atomic<ReadState> mReadState;
+        std::atomic<ReadWriteState> mReadState;
 
         //! Transmission ID of the read operation sent (or 0)
         uint32_t mReadingTxId;
@@ -101,4 +145,27 @@ class DreamcastStorage : public DreamcastPeripheral, UsbFile
         std::shared_ptr<const MaplePacket> mReadPacket;
         //! Time at which read must be killed
         uint64_t mReadKillTime;
+
+        //! The current state in the write state machine
+        //! When READ_WRITE_IDLE: write() can read and write the data below
+        //! Otherwise: peripheral callbacks can read and write the data below
+        std::atomic<ReadWriteState> mWriteState;
+
+        //! Transmission IDs of the 4 write operations sent (or 0)
+        uint32_t mWritingTxId;
+        //! The block number of the current write operation
+        uint8_t mWritingBlock;
+        //! Pointer to the data to be written
+        const void* mWriteBuffer;
+        //! Length of write buffer
+        int32_t mWriteBufferLen;
+        //! Time at which write must be killed
+        uint64_t mWriteKillTime;
+
+        //! The current write phase
+        uint8_t mWritePhase;
+        //! Current minimum duration between writes
+        uint32_t mMinDurationBetweenWrites;
+        //! The last time write was completed
+        uint64_t mLastWriteTimeUs;
 };

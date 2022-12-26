@@ -16,7 +16,7 @@ class UsbFile
         //! Blocking read (must only be called from the core not operating maple bus)
         //! @param[in] blockNum  Block number to read (a block is 512 bytes)
         //! @param[out] buffer  Buffer output
-        //! @param[in] bufferLen  The length of buffer (only up to 512 bytes will be written)
+        //! @param[in] bufferLen  The length of buffer (only up to 512 bytes will be read)
         //! @param[in] timeoutUs  Timeout in microseconds
         //! @returns Positive value indicating how many bytes were read
         //! @returns Zero if read failure occurred
@@ -25,6 +25,18 @@ class UsbFile
                              void* buffer,
                              uint16_t bufferLen,
                              uint32_t timeoutUs) = 0;
+        //! Blocking write (must only be called from the core not operating maple bus)
+        //! @param[in] blockNum  Block number to write (block is 512 bytes)
+        //! @param[in] buffer  Buffer
+        //! @param[in] bufferLen  The length of buffer (but only up to 512 bytes will be written)
+        //! @param[in] timeoutUs  Timeout in microseconds
+        //! @returns Positive value indicating how many bytes were written
+        //! @returns Zero if write failure occurred
+        //! @returns Negative value if timeout elapsed
+        virtual int32_t write(uint8_t blockNum,
+                              const void* buffer,
+                              uint16_t bufferLen,
+                              uint32_t timeoutUs) = 0;
 };
 
 #endif // __USB_FILE_H__

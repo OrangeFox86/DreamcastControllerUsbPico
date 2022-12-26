@@ -60,6 +60,10 @@ static uint32_t numFileEntries = 0;
 // whether host does safe-eject
 static bool ejected = true;
 static bool new_data = false;
+static uint8_t errorCount = 0;
+
+// Once this threshold is reached, drive will be forcibly ejected
+#define MAX_ERROR_COUNT 50
 
 // 1 README included in root directory
 #define NUM_INTERNAL_FILES 1
@@ -67,11 +71,13 @@ static bool new_data = false;
 // README contents stored on ramdisk - must not be greater than 512 bytes
 #define README_CONTENTS "\
 This is where Dreamcast memory unit data may be viewed when one or more are\n\
-inserted into any controller. All memory here is read only. Files are compatible\n\
-with the redream emulator.\n\
+inserted into any controller. To write, copy file with the same name as the\n\
+target memory unit. Attempting to write more than 128 kb or to read from/write\n\
+to a VMU not attached will cause a drive error.\n\
 \n\
-It is important to note that any operation done on the mass storage device will\n\
-delay other controller operations.\
+Reading an entire VMU takes about 3 seconds and write takes 15 seconds. It is\n\
+important to note that any operation done on the mass storage device will delay\n\
+other controller operations.\
 "
 
 // Size of string minus null terminator byte
@@ -178,8 +184,8 @@ delay other controller operations.\
 
 enum
 {
-  ALLOCATED_DISK_BLOCK_NUM  = 12, // Number of actual blocks reserved in RAM disk
-  BAD_SECTOR_DISK_BLOCK_NUM = 253, // Used to line up memory files starting at address 0x0100
+  ALLOCATED_DISK_BLOCK_NUM  = 13, // Number of actual blocks reserved in RAM disk
+  BAD_SECTOR_DISK_BLOCK_NUM = 252, // Used to line up memory files starting at address 0x0100
   EXTERNAL_DISK_BLOCK_NUM = 2048, // Number of blocks that exist outside of RAM
   FAKE_DISK_BLOCK_NUM = 32768,    // Report extra space in order to force FAT16 formatting
   DISK_BLOCK_SIZE = 512           // Size in bytes of each block
@@ -190,7 +196,7 @@ enum
 
 #define NUM_RESERVED_SECTORS 1
 #define NUM_FAT_COPIES 1
-#define SECTORS_PER_FAT 9
+#define SECTORS_PER_FAT 10
 #define NUM_ROOT_ENTRIES 16
 
 #define NUM_FAT_SECTORS (NUM_FAT_COPIES * SECTORS_PER_FAT)
@@ -438,8 +444,12 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
   {FULL_PAGE_FAT_ENTRY(0x0600)},
   {FULL_PAGE_FAT_ENTRY(0x0700)},
   {FULL_PAGE_FAT_ENTRY(0x0800)},
+  // Some hosts (looking at you, Windows) check if there is empty space available before overwriting
+  // an EXISTING file of the same size. For that fact, 128 kb will look available to fill just so
+  // the host proceeds past that check. This area is not actually writeable.
+  {},
 
-  //------------- Block10: Root Directory -------------//
+  //------------- Block11: Root Directory -------------//
   {
       // first entry is volume label
       VOLUME_ENTRY(),
@@ -447,7 +457,7 @@ uint8_t msc_disk[ALLOCATED_DISK_BLOCK_NUM][DISK_BLOCK_SIZE] =
       SIMPLE_DIR_ENTRY("README  ", "TXT", ATTR1_READ_ONLY, ATTR2_LOWERCASE_EXT, FIRST_VALID_FAT_ADDRESS, README_SIZE),
   },
 
-  //------------- Block11+: File Content -------------//
+  //------------- Block12+: File Content -------------//
   {README_CONTENTS}
 };
 
@@ -553,14 +563,7 @@ void set_file_entries()
 void usb_msc_add(UsbFile* file)
 {
   LockGuard lockGuard(*fileMutex);
-
-  if (!lockGuard.isLocked())
-  {
-    DEBUG_PRINT("Critical Fault: Failed to add file \"%s\" due to lock failure\n",
-                file->getFileName());
-    // Spin forever
-    assert(0);
-  }
+  assert(lockGuard.isLocked());
 
   const char* filename = file->getFileName();
   if (*filename != '\0')
@@ -593,14 +596,10 @@ void usb_msc_add(UsbFile* file)
 void usb_msc_remove(UsbFile* file)
 {
   LockGuard lockGuard(*fileMutex);
+  assert(lockGuard.isLocked());
 
-  if (!lockGuard.isLocked())
-  {
-    DEBUG_PRINT("Critical Fault: Failed to remove file \"%s\" due to lock failure\n",
-                file->getFileName());
-    // Spin forever
-    assert(0);
-  }
+  // Allow the drive to be used again if it ejected due to failure
+  errorCount = 0;
 
   // Find entry with matching file and remove it
   for (uint32_t i = 0;
@@ -670,7 +669,12 @@ bool tud_msc_test_unit_ready_cb(uint8_t lun)
 {
   (void) lun;
 
-  if (new_data)
+  if (errorCount >= MAX_ERROR_COUNT)
+  {
+    // Force eject
+    ejected = true;
+  }
+  else if (new_data)
   {
     new_data = false;
     // Only cause drive to reattach iff there is at least 1 file present
@@ -718,7 +722,7 @@ bool tud_msc_start_stop_cb(uint8_t lun, uint8_t power_condition, bool start, boo
   {
     if (start)
     {
-      ejected = (numFileEntries == 0);
+      ejected = (numFileEntries == 0 || errorCount >= MAX_ERROR_COUNT);
       if (ejected)
       {
         tud_msc_set_sense(lun, SCSI_SENSE_NOT_READY, 0x3a, 0x00);
@@ -760,13 +764,7 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
   {
     // Serialize this section with file add/remove
     LockGuard lockGuard(*fileMutex);
-
-    if (!lockGuard.isLocked())
-    {
-      DEBUG_PRINT("Critical Fault: Failed to read file due to lock failure\n");
-      // Spin forever
-      assert(0);
-    }
+    assert(lockGuard.isLocked());
 
     // This actually works out perfectly since each read will be up to 1 block of data, our block of
     // data is 512 bytes, and a VMU block of data is also 512 bytes.
@@ -783,6 +781,15 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
           // Found the matching file!
           uint32_t vmuAddr = realAddr & 0xFF;
           numRead = fileEntries[i].handle->read(vmuAddr, buffer, bufsize, 20000);
+          if (numRead < 0)
+          {
+            // timeout
+            tud_msc_set_sense(lun, SCSI_SENSE_ABORTED_COMMAND, 0x1B, 0x00);
+            if (errorCount < MAX_ERROR_COUNT)
+            {
+              ++errorCount;
+            }
+          }
           break;
         }
     }
@@ -806,8 +813,7 @@ bool tud_msc_is_writable_cb (uint8_t lun)
 {
   (void) lun;
 
-  // Read only drive
-  return false;
+  return true;
 }
 
 // Callback invoked when received WRITE10 command.
@@ -816,14 +822,115 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
 {
   (void) lun;
 
-  // out of ramdisk
-  // TODO: write memory to external component if outside of RAM disk
-  if ( lba >= REPORTED_BLOCK_NUM ) return -1;
+  int32_t numWrite = -1;
 
-  // Read only drive (for now)
-  (void) lba; (void) offset; (void) buffer;
+  if (lba < ALLOCATED_DISK_BLOCK_NUM)
+  {
+    // RAM disk area
+    uint8_t const* addr = msc_disk[lba] + offset;
+    if (lba == NUM_RESERVED_SECTORS + NUM_FAT_SECTORS)
+    {
+      // Special case: allow host to write only if it isn't changing important things
+      bool ok = true;
+      for (uint32_t idx = offset; idx < offset + bufsize; ++idx, ++addr, ++buffer)
+      {
+        if (*addr != *buffer)
+        {
+          uint32_t entryIdx = idx % BYTES_PER_ROOT_ENTRY;
+          // If it touches name field or location, that's bad!
+          if ((entryIdx >= 0 && entryIdx <= 10) || entryIdx == 26 || entryIdx == 27)
+          {
+            ok = false;
+            break;
+          }
+        }
+      }
 
-  return -1;
+      if (ok)
+      {
+        // Tell the host this was successful, but don't actually change anything
+        numWrite = bufsize;
+      }
+      else
+      {
+        tud_msc_set_sense(lun, SCSI_SENSE_DATA_PROTECT, 0x00, 0x06);
+        numWrite = -1;
+      }
+    }
+    else if (memcmp(addr, buffer, bufsize) == 0)
+    {
+      // Write ok since it matches
+      numWrite = bufsize;
+    }
+    else
+    {
+      // Don't allow the host to write
+      tud_msc_set_sense(lun, SCSI_SENSE_DATA_PROTECT, 0x00, 0x06);
+      numWrite = -1;
+    }
+  }
+  else if (lba < ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM)
+  {
+    // Attempt to write bad sectors
+    tud_msc_set_sense(lun, SCSI_SENSE_DATA_PROTECT, 0x00, 0x06);
+    numWrite = -1;
+  }
+  else if (lba < ALLOCATED_DISK_BLOCK_NUM + BAD_SECTOR_DISK_BLOCK_NUM + EXTERNAL_DISK_BLOCK_NUM)
+  {
+    // Serialize this section with file add/remove
+    LockGuard lockGuard(*fileMutex);
+    assert(lockGuard.isLocked());
+
+    // This actually works out perfectly since each read will be up to 1 block of data, our block of
+    // data is 512 bytes, and a VMU block of data is also 512 bytes.
+
+    uint32_t realAddr = lba + FIRST_VALID_FAT_ADDRESS - NUM_HEADER_SECTORS;
+
+    // Find the file which contains this address
+    bool found = false;
+    for (uint32_t i = 0;
+        i < (sizeof(fileEntries) / sizeof(fileEntries[0]));
+        ++i)
+    {
+        if (realAddr >= fileEntries[i].startBlock && realAddr < (fileEntries[i].startBlock + fileEntries[i].numBlocks))
+        {
+          // Found the matching file!
+          found = true;
+          uint32_t vmuAddr = realAddr & 0xFF;
+          numWrite = fileEntries[i].handle->write(vmuAddr, buffer, bufsize, 250000);
+          if (numWrite < 0)
+          {
+            // timeout
+            tud_msc_set_sense(lun, SCSI_SENSE_HARDWARE_ERROR, 0x44, 0x00);
+            if (errorCount < MAX_ERROR_COUNT)
+            {
+              ++errorCount;
+            }
+          }
+          break;
+        }
+    }
+
+    if (!found)
+    {
+      tud_msc_set_sense(lun, SCSI_SENSE_DATA_PROTECT, 0x00, 0x06);
+      numWrite = -1;
+    }
+  }
+  else if (lba < REPORTED_BLOCK_NUM)
+  {
+    // Fake data (host shouldn't attempt to write here)
+    tud_msc_set_sense(lun, SCSI_SENSE_DATA_PROTECT, 0x00, 0x06);
+    numWrite = -1;
+  }
+  else
+  {
+    // Attempt to read out of bounds
+    tud_msc_set_sense(lun, SCSI_SENSE_DATA_PROTECT, 0x00, 0x06);
+    numWrite = -1;
+  }
+
+  return numWrite;
 }
 
 // Callback invoked when received an SCSI command not in built-in list below
