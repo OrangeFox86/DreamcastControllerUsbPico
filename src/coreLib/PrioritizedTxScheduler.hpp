@@ -10,8 +10,50 @@
 class PrioritizedTxScheduler
 {
 public:
+    //! Enumerates available priorities to be used with add()
+    enum Priority : uint8_t
+    {
+        //! Priority for external entity taking control of the bus (max)
+        EXTERNAL_TRANSMISSION_PRIORITY = 0,
+        //! Priority for main peripheral
+        MAIN_TRANSMISSION_PRIORITY,
+        //! Priority for sub peripheral (min)
+        SUB_TRANSMISSION_PRIORITY,
+        //! Any selected priority must be less than PRIORITY_COUNT
+        PRIORITY_COUNT
+    };
+
+    //! Points to a schedule item within the current schedule
+    class ScheduleItem
+    {
+        //! Only the PrioritizedTxScheduler may modify private elements here
+        friend PrioritizedTxScheduler;
+
+        public:
+            //! Constructor
+            ScheduleItem() : mIsValid(false), mTime(0) {}
+
+            //! @returns the transmission for this schedule item
+            std::shared_ptr<Transmission> getTx() {return mIsValid ? *mItemIter : nullptr;}
+
+        private:
+            //! Set to true iff iterators are valid
+            bool mIsValid;
+            //! The schedule group
+            std::vector<std::list<std::shared_ptr<Transmission>>>::iterator mScheduleIter;
+            //! The item within the schedule group
+            std::list<std::shared_ptr<Transmission>>::iterator mItemIter;
+            //! The time at which this item was peeked
+            uint64_t mTime;
+    };
+
+public:
     //! Default constructor
-    PrioritizedTxScheduler(uint8_t maxPriority);
+    PrioritizedTxScheduler();
+
+    //! Constructor with custom priority list
+    //! @param[in] max  The maximum accepted priority
+    PrioritizedTxScheduler(uint32_t max);
 
     //! Virtual destructor
     virtual ~PrioritizedTxScheduler();
@@ -35,11 +77,15 @@ public:
                  uint32_t autoRepeatUs=0,
                  uint64_t autoRepeatEndTimeUs=0);
 
-    //! Pops the next scheduled packet, given the current time
+    //! Peeks the next scheduled packet, given the current time
     //! @param[in] time  The current time
     //! @returns nullptr if no scheduled packet is available for the given time
-    //! @returns the next sceduled packet for the given current time
-    std::shared_ptr<const Transmission> popNext(uint64_t time);
+    //! @returns the next scheduled item for the given current time
+    ScheduleItem peekNext(uint64_t time);
+
+    //! Pops a schedule item that was retrieved using peekNext
+    //! @param[in,out] scheduleItem  The schedule item to pop and invalidate
+    std::shared_ptr<Transmission> popItem(ScheduleItem& scheduleItem);
 
     //! Cancels scheduled transmission by transmission ID
     //! @param[in] transmissionId  The transmission ID of the transmissions to cancel
@@ -78,6 +124,8 @@ protected:
 public:
     //! Use this for txTime if the packet needs to be sent ASAP
     static const uint64_t TX_TIME_ASAP = 0;
+    //! Transmission ID to use in order to flag no ID
+    static const uint32_t INVALID_TX_ID = 0;
 
 protected:
     //! The next transmission ID to set

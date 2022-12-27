@@ -313,7 +313,8 @@ class TransmissionSchedulePopTestA : public TransmissionScheduleTest
 
 TEST_F(TransmissionSchedulePopTestA, popTestNull)
 {
-    EXPECT_EQ(scheduler.popNext(0), nullptr);
+    PrioritizedTxScheduler::ScheduleItem scheduleItem;
+    EXPECT_EQ(scheduler.popItem(scheduleItem = scheduler.peekNext(0)), nullptr);
 
     const std::vector<std::list<std::shared_ptr<Transmission>>> schedule = scheduler.getSchedule();
 
@@ -328,10 +329,11 @@ TEST_F(TransmissionSchedulePopTestA, popTestNull)
 
 TEST_F(TransmissionSchedulePopTestA, popTestAutoReload1)
 {
-    std::shared_ptr<const Transmission> item = scheduler.popNext(1);
+    PrioritizedTxScheduler::ScheduleItem scheduleItem;
+    std::shared_ptr<const Transmission> item = scheduler.popItem(scheduleItem = scheduler.peekNext(1));
     ASSERT_NE(item, nullptr);
     EXPECT_EQ(item->packet->getFrameCommand(), 0x11);
-    item = scheduler.popNext(2);
+    item = scheduler.popItem(scheduleItem = scheduler.peekNext(2));
     ASSERT_NE(item, nullptr);
     EXPECT_EQ(item->packet->getFrameCommand(), 0x22);
 
@@ -349,10 +351,11 @@ TEST_F(TransmissionSchedulePopTestA, popTestAutoReload1)
 
 TEST_F(TransmissionSchedulePopTestA, popTestAutoReload2)
 {
-    std::shared_ptr<const Transmission> item = scheduler.popNext(1);
+    PrioritizedTxScheduler::ScheduleItem scheduleItem;
+    std::shared_ptr<const Transmission> item = scheduler.popItem(scheduleItem = scheduler.peekNext(1));
     ASSERT_NE(item, nullptr);
     EXPECT_EQ(item->packet->getFrameCommand(), 0x11);
-    item = scheduler.popNext(16003);
+    item = scheduler.popItem(scheduleItem = scheduler.peekNext(16003));
     ASSERT_NE(item, nullptr);
     EXPECT_EQ(item->packet->getFrameCommand(), 0x22);
 
@@ -419,7 +422,8 @@ class TransmissionSchedulePopTestB : public TransmissionScheduleTest
 TEST_F(TransmissionSchedulePopTestB, popTestAutoReload2)
 {
     // Transmission 3 should be bumped up to be executed before 1 because 1 yielded to 2
-    std::shared_ptr<const Transmission> item = scheduler.popNext(2);
+    PrioritizedTxScheduler::ScheduleItem scheduleItem;
+    std::shared_ptr<const Transmission> item = scheduler.popItem(scheduleItem = scheduler.peekNext(2));
     ASSERT_NE(item, nullptr);
     EXPECT_EQ(item->transmissionId, 3);
     EXPECT_EQ(item->nextTxTimeUs, 1113);
@@ -469,9 +473,10 @@ class TransmissionSchedulePopTestC : public TransmissionScheduleTest
 TEST_F(TransmissionSchedulePopTestC, popTestLowerPriorityAsapHigherPriorityPrecedence)
 {
     // The higher priority item should take precedence at this time
-    std::shared_ptr<const Transmission> item = scheduler.popNext(99999);
+    PrioritizedTxScheduler::ScheduleItem scheduleItem;
+    std::shared_ptr<const Transmission> item = scheduler.popItem(scheduleItem = scheduler.peekNext(99999));
     ASSERT_EQ(item, nullptr);
-    item = scheduler.popNext(100000);
+    item = scheduler.popItem(scheduleItem = scheduler.peekNext(100000));
     ASSERT_NE(item, nullptr);
     EXPECT_EQ(item->transmissionId, 2);
 }
@@ -479,7 +484,8 @@ TEST_F(TransmissionSchedulePopTestC, popTestLowerPriorityAsapHigherPriorityPrece
 TEST_F(TransmissionSchedulePopTestC, popTestLowerPriorityAsapNow)
 {
     // The higher priority item is well enough in the future that it won't take precedence
-    std::shared_ptr<const Transmission> item = scheduler.popNext(100);
+    PrioritizedTxScheduler::ScheduleItem scheduleItem;
+    std::shared_ptr<const Transmission> item = scheduler.popItem(scheduleItem = scheduler.peekNext(100));
     ASSERT_NE(item, nullptr);
     EXPECT_EQ(item->transmissionId, 1);
 }

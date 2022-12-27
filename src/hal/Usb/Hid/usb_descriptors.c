@@ -27,6 +27,7 @@
 #include "usb_descriptors.h"
 #include "class/hid/hid_device.h"
 #include "pico/unique_id.h"
+#include "configuration.h"
 #include <string.h>
 
 //--------------------------------------------------------------------+
@@ -42,8 +43,12 @@ tusb_desc_device_t const desc_device =
     .bDeviceProtocol    = 0x00,
     .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
 
-    .idVendor           = 0xCafe,
-    .idProduct          = 0xF00d,
+    // VID 1209 comes from https://pid.codes/
+    // PID 2F07 is a subassignment granted through github
+    // https://github.com/pidcodes/pidcodes.github.com/blob/74f95539d2ad737c1ba2871eeb25b3f5f5d5c790/1209/2F07/index.md
+    .idVendor           = 0x1209,
+    .idProduct          = 0x2F07,
+
     .bcdDevice          = 0x0100,
 
     .iManufacturer      = 0x01,
@@ -90,13 +95,13 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
 {
     switch (instance)
     {
-        case ITF_NUM_HID1:
+        case ITF_NUM_GAMEPAD1:
             return desc_hid_report1;
-        case ITF_NUM_HID2:
+        case ITF_NUM_GAMEPAD2:
             return desc_hid_report2;
-        case ITF_NUM_HID3:
+        case ITF_NUM_GAMEPAD3:
             return desc_hid_report3;
-        case ITF_NUM_HID4:
+        case ITF_NUM_GAMEPAD4:
             return desc_hid_report4;
         default:
             return NULL;
@@ -107,36 +112,69 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
 // Configuration Descriptor
 //--------------------------------------------------------------------+
 
-#define  CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + (NUMBER_OF_DEVICES * TUD_HID_DESC_LEN))
+#if USB_CDC_ENABLED
+    #define DEBUG_CONFIG_LEN TUD_CDC_DESC_LEN
+#else
+    #define DEBUG_CONFIG_LEN 0
+#endif
 
-#define EPNUM_HID1   (ITF_NUM_HID1 + 1)
-#define EPNUM_HID2   (ITF_NUM_HID2 + 1)
-#define EPNUM_HID3   (ITF_NUM_HID3 + 1)
-#define EPNUM_HID4   (ITF_NUM_HID4 + 1)
+#define  CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + (NUMBER_OF_GAMEPADS * TUD_HID_DESC_LEN) + DEBUG_CONFIG_LEN + TUD_MSC_DESC_LEN)
 
-// Just make the report size the max of the two supported types
-#define REPORT_SIZE (sizeof(hid_keyboard_report_t) > sizeof(hid_gamepad_report_t) ? sizeof(hid_keyboard_report_t) : sizeof(hid_gamepad_report_t))
+// Endpoint definitions (must all be unique)
+#define EPIN_GAMEPAD1   (0x84)
+#define EPIN_GAMEPAD2   (0x83)
+#define EPIN_GAMEPAD3   (0x82)
+#define EPIN_GAMEPAD4   (0x81)
+#define EPOUT_MSC       (0x05)
+#define EPIN_MSC        (0x85)
+#define EPIN_CDC_NOTIF  (0x86)
+#define EPOUT_CDC       (0x07)
+#define EPIN_CDC        (0x87)
+
+#define GAMEPAD_REPORT_SIZE (1 + sizeof(hid_gamepad_report_t))
 
 uint8_t const desc_configuration[] =
 {
     // Config number, interface count, string index, total length, attribute, power in mA
-    TUD_CONFIG_DESCRIPTOR(1, NUMBER_OF_DEVICES, 0, CONFIG_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 400),
+    TUD_CONFIG_DESCRIPTOR(1, ITF_COUNT, 0, CONFIG_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 400),
 
-    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
-    TUD_HID_DESCRIPTOR(ITF_NUM_HID4, 7, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report4),
-                                0x80 | EPNUM_HID4, 1 + REPORT_SIZE, 1),
+    // *************************************************************************
+    // * Gamepad Descriptors                                                   *
+    // *************************************************************************
 
-    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
-    TUD_HID_DESCRIPTOR(ITF_NUM_HID3, 6, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report3),
-                                0x80 | EPNUM_HID3, 1 + REPORT_SIZE, 1),
+    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval ms
+    TUD_HID_DESCRIPTOR(ITF_NUM_GAMEPAD4, 7, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report4),
+                                EPIN_GAMEPAD4, GAMEPAD_REPORT_SIZE, 1),
 
-    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
-    TUD_HID_DESCRIPTOR(ITF_NUM_HID2, 5, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report2),
-                                0x80 | EPNUM_HID2, 1 + REPORT_SIZE, 1),
+    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval ms
+    TUD_HID_DESCRIPTOR(ITF_NUM_GAMEPAD3, 6, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report3),
+                                EPIN_GAMEPAD3, GAMEPAD_REPORT_SIZE, 1),
 
-    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval
-    TUD_HID_DESCRIPTOR(ITF_NUM_HID1, 4, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report1),
-                                0x80 | EPNUM_HID1, 1 + REPORT_SIZE, 1),
+    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval ms
+    TUD_HID_DESCRIPTOR(ITF_NUM_GAMEPAD2, 5, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report2),
+                                EPIN_GAMEPAD2, GAMEPAD_REPORT_SIZE, 1),
+
+    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval ms
+    TUD_HID_DESCRIPTOR(ITF_NUM_GAMEPAD1, 4, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report1),
+                                EPIN_GAMEPAD1, GAMEPAD_REPORT_SIZE, 1),
+
+    // *************************************************************************
+    // * Storage Device Descriptor                                             *
+    // *************************************************************************
+
+    // Only doing transfer at full speed since each file will only be about 128KB, max of 8 files
+
+    // Interface number, string index, EP Out & EP In address, EP size
+    TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 8, EPOUT_MSC, EPIN_MSC, 64),
+
+    // *************************************************************************
+    // * Communication Device Descriptor  (for debug messaging)                *
+    // *************************************************************************
+
+#if USB_CDC_ENABLED
+    // Interface number, string index, EP notification address and size, EP data address (out, in) and size.
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 9, EPIN_CDC_NOTIF, 8, EPOUT_CDC, EPIN_CDC, 64),
+#endif
 };
 
 // Invoked when received GET CONFIGURATION DESCRIPTOR
@@ -155,13 +193,15 @@ uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
 char const *string_desc_arr[] =
 {
     (const char[]) {0x09, 0x04}, // 0: is supported language is English (0x0409)
-    "DIY"  ,                     // 1: Manufacturer
+    "OrangeFox86",               // 1: Manufacturer
     "Dreamcast Controller USB",  // 2: Product
     NULL,                        // 3: Serial (special case; get pico serial)
-    "P1",                        // 4: Device 1
-    "P2",                        // 5: Device 2
-    "P3",                        // 6: Device 3
-    "P4"                         // 7: Device 4
+    "P1",                        // 4: Gamepad 1
+    "P2",                        // 5: Gamepad 2
+    "P3",                        // 6: Gamepad 3
+    "P4",                        // 7: Gamepad 4
+    "MSC",                       // 8: Mass Storage Class
+    "CDC",                       // 9: Communication Device Class
 };
 
 static uint16_t _desc_str[32];

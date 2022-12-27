@@ -5,6 +5,9 @@
 // Warning: enabling debug messages drastically degrades communication performance
 #define SHOW_DEBUG_MESSAGES false
 
+// true to enable USB CDC (serial) interface to directly control the maple bus
+#define USB_CDC_ENABLED true
+
 // Adjust the CPU clock frequency here (133 MHz is maximum documented stable frequency)
 #define CPU_FREQ_KHZ 133000
 
@@ -22,7 +25,7 @@
 #define MAPLE_RESPONSE_DELAY_NS 50
 
 // Maximum amount of time waiting for the beginning of a response when one is expected
-#define MAPLE_RESPONSE_TIMEOUT_US 500
+#define MAPLE_RESPONSE_TIMEOUT_US 1000
 
 // Estimated nanoseconds per bit to receive data - this is used for scheduling only
 // 1750 was selected based on the average time it takes a Dreamcast controller to transmit each bit

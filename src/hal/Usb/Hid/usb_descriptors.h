@@ -1,17 +1,28 @@
 #ifndef __USB_DESCRITORS_H__
 #define __USB_DESCRITORS_H__
 
+#include "configuration.h"
 #include <hid.h>
 
 // Going in reverse order because the host seems to usually enumerate the highest value first
 enum {
-    ITF_NUM_HID1 = 3,
-    ITF_NUM_HID2 = 2,
-    ITF_NUM_HID3 = 1,
-    ITF_NUM_HID4 = 0
+    // Gamepads
+    ITF_NUM_GAMEPAD4 = 0,
+    ITF_NUM_GAMEPAD3,
+    ITF_NUM_GAMEPAD2,
+    ITF_NUM_GAMEPAD1,
+    // For mass storage device
+    ITF_NUM_MSC,
+
+#if USB_CDC_ENABLED
+    ITF_NUM_CDC,
+    ITF_NUM_CDC_DATA,
+#endif
+
+    ITF_COUNT
 };
 
-#define NUMBER_OF_DEVICES 4
+#define NUMBER_OF_GAMEPADS (ITF_NUM_GAMEPAD1 + 1)
 
 /// HID Usage Table - (PID) Table 2: Physical Input Device Page
 enum {

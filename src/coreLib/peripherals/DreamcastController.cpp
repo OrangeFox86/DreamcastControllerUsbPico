@@ -3,8 +3,11 @@
 #include <string.h>
 
 
-DreamcastController::DreamcastController(uint8_t addr, std::shared_ptr<EndpointTxSchedulerInterface> scheduler, PlayerData playerData) :
-    DreamcastPeripheral("controller", addr, scheduler, playerData.playerIndex),
+DreamcastController::DreamcastController(uint8_t addr,
+                                         uint32_t fd,
+                                         std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
+                                         PlayerData playerData) :
+    DreamcastPeripheral("controller", addr, fd, scheduler, playerData.playerIndex),
     mGamepad(playerData.gamepad),
     mWaitingForData(false),
     mFirstTask(true),
@@ -45,11 +48,11 @@ void DreamcastController::txComplete(std::shared_ptr<const MaplePacket> packet,
 
         if (packet->getFrameCommand() == COMMAND_RESPONSE_DATA_XFER
             && packet->payload.size() >= 3
-            && packet->payload[0] == 1)
+            && packet->payload[0] == DEVICE_FN_CONTROLLER)
         {
             // Handle condition data
             DreamcastControllerObserver::ControllerCondition controllerCondition;
-            memcpy(&controllerCondition, &packet->payload[1], 8);
+            memcpy(&controllerCondition, &packet->payload[1], 2 * sizeof(uint32_t));
             mGamepad.setControllerCondition(controllerCondition);
         }
     }

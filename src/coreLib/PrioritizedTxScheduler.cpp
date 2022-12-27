@@ -2,20 +2,30 @@
 #include "configuration.h"
 #include "utils.h"
 
+#include <assert.h>
+
 // STL
 #include <algorithm>
 
-PrioritizedTxScheduler::PrioritizedTxScheduler(uint8_t maxPriority) :
+PrioritizedTxScheduler::PrioritizedTxScheduler() :
     mNextId(1),
     mSchedule()
 {
-    mSchedule.resize(maxPriority + 1);
+    mSchedule.resize(PRIORITY_COUNT);
+}
+
+PrioritizedTxScheduler::PrioritizedTxScheduler(uint32_t max) :
+    mNextId(1),
+    mSchedule()
+{
+    mSchedule.resize(max + 1);
 }
 
 PrioritizedTxScheduler::~PrioritizedTxScheduler() {}
 
 uint32_t PrioritizedTxScheduler::add(std::shared_ptr<Transmission> tx)
 {
+    assert(tx->priority < mSchedule.size());
     std::list<std::shared_ptr<Transmission>>& schedule = mSchedule[tx->priority];
     // Keep iterating until correct position is found
     std::list<std::shared_ptr<Transmission>>::const_iterator iter = schedule.cbegin();
@@ -45,6 +55,9 @@ uint32_t PrioritizedTxScheduler::add(uint8_t priority,
     }
 
     uint32_t pktDurationUs = INT_DIVIDE_CEILING(pktDurationNs, 1000);
+
+    // This will happen if minimal communication is made constantly for 20 days
+    assert(mNextId != INVALID_TX_ID);
 
     std::shared_ptr<Transmission> tx =
         std::make_shared<Transmission>(mNextId++,
@@ -82,9 +95,9 @@ uint64_t PrioritizedTxScheduler::computeNextTimeCadence(uint64_t currentTime,
     }
 }
 
-std::shared_ptr<const Transmission> PrioritizedTxScheduler::popNext(uint64_t time)
+PrioritizedTxScheduler::ScheduleItem PrioritizedTxScheduler::peekNext(uint64_t time)
 {
-    std::shared_ptr<Transmission> item = nullptr;
+    ScheduleItem scheduleItem;
 
     // Find a priority list with item ready to be popped
     std::vector<std::list<std::shared_ptr<Transmission>>>::iterator scheduleIter = mSchedule.begin();
@@ -142,18 +155,38 @@ std::shared_ptr<const Transmission> PrioritizedTxScheduler::popNext(uint64_t tim
 
         if (found)
         {
-            // Pop it!
-            item = (*itemIter);
-            scheduleIter->erase(itemIter);
+            scheduleItem.mScheduleIter = scheduleIter;
+            scheduleItem.mItemIter = itemIter;
+            scheduleItem.mTime = time;
+            scheduleItem.mIsValid = true;
+        }
+    }
 
-            // Reschedule this if auto repeat settings are valid
-            if (item != nullptr
-                && item->autoRepeatUs > 0
-                && (item->autoRepeatEndTimeUs == 0 || time <= item->autoRepeatEndTimeUs))
-            {
-                item->nextTxTimeUs = computeNextTimeCadence(time, item->autoRepeatUs, item->nextTxTimeUs);
-                add(item);
-            }
+    return scheduleItem;
+}
+
+std::shared_ptr<Transmission> PrioritizedTxScheduler::popItem(ScheduleItem& scheduleItem)
+{
+    std::shared_ptr<Transmission> item = nullptr;
+
+    if (scheduleItem.mIsValid)
+    {
+        // Save the transmission
+        item = scheduleItem.getTx();
+
+        // Pop it!
+        scheduleItem.mScheduleIter->erase(scheduleItem.mItemIter);
+        scheduleItem.mIsValid = false;
+
+        // Reschedule this if auto repeat settings are valid
+        if (item != nullptr
+            && item->autoRepeatUs > 0
+            && (item->autoRepeatEndTimeUs == 0 || scheduleItem.mTime <= item->autoRepeatEndTimeUs))
+        {
+            item->nextTxTimeUs = computeNextTimeCadence(scheduleItem.mTime,
+                                                        item->autoRepeatUs,
+                                                        item->nextTxTimeUs);
+            add(item);
         }
     }
 

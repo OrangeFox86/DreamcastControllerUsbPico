@@ -1,9 +1,10 @@
 #include "DreamcastKeyboard.hpp"
 
 DreamcastKeyboard::DreamcastKeyboard(uint8_t addr,
+                                     uint32_t fd,
                                      std::shared_ptr<EndpointTxSchedulerInterface> scheduler,
                                      PlayerData playerData) :
-    DreamcastPeripheral("keyboard", addr, scheduler, playerData.playerIndex)
+    DreamcastPeripheral("keyboard", addr, fd, scheduler, playerData.playerIndex)
 {}
 
 DreamcastKeyboard::~DreamcastKeyboard()

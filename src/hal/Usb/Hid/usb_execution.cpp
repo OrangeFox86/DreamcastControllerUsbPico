@@ -12,29 +12,31 @@
 #include "device/dcd.h"
 #include "usb_descriptors.h"
 #include "class/hid/hid_device.h"
+#include "msc_disk.hpp"
+#include "cdc.hpp"
 
-UsbGamepad usbGamepads[NUMBER_OF_DEVICES] = {
-  UsbGamepad(ITF_NUM_HID1),
-  UsbGamepad(ITF_NUM_HID2),
-  UsbGamepad(ITF_NUM_HID3),
-  UsbGamepad(ITF_NUM_HID4)
+UsbGamepad usbGamepads[NUMBER_OF_GAMEPADS] = {
+  UsbGamepad(ITF_NUM_GAMEPAD1),
+  UsbGamepad(ITF_NUM_GAMEPAD2),
+  UsbGamepad(ITF_NUM_GAMEPAD3),
+  UsbGamepad(ITF_NUM_GAMEPAD4)
 };
 
-UsbGamepadDreamcastControllerObserver usbGamepadDreamcastControllerObservers[NUMBER_OF_DEVICES] = {
+UsbGamepadDreamcastControllerObserver usbGamepadDreamcastControllerObservers[NUMBER_OF_GAMEPADS] = {
   UsbGamepadDreamcastControllerObserver(usbGamepads[0]),
   UsbGamepadDreamcastControllerObserver(usbGamepads[1]),
   UsbGamepadDreamcastControllerObserver(usbGamepads[2]),
   UsbGamepadDreamcastControllerObserver(usbGamepads[3])
 };
 
-UsbControllerDevice* devices[NUMBER_OF_DEVICES] = {
+UsbControllerDevice* devices[NUMBER_OF_GAMEPADS] = {
   &usbGamepads[0],
   &usbGamepads[1],
   &usbGamepads[2],
   &usbGamepads[3]
 };
 
-DreamcastControllerObserver* observers[NUMBER_OF_DEVICES] = {
+DreamcastControllerObserver* observers[NUMBER_OF_GAMEPADS] = {
   &usbGamepadDreamcastControllerObservers[0],
   &usbGamepadDreamcastControllerObservers[1],
   &usbGamepadDreamcastControllerObservers[2],
@@ -48,7 +50,7 @@ DreamcastControllerObserver** get_usb_controller_observers()
 
 uint32_t get_num_usb_controllers()
 {
-  return NUMBER_OF_DEVICES;
+  return NUMBER_OF_GAMEPADS;
 }
 
 bool usbEnabled = false;
@@ -123,11 +125,15 @@ void led_task()
 
 }
 
-void usb_init()
+void usb_init(
+  MutexInterface* mscMutex,
+  MutexInterface* cdcStdioMutex)
 {
   set_usb_devices(devices, sizeof(devices) / sizeof(devices[1]));
   board_init();
   tusb_init();
+  msc_init(mscMutex);
+  cdc_init(cdcStdioMutex);
 
 #if USB_LED_PIN >= 0
   gpio_init(USB_LED_PIN);
@@ -144,6 +150,7 @@ void usb_task()
 {
   tud_task(); // tinyusb device task
   led_task();
+  cdc_task();
 }
 
 //--------------------------------------------------------------------+
