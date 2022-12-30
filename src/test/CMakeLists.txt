@@ -20,7 +20,9 @@ target_link_libraries(testExe
     gtest_main
     gmock_main
     pthread
-    coreLib
+    -Wl,--whole-archive
+    testHostLib
+    -Wl,--no-whole-archive
 )
 
 target_include_directories(testExe
@@ -35,4 +37,3 @@ add_test(NAME all_tests COMMAND testExe)
 add_custom_target(test
   COMMAND ${CMAKE_CTEST_COMMAND} --force-new-ctest-process --verbose --output-on-failure
   DEPENDS testExe)
-
