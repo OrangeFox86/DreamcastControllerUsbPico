@@ -192,7 +192,7 @@ Whenever **A** is designated as the clock, the input PIO state machine will dete
 
 # Maple Bus Packet
 
-This section is included for reference. It contains information about packet structure which was used to build up packets within components of [coreLib](src/coreLib/).
+This section is included for reference. It contains information about packet structure which was used to build up packets within components of [hostLib](src/hostLib/).
 
 ## Word Format
 

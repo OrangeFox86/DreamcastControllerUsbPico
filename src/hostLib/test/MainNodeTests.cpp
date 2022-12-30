@@ -72,14 +72,14 @@ class DreamcastMainNodeOverride : public DreamcastMainNode
         }
 
         //! Called from peripheralFactory below so we can test what function code it was called with
-        MOCK_METHOD(void, mockMethodPeripheralFactory, (uint32_t functionCode));
+        MOCK_METHOD(void, mockMethodPeripheralFactory, (const std::vector<uint32_t>& deviceInfoPayload));
 
         //! This function overrides the real peripheral factory so that mock peripherals may be
         //! created.
-        uint32_t peripheralFactory(uint32_t functionCode) override
+        uint32_t peripheralFactory(const std::vector<uint32_t>& deviceInfoPayload) override
         {
             mPeripherals = mPeripheralsToAdd;
-            mockMethodPeripheralFactory(functionCode);
+            mockMethodPeripheralFactory(deviceInfoPayload);
             return 0;
         }
 
@@ -206,7 +206,7 @@ TEST_F(MainNodeTest, peripheralConnect)
     EXPECT_CALL(mMapleBus, isBusy).Times(AnyNumber()).WillRepeatedly(Return(false));
     // The mocked factory will add a mocked peripheral
     std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
-        std::make_shared<MockDreamcastPeripheral>(0x20, mDreamcastMainNode.getEndpointTxScheduler(), mPlayerData.playerIndex);
+        std::make_shared<MockDreamcastPeripheral>(0x20, 0, mDreamcastMainNode.getEndpointTxScheduler(), mPlayerData.playerIndex);
     mDreamcastMainNode.mPeripheralsToAdd.push_back(mockedDreamcastPeripheral);
     // This is a bad way to do it, but I need mCurrentTx in TransmissionTimeliner to be set to something
     EXPECT_CALL(mMapleBus, write(_, _)).Times(AnyNumber()).WillRepeatedly(Return(true));
@@ -215,16 +215,16 @@ TEST_F(MainNodeTest, peripheralConnect)
 
     // --- MOCKING ---
     // The task will process events, and status will be returned
-    uint32_t data[2] = {0x05002001, 0x00000001};
+    uint32_t data[5] = {0x05002001, 0x00000001, 0, 0, 0};
     MapleBusInterface::Status status;
     status.readBuffer = data;
-    status.readBufferLen = 2;
+    status.readBufferLen = 5;
     status.phase = MapleBusInterface::Phase::READ_COMPLETE;
     EXPECT_CALL(mMapleBus, processEvents(1000000))
         .Times(1)
         .WillOnce(Return(status));
     // The peripheralFactory method should be called with function code 0x00000001
-    EXPECT_CALL(mDreamcastMainNode, mockMethodPeripheralFactory(0x00000001)).Times(1);
+    EXPECT_CALL(mDreamcastMainNode, mockMethodPeripheralFactory(_)).Times(1);
     // No sub peripherals detected (addr value is 0x20 - 0 in the last 5 bits)
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[0], setConnected(false, _)).Times(1);
     EXPECT_CALL(*mDreamcastMainNode.mMockedSubNodes[1], setConnected(false, _)).Times(1);
@@ -254,7 +254,7 @@ TEST_F(MainNodeTest, peripheralDisconnect)
     EXPECT_CALL(mMapleBus, isBusy).Times(AnyNumber()).WillRepeatedly(Return(false));
     // A main peripheral is currently connected
     std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
-        std::make_shared<MockDreamcastPeripheral>(0x20, mDreamcastMainNode.getEndpointTxScheduler(), mPlayerData.playerIndex);
+        std::make_shared<MockDreamcastPeripheral>(0x20, 0, mDreamcastMainNode.getEndpointTxScheduler(), mPlayerData.playerIndex);
     mDreamcastMainNode.getPeripherals().push_back(mockedDreamcastPeripheral);
     // This is a bad way to do it, but I need mCurrentTx in TransmissionTimeliner to be set to something
     EXPECT_CALL(mMapleBus, write(_, _)).Times(AnyNumber()).WillRepeatedly(Return(true));

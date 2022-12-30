@@ -13,7 +13,7 @@ target_link_libraries(main
     hal-System
     hal-Usb-Hid
     pico_stdio_usb
-    coreLib
+    hostLib
 )
 target_compile_options(main PRIVATE
   -Wall
