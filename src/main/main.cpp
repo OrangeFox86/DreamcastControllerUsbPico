@@ -1,4 +1,4 @@
-#ifndef DREAMCAST_CONTROLLER_USB_PICO_TEST
+#ifndef ENABLE_UNIT_TEST
 
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
