@@ -137,46 +137,48 @@ enum {
 // Gamepad Report Descriptor (based on TUD_HID_REPORT_DESC_GAMEPAD)
 // with 16 buttons, 2 joysticks and 1 hat/dpad with following layout
 // | X | Y | Z | Rz | Rx | Ry (1 byte each) | hat/DPAD (1 byte) | Button Map (2 bytes) |
-#define TUD_HID_REPORT_DESC_GAMEPAD_W_FORCE_FEEDBACK(...) \
+#define TUD_HID_REPORT_DESC_GAMEPAD_W_FORCE_FEEDBACK() \
   HID_USAGE_PAGE ( HID_USAGE_PAGE_DESKTOP     )                 ,\
   HID_LOGICAL_MIN(0), \
-  HID_USAGE      ( HID_USAGE_DESKTOP_GAMEPAD  )                 ,\
+  HID_USAGE      ( HID_USAGE_DESKTOP_JOYSTICK  )                 ,\
   HID_COLLECTION ( HID_COLLECTION_APPLICATION )                 ,\
     /* Report ID if any */\
-    __VA_ARGS__ \
-    /* 8 bit X, Y, Z, Rz, Rx, Ry (min -127, max 127 ) */ \
-    HID_USAGE_PAGE   ( HID_USAGE_PAGE_DESKTOP                 ) ,\
-    HID_USAGE        ( HID_USAGE_DESKTOP_X                    ) ,\
-    HID_USAGE        ( HID_USAGE_DESKTOP_Y                    ) ,\
-    HID_USAGE        ( HID_USAGE_DESKTOP_Z                    ) ,\
-    HID_USAGE        ( HID_USAGE_DESKTOP_RZ                   ) ,\
-    HID_USAGE        ( HID_USAGE_DESKTOP_RX                   ) ,\
-    HID_USAGE        ( HID_USAGE_DESKTOP_RY                   ) ,\
-    HID_LOGICAL_MIN  ( 0x81                                   ) ,\
-    HID_LOGICAL_MAX  ( 0x7f                                   ) ,\
-    HID_REPORT_COUNT ( 6                                      ) ,\
-    HID_REPORT_SIZE  ( 8                                      ) ,\
+    HID_REPORT_ID(1) \
+    HID_USAGE_PAGE(HID_USAGE_PAGE_SIMULATE), \
+    HID_USAGE(0xBB), \
+    HID_LOGICAL_MIN(-127), \
+    HID_LOGICAL_MAX(127), \
+    HID_REPORT_SIZE(8), \
+    HID_REPORT_COUNT(1), \
     HID_INPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
-    /* 8 bit DPad/Hat Button Map  */ \
-    HID_USAGE_PAGE   ( HID_USAGE_PAGE_DESKTOP                 ) ,\
+    HID_USAGE_PAGE(HID_USAGE_PAGE_DESKTOP), \
+    HID_USAGE(HID_USAGE_DESKTOP_POINTER), \
+    HID_COLLECTION(HID_COLLECTION_PHYSICAL), \
+      HID_USAGE        ( HID_USAGE_DESKTOP_X                    ) ,\
+      HID_USAGE        ( HID_USAGE_DESKTOP_Y                    ) ,\
+      HID_REPORT_COUNT(2), \
+      HID_INPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
+    HID_COLLECTION_END, \
     HID_USAGE        ( HID_USAGE_DESKTOP_HAT_SWITCH           ) ,\
-    HID_LOGICAL_MIN  ( 1                                      ) ,\
-    HID_LOGICAL_MAX  ( 8                                      ) ,\
-    HID_PHYSICAL_MIN ( 0                                      ) ,\
-    HID_PHYSICAL_MAX_N ( 315, 2                               ) ,\
-    HID_REPORT_COUNT ( 1                                      ) ,\
-    HID_REPORT_SIZE  ( 8                                      ) ,\
-    HID_INPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
-    /* 16 bit Button Map */ \
-    HID_USAGE_PAGE   ( HID_USAGE_PAGE_BUTTON                  ) ,\
-    HID_USAGE_MIN    ( 1                                      ) ,\
-    HID_USAGE_MAX    ( 32                                     ) ,\
     HID_LOGICAL_MIN  ( 0                                      ) ,\
-    HID_LOGICAL_MAX  ( 1                                      ) ,\
-    HID_REPORT_COUNT ( 32                                     ) ,\
-    HID_REPORT_SIZE  ( 1                                      ) ,\
+    HID_LOGICAL_MAX  ( 3                                      ) ,\
+    HID_PHYSICAL_MIN ( 0                                      ) ,\
+    HID_PHYSICAL_MAX_N ( 270, 2                               ) ,\
+    /* Eng rot:Angular pos */ \
+    HID_UNIT_N        ( 0x0014, 2                              ) ,\
+    HID_REPORT_SIZE(4), \
+    HID_REPORT_COUNT(1), \
     HID_INPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
-    \
+    HID_PHYSICAL_MAX(0), \
+    HID_UNIT_N(0, 2), \
+    HID_USAGE_PAGE(HID_USAGE_PAGE_BUTTON), \
+    HID_USAGE_MIN(1), \
+    HID_USAGE_MAX(4), \
+    HID_LOGICAL_MAX(1), \
+    HID_REPORT_COUNT(4), \
+    HID_REPORT_SIZE(1), \
+    HID_PHYSICAL_MIN(0), \
+    HID_INPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
     /* Force Feedback */ \
     HID_USAGE_PAGE   ( HID_USAGE_PAGE_PID                     ) ,\
     HID_USAGE        ( HID_USAGE_PID_SET_EFFECT_REPORT        ) ,\
@@ -197,9 +199,16 @@ enum {
       HID_COLLECTION    ( HID_COLLECTION_LOGICAL                 ) ,\
         HID_USAGE         ( HID_USAGE_PID_ET_CONSTANT_FORCE        ) ,\
         HID_USAGE         ( HID_USAGE_PID_ET_RAMP                  ) ,\
+        HID_USAGE(HID_USAGE_PID_ET_SQUARE), \
         HID_USAGE         ( HID_USAGE_PID_ET_SINE                  ) ,\
+        HID_USAGE(HID_USAGE_PID_ET_TRIANGLE), \
+        HID_USAGE(HID_USAGE_PID_ET_SAWTOOTH_UP), \
+        HID_USAGE(HID_USAGE_PID_ET_SAWTOOTH_DOWN), \
+        HID_USAGE(HID_USAGE_PID_ET_SPRING), \
+        HID_USAGE(HID_USAGE_PID_ET_DAMPER), \
+        HID_USAGE(HID_USAGE_PID_ET_INERTIA), \
         HID_LOGICAL_MIN   ( 1                                      ) ,\
-        HID_LOGICAL_MAX   ( 3                                      ) ,\
+        HID_LOGICAL_MAX   ( 10                                      ) ,\
         HID_REPORT_SIZE   ( 8                                      ) ,\
         HID_OUTPUT        ( HID_DATA | HID_ARRAY | HID_ABSOLUTE    ) ,\
       HID_COLLECTION_END                                             ,\
@@ -432,7 +441,7 @@ enum {
       HID_REPORT_SIZE(15), \
       HID_REPORT_COUNT(1), \
       HID_OUTPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ), \
-      HID_USAGE_N(HID_USAGE_DESKTOP_BYTE_COUNT | (HID_USAGE_PAGE_DESKTOP << 16), 3), 0, \
+      HID_USAGE_N(HID_USAGE_DESKTOP_BYTE_COUNT | (HID_USAGE_PAGE_DESKTOP << 16), 3), \
       HID_LOGICAL_MAX_N(256, 2), \
       HID_REPORT_SIZE(9), \
       HID_OUTPUT        ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ), \
@@ -569,6 +578,7 @@ enum {
       /* 4-bit Pad */ \
       HID_INPUT        ( HID_CONSTANT | HID_VARIABLE | HID_ABSOLUTE ) ,\
     HID_COLLECTION_END, \
+    /* PID Device Control Report Definition */ \
     HID_USAGE(HID_USAGE_PID_PID_DEVICE_CONTROL_REPORT), \
     HID_COLLECTION(HID_COLLECTION_LOGICAL), \
       HID_REPORT_ID(11) \
@@ -583,8 +593,10 @@ enum {
         HID_LOGICAL_MIN(1), \
         HID_LOGICAL_MAX(6), \
         HID_REPORT_SIZE(1), \
-        HID_REPORT_COUNT(4), \
-        HID_OUTPUT        ( HID_DATA | HID_ARRAY | HID_ABSOLUTE ), \
+        /* PID documentation labels 4 but specifies 08 */ \
+        HID_REPORT_COUNT(8), \
+        /* CHECK: data,ary,abs */ \
+        0x91, 0x02, \
       HID_COLLECTION_END, \
     HID_COLLECTION_END, \
     /* PID Pool Move Report Definition */ \
