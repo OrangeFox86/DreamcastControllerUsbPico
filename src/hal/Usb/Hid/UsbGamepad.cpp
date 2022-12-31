@@ -8,6 +8,8 @@
 #include "class/hid/hid.h"
 #include "class/hid/hid_device.h"
 
+#include "utils.h"
+
 UsbGamepad::UsbGamepad(uint8_t interfaceId, uint8_t reportId) :
   interfaceId(interfaceId),
   reportId(reportId),
@@ -22,8 +24,10 @@ bool UsbGamepad::isButtonPressed()
 {
   return (currentDpad[DPAD_UP] || currentDpad[DPAD_DOWN] || currentDpad[DPAD_LEFT]
     || currentDpad[DPAD_RIGHT] || currentButtons != 0
-    || currentLeftAnalog[0] != 0 || currentLeftAnalog[1] != 0 || currentLeftAnalog[2] != -128
-    || currentRightAnalog[0] != 0 || currentRightAnalog[1] != 0 || currentRightAnalog[2] != -128);
+    || currentLeftAnalog[0] != 0 || currentLeftAnalog[1] != 0
+    || currentLeftAnalog[2] != MIN_ANALOG_VALUE
+    || currentRightAnalog[0] != 0 || currentRightAnalog[1] != 0
+    || currentRightAnalog[2] != MIN_ANALOG_VALUE);
 }
 
 //--------------------------------------------------------------------+
@@ -31,6 +35,7 @@ bool UsbGamepad::isButtonPressed()
 //--------------------------------------------------------------------+
 void UsbGamepad::setAnalogThumbX(bool isLeft, int8_t x)
 {
+  x = limit_value(x, MIN_ANALOG_VALUE, MAX_ANALOG_VALUE);
   int8_t lastX = 0;
   if (isLeft)
   {
@@ -47,6 +52,7 @@ void UsbGamepad::setAnalogThumbX(bool isLeft, int8_t x)
 
 void UsbGamepad::setAnalogThumbY(bool isLeft, int8_t y)
 {
+  y = limit_value(y, MIN_ANALOG_VALUE, MAX_ANALOG_VALUE);
   int8_t lastY = 0;
   if (isLeft)
   {
@@ -63,6 +69,7 @@ void UsbGamepad::setAnalogThumbY(bool isLeft, int8_t y)
 
 void UsbGamepad::setAnalogTrigger(bool isLeft, int8_t z)
 {
+  z = limit_value(z, MIN_ANALOG_VALUE, MAX_ANALOG_VALUE);
   int8_t lastZ = 0;
   if (isLeft)
   {
@@ -145,10 +152,10 @@ void UsbGamepad::updateAllReleased()
   {
     currentLeftAnalog[0] = 0;
     currentLeftAnalog[1] = 0;
-    currentLeftAnalog[2] = -128;
+    currentLeftAnalog[2] = MIN_ANALOG_VALUE;
     currentRightAnalog[0] = 0;
     currentRightAnalog[1] = 0;
-    currentRightAnalog[2] = -128;
+    currentRightAnalog[2] = MIN_ANALOG_VALUE;
     currentDpad[DPAD_UP] = false;
     currentDpad[DPAD_DOWN] = false;
     currentDpad[DPAD_LEFT] = false;
