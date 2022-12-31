@@ -151,18 +151,4 @@ Whenever **A** is designated as the clock, the input PIO state machine will dete
 
 # External Resources
 
-**Maple Bus Resources**
-
-https://archive.org/details/MaplePatent/page/n7/mode/1up
-
-http://mc.pp.se/dc/maplebus.html and http://mc.pp.se/dc/controller.html
-
-https://tech-en.netlify.app/articles/en540236/index.html
-
-https://www.raphnet.net/programmation/dreamcast_usb/index_en.php
-
-https://web.archive.org/web/20100425041817/http://www.maushammer.com/vmu.html
-
-https://hackaday.io/project/170365-blueretro/log/180790-evolution-of-segas-io-interface-from-sg-1000-to-saturn
-
-https://segaretro.org/History_of_the_Sega_Dreamcast/Development
+https://dreamcast.wiki/Maple_bus

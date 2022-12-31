@@ -240,5 +240,5 @@ void tud_hid_set_report_cb(uint8_t instance,
   (void) report_type;
 
   // echo back anything we received from host
-  tud_hid_report(report_id, buffer, bufsize);
+  //tud_hid_report(report_id, buffer, bufsize);
 }
