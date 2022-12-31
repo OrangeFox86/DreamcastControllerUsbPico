@@ -70,22 +70,22 @@ uint8_t const *tud_descriptor_device_cb(void) {
 
 uint8_t const desc_hid_report1[] =
 {
-    TUD_HID_REPORT_DESC_GAMEPAD()
+    TUD_HID_REPORT_DESC_GAMEPAD_W_FORCE_FEEDBACK()
 };
 
 uint8_t const desc_hid_report2[] =
 {
-    TUD_HID_REPORT_DESC_GAMEPAD()
+    TUD_HID_REPORT_DESC_GAMEPAD_W_FORCE_FEEDBACK()
 };
 
 uint8_t const desc_hid_report3[] =
 {
-    TUD_HID_REPORT_DESC_GAMEPAD()
+    TUD_HID_REPORT_DESC_GAMEPAD_W_FORCE_FEEDBACK()
 };
 
 uint8_t const desc_hid_report4[] =
 {
-    TUD_HID_REPORT_DESC_GAMEPAD()
+    TUD_HID_REPORT_DESC_GAMEPAD_W_FORCE_FEEDBACK()
 };
 
 // Invoked when received GET HID REPORT DESCRIPTOR
@@ -118,13 +118,17 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
     #define DEBUG_CONFIG_LEN 0
 #endif
 
-#define  CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + (NUMBER_OF_GAMEPADS * TUD_HID_DESC_LEN) + DEBUG_CONFIG_LEN + TUD_MSC_DESC_LEN)
+#define  CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + (NUMBER_OF_GAMEPADS * TUD_HID_INOUT_DESC_LEN) + DEBUG_CONFIG_LEN + TUD_MSC_DESC_LEN)
 
 // Endpoint definitions (must all be unique)
 #define EPIN_GAMEPAD1   (0x84)
+#define EPOUT_GAMEPAD1  (0x04)
 #define EPIN_GAMEPAD2   (0x83)
+#define EPOUT_GAMEPAD2  (0x03)
 #define EPIN_GAMEPAD3   (0x82)
+#define EPOUT_GAMEPAD3  (0x02)
 #define EPIN_GAMEPAD4   (0x81)
+#define EPOUT_GAMEPAD4  (0x01)
 #define EPOUT_MSC       (0x05)
 #define EPIN_MSC        (0x85)
 #define EPIN_CDC_NOTIF  (0x86)
@@ -143,20 +147,20 @@ uint8_t const desc_configuration[] =
     // *************************************************************************
 
     // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval ms
-    TUD_HID_DESCRIPTOR(ITF_NUM_GAMEPAD4, 7, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report4),
-                                EPIN_GAMEPAD4, GAMEPAD_REPORT_SIZE, 1),
+    TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_GAMEPAD4, 7, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report4),
+                                EPOUT_GAMEPAD4, EPIN_GAMEPAD4, GAMEPAD_REPORT_SIZE, 1),
 
     // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval ms
-    TUD_HID_DESCRIPTOR(ITF_NUM_GAMEPAD3, 6, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report3),
-                                EPIN_GAMEPAD3, GAMEPAD_REPORT_SIZE, 1),
+    TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_GAMEPAD3, 6, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report3),
+                                EPOUT_GAMEPAD3, EPIN_GAMEPAD3, GAMEPAD_REPORT_SIZE, 1),
 
     // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval ms
-    TUD_HID_DESCRIPTOR(ITF_NUM_GAMEPAD2, 5, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report2),
-                                EPIN_GAMEPAD2, GAMEPAD_REPORT_SIZE, 1),
+    TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_GAMEPAD2, 5, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report2),
+                                EPOUT_GAMEPAD2, EPIN_GAMEPAD2, GAMEPAD_REPORT_SIZE, 1),
 
     // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval ms
-    TUD_HID_DESCRIPTOR(ITF_NUM_GAMEPAD1, 4, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report1),
-                                EPIN_GAMEPAD1, GAMEPAD_REPORT_SIZE, 1),
+    TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_GAMEPAD1, 4, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report1),
+                                EPOUT_GAMEPAD1, EPIN_GAMEPAD1, GAMEPAD_REPORT_SIZE, 1),
 
     // *************************************************************************
     // * Storage Device Descriptor                                             *

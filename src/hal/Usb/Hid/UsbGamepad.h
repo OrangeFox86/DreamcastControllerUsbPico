@@ -39,7 +39,7 @@ class UsbGamepad : public UsbControllerDevice
   public:
     //! UsbKeyboard constructor
     //! @param[in] reportId  The report ID to use for this USB keyboard
-    UsbGamepad(uint8_t interfaceId, uint8_t reportId = 0);
+    UsbGamepad(uint8_t interfaceId, uint8_t reportId = 1);
     //! @returns true iff any button is currently "pressed"
     bool isButtonPressed() final;
     //! Sets the analog stick for the X direction
