@@ -44,9 +44,29 @@ class DreamcastControllerObserver
             uint8_t lAnalogLR; //!< 0: left; 128: neutral; 255: right
         } __attribute__ ((packed));
 
+        //! The secondary controller condition bits
+        struct SecondaryControllerCondition
+        {
+            // Digital bits:
+            // 0: pressed
+            // 1: released
+            unsigned up:1;
+            unsigned down:1;
+            unsigned left:1;
+            unsigned right:1;
+            unsigned a:1;
+            unsigned b:1;
+        } __attribute__ ((packed));
+
         //! Sets the current Dreamcast controller condition
         //! @param[in] controllerCondition  The current condition of the Dreamcast controller
         virtual void setControllerCondition(const ControllerCondition& controllerCondition) = 0;
+
+        //! Sets the current Dreamcast secondary controller condition
+        //! @param[in] secondaryControllerCondition  The current secondary condition of the
+        //!                                          Dreamcast controller
+        virtual void setSecondaryControllerCondition(
+            const SecondaryControllerCondition& secondaryControllerCondition) = 0;
 
         //! Called when controller connected
         virtual void controllerConnected() = 0;

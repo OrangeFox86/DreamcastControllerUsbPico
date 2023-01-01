@@ -22,12 +22,18 @@ UsbGamepad::UsbGamepad(uint8_t interfaceId, uint8_t reportId) :
 
 bool UsbGamepad::isButtonPressed()
 {
-  return (currentDpad[DPAD_UP] || currentDpad[DPAD_DOWN] || currentDpad[DPAD_LEFT]
-    || currentDpad[DPAD_RIGHT] || currentButtons != 0
-    || currentLeftAnalog[0] != 0 || currentLeftAnalog[1] != 0
-    || currentLeftAnalog[2] != MIN_ANALOG_VALUE
-    || currentRightAnalog[0] != 0 || currentRightAnalog[1] != 0
-    || currentRightAnalog[2] != MIN_ANALOG_VALUE);
+  return (
+    currentDpad[DPAD_UP]
+    || currentDpad[DPAD_DOWN]
+    || currentDpad[DPAD_LEFT]
+    || currentDpad[DPAD_RIGHT]
+    || currentButtons != 0
+    || isAnalogPressed(currentLeftAnalog[0])
+    || isAnalogPressed(currentLeftAnalog[1])
+    || currentLeftAnalog[2] > (MIN_ANALOG_VALUE + ANALOG_PRESSED_TOL)
+    || isAnalogPressed(currentRightAnalog[0])
+    || isAnalogPressed(currentRightAnalog[1])
+    || currentRightAnalog[2] > (MIN_ANALOG_VALUE + ANALOG_PRESSED_TOL));
 }
 
 //--------------------------------------------------------------------+
@@ -127,9 +133,9 @@ void UsbGamepad::setDigitalPad(UsbGamepad::DpadButtons button, bool isPressed)
   buttonsUpdated = buttonsUpdated || (oldValue != currentDpad[button]);
 }
 
-void UsbGamepad::setButtonMask(uint16_t mask, bool isPressed)
+void UsbGamepad::setButtonMask(uint32_t mask, bool isPressed)
 {
-  uint16_t lastButtons = currentButtons;
+  uint32_t lastButtons = currentButtons;
   if (isPressed)
   {
     currentButtons |= mask;

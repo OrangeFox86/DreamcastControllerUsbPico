@@ -17,6 +17,12 @@ class UsbGamepadDreamcastControllerObserver : public DreamcastControllerObserver
         //! @param[in] controllerCondition  The current condition of the Dreamcast controller
         virtual void setControllerCondition(const ControllerCondition& controllerCondition) final;
 
+        //! Sets the current Dreamcast secondary controller condition
+        //! @param[in] secondaryControllerCondition  The current secondary condition of the
+        //!                                          Dreamcast controller
+        virtual void setSecondaryControllerCondition(
+            const SecondaryControllerCondition& secondaryControllerCondition) final;
+
         //! Called when controller connected
         virtual void controllerConnected() final;
 

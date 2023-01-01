@@ -37,6 +37,19 @@ void UsbGamepadDreamcastControllerObserver::setControllerCondition(const Control
     mUsbController.send();
 }
 
+void UsbGamepadDreamcastControllerObserver::setSecondaryControllerCondition(
+    const SecondaryControllerCondition& secondaryControllerCondition)
+{
+    mUsbController.setButton(UsbGamepad::GAMEPAD_BUTTON_MODE, 0 == secondaryControllerCondition.a);
+    mUsbController.setButton(UsbGamepad::BUTTON15, 0 == secondaryControllerCondition.b);
+    mUsbController.setButton(UsbGamepad::BUTTON16, 0 == secondaryControllerCondition.up);
+    mUsbController.setButton(UsbGamepad::BUTTON17, 0 == secondaryControllerCondition.down);
+    mUsbController.setButton(UsbGamepad::BUTTON18, 0 == secondaryControllerCondition.left);
+    mUsbController.setButton(UsbGamepad::BUTTON19, 0 == secondaryControllerCondition.right);
+
+    mUsbController.send();
+}
+
 void UsbGamepadDreamcastControllerObserver::controllerConnected()
 {
     mUsbController.updateControllerConnected(true);
