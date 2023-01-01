@@ -34,6 +34,23 @@ class UsbGamepad : public UsbControllerDevice
       GAMEPAD_BUTTON_MODE = 12,
       GAMEPAD_BUTTON_THUMBL = 13,
       GAMEPAD_BUTTON_THUMBR = 14,
+      BUTTON15 = 15,
+      BUTTON16 = 16,
+      BUTTON17 = 17,
+      BUTTON18 = 18,
+      BUTTON19 = 19,
+      BUTTON20 = 20,
+      BUTTON21 = 21,
+      BUTTON22 = 22,
+      BUTTON23 = 23,
+      BUTTON24 = 24,
+      BUTTON25 = 25,
+      BUTTON26 = 26,
+      BUTTON27 = 27,
+      BUTTON28 = 28,
+      BUTTON29 = 29,
+      BUTTON30 = 30,
+      BUTTON31 = 31
     };
 
   public:
@@ -70,7 +87,7 @@ class UsbGamepad : public UsbControllerDevice
     //! Sets or releases one or more of the 16 buttons as a mask value
     //! @param[in] mask The mask value to set or release
     //! @param[in] isPressed True to set the mask or false to release
-    void setButtonMask(uint16_t mask, bool isPressed);
+    void setButtonMask(uint32_t mask, bool isPressed);
     //! Sets the state of a single button
     //! @param[in] button Button value [0,15]
     //! @param[in] isPressed The state of @p button
@@ -94,6 +111,23 @@ class UsbGamepad : public UsbControllerDevice
     uint8_t getHatValue();
 
   private:
+    //! @param[in] analog  The analog value to check
+    //! @returns true if the given analog is considered "pressed"
+    inline bool isAnalogPressed(int8_t analog)
+    {
+      return (analog > ANALOG_PRESSED_TOL || analog < -ANALOG_PRESSED_TOL);
+    }
+
+  public:
+    // TODO: Move these constants to descriptors that this header pulls from
+    //! Minumum analog value defined in USB HID descriptors
+    static const int8_t MIN_ANALOG_VALUE = -127;
+    //! Maximum analog value defined in USB HID descriptors
+    static const int8_t MAX_ANALOG_VALUE = 127;
+    //! Tolerance for when analog is considered "pressed" for status LED
+    static const int8_t ANALOG_PRESSED_TOL = 5;
+
+  private:
     const uint8_t interfaceId;
     //! The report ID to use when sending keys to host
     const uint8_t reportId;
@@ -104,7 +138,7 @@ class UsbGamepad : public UsbControllerDevice
     //! Current d-pad buttons
     bool currentDpad[DPAD_COUNT];
     //! Current button states
-    uint16_t currentButtons;
+    uint32_t currentButtons;
     //! True when something has been updated since the last successful send
     bool buttonsUpdated;
 };

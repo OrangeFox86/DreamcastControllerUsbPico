@@ -39,6 +39,14 @@ class DreamcastTimer : public DreamcastPeripheral
     public:
         //! Function code for timer
         static const uint32_t FUNCTION_CODE = DEVICE_FN_TIMER;
+        //! Polling period for the upper VMU button states
+        static const uint32_t BUTTON_POLL_PERIOD_US = 50000;
+        //! Number of bits to shift the condition word to the right
+        static const uint8_t COND_RIGHT_SHIFT = 24;
 
     private:
+        //! Gamepad to send secondary status to
+        DreamcastControllerObserver& mGamepad;
+        //! Transmit ID of button status message
+        uint32_t mButtonStatusId;
 };
