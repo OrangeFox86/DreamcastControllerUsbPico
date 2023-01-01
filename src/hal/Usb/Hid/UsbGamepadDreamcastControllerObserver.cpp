@@ -15,11 +15,11 @@ void UsbGamepadDreamcastControllerObserver::setControllerCondition(const Control
     mUsbController.setButton(UsbGamepad::GAMEPAD_BUTTON_START, 0 == controllerCondition.start);
 
     // Mapping these to random unique buttons just in case something out there uses them
-    mUsbController.setButton(UsbGamepad::GAMEPAD_BUTTON_TL, 0 == controllerCondition.unknown1);
-    mUsbController.setButton(UsbGamepad::GAMEPAD_BUTTON_TR, 0 == controllerCondition.unknown2);
-    mUsbController.setButton(UsbGamepad::GAMEPAD_BUTTON_TL2, 0 == controllerCondition.unknown3);
-    mUsbController.setButton(UsbGamepad::GAMEPAD_BUTTON_TR2, 0 == controllerCondition.unknown4);
-    mUsbController.setButton(UsbGamepad::GAMEPAD_BUTTON_SELECT, 0 == controllerCondition.unknown5);
+    mUsbController.setButton(UsbGamepad::GAMEPAD_BUTTON_TL, 0 == controllerCondition.rightb);
+    mUsbController.setButton(UsbGamepad::GAMEPAD_BUTTON_TR, 0 == controllerCondition.leftb);
+    mUsbController.setButton(UsbGamepad::GAMEPAD_BUTTON_TL2, 0 == controllerCondition.downb);
+    mUsbController.setButton(UsbGamepad::GAMEPAD_BUTTON_TR2, 0 == controllerCondition.upb);
+    mUsbController.setButton(UsbGamepad::GAMEPAD_BUTTON_SELECT, 0 == controllerCondition.d);
 
     mUsbController.setDigitalPad(UsbGamepad::DPAD_UP, 0 == controllerCondition.up);
     mUsbController.setDigitalPad(UsbGamepad::DPAD_DOWN, 0 == controllerCondition.down);
