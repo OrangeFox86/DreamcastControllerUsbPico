@@ -20,11 +20,11 @@ class DreamcastControllerObserver
             unsigned z:1;
             unsigned y:1;
             unsigned x:1;
-            unsigned unknown5:1;
-            unsigned unknown4:1;
-            unsigned unknown3:1;
-            unsigned unknown2:1;
-            unsigned unknown1:1;
+            unsigned d:1;
+            unsigned upb:1;
+            unsigned downb:1;
+            unsigned leftb:1;
+            unsigned rightb:1;
 
             unsigned c:1;
             unsigned b:1;
