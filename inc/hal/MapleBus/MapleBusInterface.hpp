@@ -62,6 +62,18 @@ class MapleBusInterface
         virtual bool write(const MaplePacket& packet,
                            bool expectResponse) = 0;
 
+        //! Begins waiting for input
+        //! @post processEvents() must periodically be called to check status
+        //! @note This is NOT meant to be called if bus is setup as a host
+        //! @note Keep in mind that the maple_in state machine doesn't  sample the full end
+        //!       sequence. The application side should wait a sufficient amount of time after bus
+        //!       goes neutral before responding in that case. Waiting for neutral bus within
+        //!       write() may be enough though (as long as MAPLE_OPEN_LINE_CHECK_TIME_US is set to
+        //!       at least 2).
+        //! @param[in] readTimeoutUs  Minimum number of microseconds to read for (optional)
+        //! @returns true iff bus was not busy and read started
+        virtual bool startRead(uint64_t readTimeoutUs=std::numeric_limits<uint64_t>::max()) = 0;
+
         //! Processes timing events for the current time. This should be called before any write
         //! call in order to check timeouts and clear out any used resources.
         //! @param[in] currentTimeUs  The current time to process for
@@ -74,7 +86,6 @@ class MapleBusInterface
 
 //! Creates a maple bus
 //! @param[in] pinA  GPIO index for pin A. The very next GPIO will be designated as pin B.
-//! @param[in] senderAddr  The address of this device
-extern std::shared_ptr<MapleBusInterface> create_maple_bus(uint32_t pinA, uint8_t senderAddr);
+extern std::shared_ptr<MapleBusInterface> create_maple_bus(uint32_t pinA);
 
 #endif // __MAPLE_BUS_INTERFACE_H__

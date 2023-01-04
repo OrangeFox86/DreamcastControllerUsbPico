@@ -142,12 +142,13 @@ TEST(MaplePacketGettersTest, one)
     uint32_t payload[10] = {0xfe020f24, 0x43c50fe9, 0xa8548824, 0xeafa0621, 0xb38885fb,
                             0x298a0866, 0x88671e8a, 0x2a08905a, 0xb5f3eb50, 0xfa9bb913};
     MaplePacket pkt(0x6d, 0xc4, payload, 10);
+    pkt.setSenderAddress(0xc2);
     EXPECT_TRUE(pkt.isValid());
     EXPECT_EQ(pkt.getFramePacketLength(), 10);
-    EXPECT_EQ(pkt.getFrameSenderAddr(), 0x00);
+    EXPECT_EQ(pkt.getFrameSenderAddr(), 0xc2);
     EXPECT_EQ(pkt.getFrameRecipientAddr(), 0xc4);
     EXPECT_EQ(pkt.getFrameCommand(), 0x6d);
-    EXPECT_EQ(pkt.getFrameWord(0xc2), 0x6dc4c20a);
+    EXPECT_EQ(pkt.frameWord, 0x6dc4c20a);
     EXPECT_EQ(pkt.getNumTotalBits(), 360);
     EXPECT_EQ(pkt.getTxTimeNs(), 179520);
 }

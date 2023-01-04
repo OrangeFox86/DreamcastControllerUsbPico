@@ -13,4 +13,7 @@ class MockDreamcastControllerObserver : public DreamcastControllerObserver
         MOCK_METHOD(void, controllerConnected, (), (override));
 
         MOCK_METHOD(void, controllerDisconnected, (), (override));
+
+        MOCK_METHOD(void, setSecondaryControllerCondition,
+            (const SecondaryControllerCondition& secondaryControllerCondition), (override));
 };

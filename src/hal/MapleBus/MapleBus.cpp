@@ -91,13 +91,12 @@ void MapleBus::initIsrs()
     pio_set_irq1_source_enabled(MAPLE_IN_PIO, pis_interrupt3, true);
 }
 
-MapleBus::MapleBus(uint32_t pinA, uint8_t senderAddr) :
+MapleBus::MapleBus(uint32_t pinA) :
     mPinA(pinA),
     mPinB(pinA + 1),
     mMaskA(1 << mPinA),
     mMaskB(1 << mPinB),
     mMaskAB(mMaskA | mMaskB),
-    mSenderAddr(senderAddr),
     mSmOut(CPU_FREQ_KHZ, MAPLE_NS_PER_BIT, mPinA),
     mSmIn(mPinA),
     mDmaWriteChannel(dma_claim_unused_channel(true)),
@@ -217,7 +216,7 @@ bool MapleBus::write(const MaplePacket& packet,
         // bytes need to be flipped so the PIO state machine can work with it correctly.
         mWriteBuffer[0] = flipWordBytes(packet.getNumTotalBits());
         // Load the frame word and start computing the crc
-        mWriteBuffer[1] = packet.getFrameWord(mSenderAddr);
+        mWriteBuffer[1] = packet.frameWord;
         uint8_t crc = 0;
         crc8(mWriteBuffer[1], crc);
         // Load the rest of the packet

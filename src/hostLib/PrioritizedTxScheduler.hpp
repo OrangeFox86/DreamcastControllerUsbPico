@@ -49,11 +49,9 @@ public:
 
 public:
     //! Default constructor
-    PrioritizedTxScheduler();
-
-    //! Constructor with custom priority list
+    //! @param[in] senderAddress  The sender address set in every packet added
     //! @param[in] max  The maximum accepted priority
-    PrioritizedTxScheduler(uint32_t max);
+    PrioritizedTxScheduler(uint8_t senderAddress, uint32_t max = (PRIORITY_COUNT-1));
 
     //! Virtual destructor
     virtual ~PrioritizedTxScheduler();
@@ -128,6 +126,8 @@ public:
     static const uint32_t INVALID_TX_ID = 0;
 
 protected:
+    //! The address of this sender
+    const uint8_t mSenderAddress;
     //! The next transmission ID to set
     uint32_t mNextId;
     //! The current schedule ordered by priority and time

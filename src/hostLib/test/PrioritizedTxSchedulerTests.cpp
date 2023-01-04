@@ -18,7 +18,7 @@ using ::testing::DoAll;
 class PrioritizedTxSchedulerUnitTest : public PrioritizedTxScheduler
 {
     public:
-        PrioritizedTxSchedulerUnitTest(): PrioritizedTxScheduler(255) {}
+        PrioritizedTxSchedulerUnitTest(): PrioritizedTxScheduler(0x00, 255) {}
 
         std::vector<std::list<std::shared_ptr<Transmission>>>& getSchedule()
         {

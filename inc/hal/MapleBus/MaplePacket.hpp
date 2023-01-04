@@ -121,6 +121,14 @@ public:
         mPayload.insert(mPayload.end(), &words[1], &words[1] + (len > 1 ? (len - 1) : 0));
     }
 
+    //! Sets the sender address of the frame word
+    //! @param[in] senderAddress  The sender address to set
+    void setSenderAddress(uint8_t senderAddress)
+    {
+        mFrameWord = ((frameWord & ~(0xFF << SENDER_ADDR_POSITION))
+                | (senderAddress << SENDER_ADDR_POSITION));
+    }
+
     //! @returns true iff frame word is valid
     inline bool isValid() const
     {
@@ -149,13 +157,6 @@ public:
     inline uint8_t getFrameCommand() const
     {
         return ((frameWord >> COMMAND_POSITION) & 0xFF);
-    }
-
-    //! @returns the frame word with an overloaded sender address
-    inline uint32_t getFrameWord(uint8_t overloadedSenderAddress) const
-    {
-        return ((frameWord & ~(0xFF << SENDER_ADDR_POSITION))
-                | (overloadedSenderAddress << SENDER_ADDR_POSITION));
     }
 
     //! @param[in] numPayloadWords  Number of payload words in the packet

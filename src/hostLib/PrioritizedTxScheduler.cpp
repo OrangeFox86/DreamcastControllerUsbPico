@@ -7,14 +7,8 @@
 // STL
 #include <algorithm>
 
-PrioritizedTxScheduler::PrioritizedTxScheduler() :
-    mNextId(1),
-    mSchedule()
-{
-    mSchedule.resize(PRIORITY_COUNT);
-}
-
-PrioritizedTxScheduler::PrioritizedTxScheduler(uint32_t max) :
+PrioritizedTxScheduler::PrioritizedTxScheduler(uint8_t senderAddress, uint32_t max) :
+    mSenderAddress(senderAddress),
     mNextId(1),
     mSchedule()
 {
@@ -58,6 +52,9 @@ uint32_t PrioritizedTxScheduler::add(uint8_t priority,
 
     // This will happen if minimal communication is made constantly for 20 days
     assert(mNextId != INVALID_TX_ID);
+
+    // Update the sender address to my address
+    packet.setSenderAddress(mSenderAddress);
 
     std::shared_ptr<Transmission> tx =
         std::make_shared<Transmission>(mNextId++,
