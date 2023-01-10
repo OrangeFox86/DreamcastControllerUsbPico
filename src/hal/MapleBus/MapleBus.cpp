@@ -284,6 +284,8 @@ bool MapleBus::startRead(uint64_t readTimeoutUs)
 
         // Start reading
         mSmIn.start();
+
+        rv = true;
     }
 
     return rv;

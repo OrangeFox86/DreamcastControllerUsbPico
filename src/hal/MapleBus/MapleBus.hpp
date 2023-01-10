@@ -28,8 +28,7 @@ class MapleBus : public MapleBusInterface
         //! @param[in] packet  The packet to send (sender address will be overloaded)
         //! @param[in] expectResponse  Set to true in order to start receive after send is complete
         //! @returns true iff the bus was "open" and send has started
-        bool write(const MaplePacket& packet,
-                   bool expectResponse);
+        bool write(const MaplePacket& packet, bool expectResponse);
 
         //! Begins waiting for input
         //! @post processEvents() must periodically be called to check status
