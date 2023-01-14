@@ -2,6 +2,7 @@
 
 #include "pico/stdlib.h"
 #include "pico/multicore.h"
+#include "pico/platform.h"
 
 #include "configuration.h"
 
@@ -25,7 +26,7 @@ const uint8_t MAPLE_HOST_ADDRESSES[MAX_DEVICES] = {0x00, 0x40, 0x80, 0xC0};
 
 // First Core Process
 // The first core is in charge of initialization and USB communication
-int main()
+void core0()
 {
     set_sys_clock_khz(CPU_FREQ_KHZ, true);
 
@@ -112,6 +113,12 @@ int main()
             }
         }
     }
+}
+
+int main()
+{
+    core0();
+    return 0;
 }
 
 #endif

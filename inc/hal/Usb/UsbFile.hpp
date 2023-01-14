@@ -13,6 +13,8 @@ class UsbFile
         virtual const char* getFileName() = 0;
         //! @returns file size in bytes (currently only up to 128KB supported)
         virtual uint32_t getFileSize() = 0;
+        //! @returns true iff this file is read only
+        virtual bool isReadOnly() = 0;
         //! Blocking read (must only be called from the core not operating maple bus)
         //! @param[in] blockNum  Block number to read (a block is 512 bytes)
         //! @param[out] buffer  Buffer output

@@ -69,7 +69,7 @@ public:
                     {
                         uint32_t byteOffset = (blockOffset * BYTES_PER_BLOCK)
                                               + (phase * BYTES_PER_WRITE);
-                        memcpy(&mWriteData[byteOffset], &out.payload[2], BYTES_PER_WRITE);
+                        memcpy(&mWriteData[byteOffset], out.payload.data() + 2, BYTES_PER_WRITE);
                         out.setCommand(COMMAND_RESPONSE_ACK);
                     }
                     return true;
@@ -91,7 +91,7 @@ public:
                     }
                     else
                     {
-                        #if 0
+#if 0
                         // This cannot be handled within the 1 ms we have to process
                         uint32_t flashAddr = FLASH_OFFSET + (blockOffset * BYTES_PER_BLOCK);
                         // can only write in 4096 byte sectors because flash can only be erased in 4096 byte sectors
@@ -99,12 +99,14 @@ public:
                         uint32_t offset = flashAddr % 4096;
                         memcpy(sector, &getStorage()[flashAddr - offset], 4096);
                         memcpy(&sector[offset], mWriteData, BYTES_PER_BLOCK);
+                        uint32_t ints = save_and_disable_interrupts();
                         flash_range_erase(flashAddr - offset, 4096);
                         flash_range_program(flashAddr - offset, sector, 4096);
+                        restore_interrupts(ints);
                         out.setCommand(COMMAND_RESPONSE_ACK);
-                        #else
+#else
                         out.setCommand(COMMAND_RESPONSE_FILE_ERROR);
-                        #endif
+#endif
                     }
                     return true;
                 }
@@ -143,7 +145,7 @@ private:
     static const uint16_t NUMBER_OF_PARTITIONS = 1;
     static const uint16_t BYTES_PER_BLOCK = 512;
     static const uint16_t WORDS_PER_BLOCK = BYTES_PER_BLOCK / 4;
-    static const uint8_t WRITES_PER_BLOCK = 4;
+    static const uint8_t WRITES_PER_BLOCK = 0; // Read only until better infrastructure is put in place
     static const uint8_t READS_PER_BLOCK = 1;
     static const bool IS_REMOVABLE = false;
     static const bool CRC_NEEDED = false;
@@ -151,7 +153,7 @@ private:
     static const uint32_t MEMORY_WORD_COUNT = MEMORY_SIZE_BYTES / 4;
     static const uint32_t NUM_BLOCKS = MEMORY_WORD_COUNT / WORDS_PER_BLOCK;
     static const uint32_t FLASH_OFFSET = PICO_FLASH_SIZE_BYTES - MEMORY_SIZE_BYTES;
-    static const uint32_t BYTES_PER_WRITE = BYTES_PER_BLOCK / WRITES_PER_BLOCK;
+    static const uint32_t BYTES_PER_WRITE = 0; // BYTES_PER_BLOCK / WRITES_PER_BLOCK;
     uint8_t mWriteData[BYTES_PER_BLOCK];
 };
 }
