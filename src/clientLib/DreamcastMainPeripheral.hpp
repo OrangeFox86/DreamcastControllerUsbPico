@@ -31,11 +31,10 @@ public:
     virtual bool handlePacket(const MaplePacket& in, MaplePacket& out) final;
 
     //! Deliver given packet to target peripheral
-    //! @param[in] payload  The received payload buffer
-    //! @param[in] payloadLen  The length of payload
+    //! @param[in] in  The packet read from the Maple Bus
     //! @param[out] out  The packet to write to the Maple Bus when true is returned
     //! @return true iff the packet was dispensed and handled
-    bool dispensePacket(const uint32_t* payload, uint32_t payloadLen, MaplePacket& out);
+    bool dispensePacket(const MaplePacket& in, MaplePacket& out);
 
     virtual void reset() final;
 

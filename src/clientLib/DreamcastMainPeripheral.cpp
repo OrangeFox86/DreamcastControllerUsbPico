@@ -46,19 +46,18 @@ bool DreamcastMainPeripheral::handlePacket(const MaplePacket& in, MaplePacket& o
     return DreamcastPeripheral::handlePacket(in, out);
 }
 
-bool DreamcastMainPeripheral::dispensePacket(const uint32_t* payload, uint32_t payloadLen, MaplePacket& out)
+bool DreamcastMainPeripheral::dispensePacket(const MaplePacket& in, MaplePacket& out)
 {
-    MaplePacket packetIn(payload, payloadLen);
-    uint8_t rawRecipientAddr = packetIn.getFrameRecipientAddr() & ~PLAYER_ID_ADDR_MASK;
+    uint8_t rawRecipientAddr = in.getFrameRecipientAddr() & ~PLAYER_ID_ADDR_MASK;
     if (rawRecipientAddr == mAddr)
     {
         // This is for me
-        return handlePacket(packetIn, out);
+        return handlePacket(in, out);
     }
     else if (mSubPeripherals.find(rawRecipientAddr) != mSubPeripherals.end())
     {
         // This is for one of my sub-peripherals
-        return mSubPeripherals[rawRecipientAddr]->handlePacket(packetIn, out);
+        return mSubPeripherals[rawRecipientAddr]->handlePacket(in, out);
     }
     else
     {

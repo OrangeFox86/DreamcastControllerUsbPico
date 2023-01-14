@@ -44,7 +44,7 @@ public:
 private:
     DreamcastPeripheralFunction() = delete;
 
-private:
+protected:
     //! The function code (mask) for this peripheral function
     const uint32_t mFunctionCode;
 };

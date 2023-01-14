@@ -106,9 +106,9 @@ void DreamcastPeripheral::setDevInfoStr(uint8_t wordIdx,
 
 bool DreamcastPeripheral::handlePacket(const MaplePacket& in, MaplePacket& out)
 {
-    const uint8_t cmd = in.getFrameCommand();
+    bool status = false;
 
-    out.setSenderAddress(mAddr | mAddrAugmenter);
+    const uint8_t cmd = in.getFrameCommand();
 
     // Don't process anything until the first device info command
     if (!mConnected && (cmd == COMMAND_DEVICE_INFO_REQUEST || cmd == COMMAND_EXT_DEVICE_INFO_REQUEST))
@@ -118,31 +118,81 @@ bool DreamcastPeripheral::handlePacket(const MaplePacket& in, MaplePacket& out)
 
     if (mConnected)
     {
-        if (cmd == COMMAND_DEVICE_INFO_REQUEST || cmd == COMMAND_EXT_DEVICE_INFO_REQUEST)
+        switch (cmd)
         {
-            out.setCommand(COMMAND_RESPONSE_DEVICE_INFO);
-            out.setRecipientAddress(in.getFrameSenderAddr());
-            uint8_t len = (cmd == COMMAND_DEVICE_INFO_REQUEST) ? 28 : 48;
-            out.setPayload(mDevInfo, len);
-            out.updateFrameLength();
-            return true;
-        }
-        else if (in.payload.size() > 0
-            && (cmd == COMMAND_GET_CONDITION
-                || cmd == COMMAND_GET_MEMORY_INFORMATION
-                || cmd == COMMAND_BLOCK_READ
-                || cmd == COMMAND_BLOCK_WRITE
-                || cmd == COMMAND_GET_LAST_ERROR
-                || cmd == COMMAND_SET_CONDITION))
-        {
-            const uint32_t& fnCode = in.payload[0];
-            if (mDevices.find(fnCode) != mDevices.end())
+            case COMMAND_DEVICE_INFO_REQUEST:
             {
-                return mDevices[fnCode]->handlePacket(in, out);
+                out.setCommand(COMMAND_RESPONSE_DEVICE_INFO);
+                out.setPayload(mDevInfo, 28);
+                status = true;
             }
+            break;
+
+            case COMMAND_EXT_DEVICE_INFO_REQUEST:
+            {
+                out.setCommand(COMMAND_RESPONSE_EXT_DEVICE_INFO);
+                out.setPayload(mDevInfo, 48);
+                status = true;
+            }
+            break;
+
+            case COMMAND_RESET:
+            {
+                reset();
+                out.setCommand(COMMAND_RESPONSE_ACK);
+                status = true;
+            }
+            break;
+
+            case COMMAND_SHUTDOWN:
+            {
+                shutdown();
+                out.setCommand(COMMAND_RESPONSE_ACK);
+                status = true;
+            }
+            break;
+
+            // Check for any command with expected function code and pass to the function
+            case COMMAND_GET_CONDITION: // FALL THROUGH
+            case COMMAND_GET_MEMORY_INFORMATION: // FALL THROUGH
+            case COMMAND_BLOCK_READ: // FALL THROUGH
+            case COMMAND_BLOCK_WRITE: // FALL THROUGH
+            case COMMAND_GET_LAST_ERROR: // FALL THROUGH
+            case COMMAND_SET_CONDITION:
+            {
+                const uint32_t& fnCode = in.payload[0];
+                std::map<uint32_t, std::shared_ptr<DreamcastPeripheralFunction>>::iterator iter =
+                    mDevices.find(fnCode);
+
+                if (iter != mDevices.end())
+                {
+                    status = iter->second->handlePacket(in, out);
+                }
+                else
+                {
+                    out.setCommand(COMMAND_RESPONSE_FUNCTION_CODE_NOT_SUPPORTED);
+                    status = true;
+                }
+            }
+            break;
+
+            default:
+            {
+                status = false;
+            }
+            break;
         }
     }
-    return false;
+
+    if (status)
+    {
+        // Set all of the common data in frame word
+        out.updateFrameLength();
+        out.setSenderAddress(mAddr | mAddrAugmenter);
+        out.setRecipientAddress(in.getFrameSenderAddr());
+    }
+
+    return status;
 }
 
 void DreamcastPeripheral::reset()
@@ -156,6 +206,9 @@ void DreamcastPeripheral::reset()
         iter->second->reset();
     }
 }
+
+void DreamcastPeripheral::shutdown()
+{}
 
 void DreamcastPeripheral::addFunction(std::shared_ptr<DreamcastPeripheralFunction> fn)
 {

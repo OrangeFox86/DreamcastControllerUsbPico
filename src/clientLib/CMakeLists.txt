@@ -6,6 +6,12 @@ file(GLOB SRC "${CMAKE_CURRENT_SOURCE_DIR}/*.c*")
 
 add_library(clientLib STATIC ${SRC})
 
+target_link_libraries(clientLib
+  PRIVATE
+    # TODO: move this to HAL
+    hardware_flash
+)
+
 if(NOT ENABLE_UNIT_TEST)
   target_compile_options(clientLib PRIVATE
     -Wall
@@ -21,7 +27,3 @@ target_include_directories(clientLib
     "${PROJECT_SOURCE_DIR}/inc"
     "${CMAKE_CURRENT_SOURCE_DIR}/peripherals"
     "${CMAKE_CURRENT_SOURCE_DIR}/parsers")
-
-if (ENABLE_UNIT_TEST)
-  add_subdirectory(test)
-endif()

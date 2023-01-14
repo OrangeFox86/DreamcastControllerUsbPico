@@ -14,6 +14,7 @@
 
 #include "DreamcastMainPeripheral.hpp"
 #include "DreamcastController.hpp"
+#include "DreamcastStorage.hpp"
 
 #include <memory>
 #include <algorithm>
@@ -44,7 +45,23 @@ int main()
         43.0,
         50.0);
     mainPeripheral.addFunction(std::make_shared<client::DreamcastController>());
+    std::shared_ptr<client::DreamcastPeripheral> subPeripheral1 =
+        std::make_shared<client::DreamcastPeripheral>(
+            0x01,
+            0xFF,
+            0x00,
+            "Memory",
+            "Produced By or Under License From SEGA ENTERPRISES,LTD.",
+            "Version 1.005,1999/04/15,315-6208-03,SEGA Visual Memory System BIOS Produced by IOS Produced",
+            12.4,
+            13.0);
+    subPeripheral1->addFunction(std::make_shared<client::DreamcastStorage>());
+    mainPeripheral.addSubPeripheral(subPeripheral1);
 
+    MaplePacket packetOut;
+    packetOut.reservePayload(256);
+    MaplePacket packetIn;
+    packetIn.reservePayload(256);
     while(true)
     {
         if (bus->startRead(1000000))
@@ -58,8 +75,27 @@ int main()
 
             if (status.phase == MapleBusInterface::Phase::READ_COMPLETE)
             {
-                MaplePacket packetOut;
-                if (mainPeripheral.dispensePacket(status.readBuffer, status.readBufferLen, packetOut))
+                bool writeIt = false;
+
+                packetIn.set(status.readBuffer, status.readBufferLen);
+
+                if (packetIn.getFrameCommand() == COMMAND_RESPONSE_REQUEST_RESEND)
+                {
+                    // Write the previous packet
+                    writeIt = true;
+                }
+                else
+                {
+                    packetOut.reset();
+                    writeIt = mainPeripheral.dispensePacket(packetIn, packetOut);
+                }
+
+                if (!writeIt)
+                {
+                    packetOut.setCommand(COMMAND_RESPONSE_UNKNOWN_COMMAND);
+                }
+
+                if (packetOut.isValid())
                 {
                     if (bus->write(packetOut, false))
                     {

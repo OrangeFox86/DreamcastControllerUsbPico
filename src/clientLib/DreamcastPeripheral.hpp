@@ -35,8 +35,11 @@ public:
     //! @returns true iff the packet was handled
     virtual bool handlePacket(const MaplePacket& in, MaplePacket& out);
 
-    //! Called when player index changed or timeout occurred
+    //! Called when player index changed, timeout occurred, or reset command received
     virtual void reset();
+
+    //! Called when shutdown command received
+    virtual void shutdown();
 
     //! Add a function
     //! @param[in] fn  The function to add

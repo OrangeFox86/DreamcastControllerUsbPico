@@ -173,6 +173,20 @@ public:
         return mFrameWord == rhs.mFrameWord && mPayload == rhs.mPayload;
     }
 
+    //! Resets all data
+    inline void reset()
+    {
+        mFrameWord = COMMAND_INVALID << COMMAND_POSITION;
+        mPayload.clear();
+    }
+
+    //! Reserves space in payload
+    //! @param[in] len  Number of words to reserve
+    inline void reservePayload(uint32_t len)
+    {
+        mPayload.reserve(len);
+    }
+
     //! Sets packet contents from array
     //! @param[in] words  All words to set
     //! @param[in] len  Number of words in words (must be at least 1 for frame word to be valid)
@@ -186,16 +200,31 @@ public:
         }
     }
 
+    //! Append words to payload from array
+    //! @param[in] words  Payload words to set
+    //! @param[in] len  Number of words in words
+    inline void appendPayload(const uint32_t* words, uint8_t len)
+    {
+        if (len > 0)
+        {
+            mPayload.insert(mPayload.end(), &words[0], &words[0] + len);
+        }
+    }
+
+    //! Appends a single word to payload
+    //! @param[in] word  The word to append
+    inline void appendPayload(uint32_t word)
+    {
+        appendPayload(&word, 1);
+    }
+
     //! Sets payload from array
     //! @param[in] words  Payload words to set
     //! @param[in] len  Number of words in words
     inline void setPayload(const uint32_t* words, uint8_t len)
     {
         mPayload.clear();
-        if (len > 0)
-        {
-            mPayload.insert(mPayload.end(), &words[0], &words[0] + len);
-        }
+        appendPayload(words, len);
     }
 
     //! Update length in frame word with the payload size

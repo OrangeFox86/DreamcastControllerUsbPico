@@ -18,10 +18,11 @@ public:
         if (cmd == COMMAND_GET_CONDITION)
         {
             out.setCommand(COMMAND_RESPONSE_DATA_XFER);
-            out.setRecipientAddress(in.getFrameSenderAddr());
-            uint32_t payload[3] = {getFunctionCode(), 0xFFFF0000, 0x80808080};
-            out.setPayload(payload, 3);
-            out.updateFrameLength();
+            out.reservePayload(3);
+            out.appendPayload(getFunctionCode());
+            // Controls in their neutral position
+            uint32_t payload[2] = {0xFFFF0000, 0x80808080};
+            out.appendPayload(payload, 2);
             return true;
         }
         return false;
