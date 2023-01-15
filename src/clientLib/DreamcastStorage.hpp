@@ -22,6 +22,11 @@ public:
     {
         // Setup freshly formatted and cleared memory for standard 128 KB storage
         memset(mStorage, 0xFF, sizeof(mStorage));
+        format();
+    }
+
+    inline void format()
+    {
         //
         // System Block
         //
@@ -59,6 +64,12 @@ public:
         *fatBlock-- = U16_TO_UPPER_HALF_WORD(0x00F3) | U16_TO_LOWER_HALF_WORD(0x00F4);
         *fatBlock-- = U16_TO_UPPER_HALF_WORD(0x00F1) | U16_TO_LOWER_HALF_WORD(0x00F2);
         *fatBlock-- = U16_TO_UPPER_HALF_WORD(0xFFFC) | U16_TO_LOWER_HALF_WORD(0xFFFA);
+        //
+        // File Info Blocks
+        //
+        uint32_t* fileInfoBlock = reinterpret_cast<uint32_t*>(
+                &mStorage[(FILE_INFO_BLOCK_NO - NUM_FILE_INFO_BLOCKS + 1) * BYTES_PER_BLOCK]);
+        memset(fileInfoBlock, 0, NUM_FILE_INFO_BLOCKS * BYTES_PER_BLOCK);
     }
 
     inline virtual bool handlePacket(const MaplePacket& in, MaplePacket& out) final
@@ -79,14 +90,12 @@ public:
                 const uint32_t* storageMediaInfo =
                     reinterpret_cast<const uint32_t*>(
                         &mStorage[(SYSTEM_BLOCK_NO * BYTES_PER_BLOCK) + (MEDIA_INFO_WORD_OFFSET * WORD_SIZE)]);
-                const uint16_t fileInfoBlockNo = FAT_BLOCK_NO - NUM_FAT_BLOCKS;
-                const uint16_t numFileInfoBlocks = 13;
                 uint32_t payload[7] = {
                     mFunctionCode,
                     U16_TO_UPPER_HALF_WORD(totalSize) | U16_TO_LOWER_HALF_WORD(partitionNo),
                     U16_TO_UPPER_HALF_WORD(SYSTEM_BLOCK_NO) | U16_TO_LOWER_HALF_WORD(FAT_BLOCK_NO),
-                    U16_TO_UPPER_HALF_WORD(NUM_FAT_BLOCKS) | U16_TO_LOWER_HALF_WORD(fileInfoBlockNo),
-                    U16_TO_UPPER_HALF_WORD(numFileInfoBlocks) | (storageMediaInfo[3] & 0xFFFF),
+                    U16_TO_UPPER_HALF_WORD(NUM_FAT_BLOCKS) | U16_TO_LOWER_HALF_WORD(FILE_INFO_BLOCK_NO),
+                    U16_TO_UPPER_HALF_WORD(NUM_FILE_INFO_BLOCKS) | (storageMediaInfo[3] & 0xFFFF),
                     storageMediaInfo[4],
                     0x00008000};
 
@@ -212,6 +221,8 @@ private:
     static const uint16_t MEDIA_INFO_WORD_OFFSET = 16;
     static const uint16_t FAT_BLOCK_NO = SYSTEM_BLOCK_NO - NUM_SYSTEM_BLOCKS;
     static const uint16_t NUM_FAT_BLOCKS = 1;
+    static const uint16_t FILE_INFO_BLOCK_NO = FAT_BLOCK_NO - NUM_FAT_BLOCKS;
+    static const uint16_t NUM_FILE_INFO_BLOCKS = 13;
 
     //! Storage for a single block of data for write process
     uint8_t mWriteData[BYTES_PER_BLOCK];
