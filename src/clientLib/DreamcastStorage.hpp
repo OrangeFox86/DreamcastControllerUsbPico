@@ -9,6 +9,9 @@
 
 #include <string.h>
 
+#define U16_TO_UPPER_HALF_WORD(val) ((static_cast<uint32_t>(val) << 24) | ((static_cast<uint32_t>(val) << 8) & 0x00FF0000))
+#define U16_TO_LOWER_HALF_WORD(val) (((static_cast<uint32_t>(val) << 8) & 0x0000FF00) | ((static_cast<uint32_t>(val) >> 8) & 0x000000FF))
+
 namespace client
 {
 class DreamcastStorage : public DreamcastPeripheralFunction
@@ -24,6 +27,32 @@ public:
         const uint8_t cmd = in.getFrameCommand();
         switch (cmd)
         {
+            case COMMAND_GET_MEMORY_INFORMATION:
+            {
+                out.setCommand(COMMAND_RESPONSE_DATA_XFER);
+                uint16_t totalSize = (NUM_BLOCKS - 1);
+                const uint16_t partitionNo = 0;
+                const uint16_t systemBlockNo = totalSize;
+                const uint16_t fatBlockNo = systemBlockNo - 1;
+                const uint16_t numFatBlocks = 1;
+                const uint16_t fileInfoBlockNo = fatBlockNo - numFatBlocks;
+                const uint16_t numFileInfoBlocks = 13;
+                const uint16_t volumeIcon = 5;
+                const uint16_t saveAreaBlockNo = NUM_BLOCKS - 56;
+                const uint16_t numSaveAreaBlocks = 31;
+                uint32_t payload[7] = {
+                    mFunctionCode,
+                    U16_TO_UPPER_HALF_WORD(totalSize) | U16_TO_LOWER_HALF_WORD(partitionNo),
+                    U16_TO_UPPER_HALF_WORD(systemBlockNo) | U16_TO_LOWER_HALF_WORD(fatBlockNo),
+                    U16_TO_UPPER_HALF_WORD(numFatBlocks) | U16_TO_LOWER_HALF_WORD(fileInfoBlockNo),
+                    U16_TO_UPPER_HALF_WORD(numFileInfoBlocks) | U16_TO_LOWER_HALF_WORD(volumeIcon),
+                    U16_TO_UPPER_HALF_WORD(saveAreaBlockNo) | U16_TO_LOWER_HALF_WORD(numSaveAreaBlocks),
+                    0x00008000};
+                out.setPayload(payload, 7);
+                return true;
+            }
+            break;
+
             case COMMAND_BLOCK_READ:
             {
                 if (in.payload.size() > 1)
@@ -151,7 +180,7 @@ private:
     static const bool CRC_NEEDED = false;
     static const uint32_t MEMORY_SIZE_BYTES = 128 * 1024;
     static const uint32_t MEMORY_WORD_COUNT = MEMORY_SIZE_BYTES / 4;
-    static const uint32_t NUM_BLOCKS = MEMORY_WORD_COUNT / WORDS_PER_BLOCK;
+    static const uint16_t NUM_BLOCKS = MEMORY_WORD_COUNT / WORDS_PER_BLOCK;
     static const uint32_t FLASH_OFFSET = PICO_FLASH_SIZE_BYTES - MEMORY_SIZE_BYTES;
     static const uint32_t BYTES_PER_WRITE = 0; // BYTES_PER_BLOCK / WRITES_PER_BLOCK;
     uint8_t mWriteData[BYTES_PER_BLOCK];
