@@ -24,7 +24,9 @@ Luckily, the RP2040 comes with 2 PIO blocks each with 4 separate state machines.
 
 # Quick Installation Guide
 
-## Connecting the Hardware
+## Connecting the Hardware for Host Mode
+
+Host mode allows you to connect up to 4 Dreamcast controllers to a PC over USB.
 
 The Dreamcast uses 36-ohm resistors and small fuses in series between the 8 chip I/O and the 8 controller port I/O. This is only done as a failsafe in case of hardware or software malfunction. In my implementation, I have decided to use lower value, 10-ohm resistors because some resistance is built into the Pico's outputs already. There is some weirdness with plugging in a VMU without a battery installed which gets worse with higher resistor values. I'm also using littelfuse 1/16-amp quick burning fuses, and none of them have blown during my tests. They're mostly optional, but I'd suggest using higher value resistors if they are omitted as a safety measure. Anything higher than 100-ohm starts to cause communication errors though due to capacitances on the I/O.
 
@@ -38,6 +40,14 @@ For reference, the following is the pinout for the Dreamcast controller port. Ta
 
 <p align="center">
   <img src="images/Dreamcast_Port.png?raw=true" alt="Dreamcast Port"/>
+</p>
+
+## Connecting the Hardware for Client Mode
+
+Client mode emulates a single controller for use with a Dreamcast. This was added in as an extra feature for this project mainly to demonstrate that the MapleBus library may be used in either direction.
+
+<p align="center">
+  <img src="images/client-schematic.png?raw=true" alt="Client-Schematic"/>
 </p>
 
 ## Build Instructions (for Linux and Windows)
@@ -71,13 +81,13 @@ git submodule update --recursive --init
 ./build.sh
 ```
 
-After build completes, the binary should be located at `dist/main.uf2`. Pre-built release binaries may be found [here](https://github.com/OrangeFox86/DreamcastControllerUsbPico/releases).
+After build completes, binaries should be located under `dist/`. Pre-built release binaries may be found [here](https://github.com/OrangeFox86/DreamcastControllerUsbPico/releases).
 
 This project may be opened in vscode. In vscode, the default shortcut `ctrl+shift+b` will build the project. The default shortcut `F5` will run tests with gdb for local debugging. Open the terminal tab after executing tests with debugging to see the results.
 
 ## Loading the UF2 Binary
 
-Hold the BOOTSEL button on the Pico while plugging the USB connection into your PC. A drive with a FAT partition labeled RPI-RP2 should pop up on your system. Open this drive, and then copy the main.uf2 file here. The Pico should then automatically load the binary into flash and run it. For more information, refer to the official [Raspberry Pi Pico documentation](https://www.raspberrypi.com/documentation/microcontrollers/raspberry-pi-pico.html#documentation).
+Hold the BOOTSEL button on the Pico while plugging the USB connection into your PC. A drive with a FAT partition labeled RPI-RP2 should pop up on your system. Open this drive, and then copy the desired uf2 file for either host or client operation here. The Pico should then automatically load the binary into flash and run it. For more information, refer to the official [Raspberry Pi Pico documentation](https://www.raspberrypi.com/documentation/microcontrollers/raspberry-pi-pico.html#documentation).
 
 ---
 
