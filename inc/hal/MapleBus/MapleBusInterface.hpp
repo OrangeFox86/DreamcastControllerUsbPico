@@ -12,10 +12,10 @@ class MapleBusInterface
 {
     public:
         //! Enumerates the phase in the state machine
-        enum class Phase
+        enum class Phase : uint8_t
         {
             //! Initialized phase and phase after completion and events are processed
-            IDLE,
+            IDLE = 0,
             //! Write is currently in progress
             WRITE_IN_PROGRESS,
             //! Write has failed (impulse response used only as a result of processing events)
@@ -34,11 +34,28 @@ class MapleBusInterface
             INVALID
         };
 
+        //! Enumerates different types of read/write errors
+        enum class FailureReason : uint8_t
+        {
+            //! No error
+            NONE = 0,
+            //! CRC doesn't match computed value
+            CRC_INVALID,
+            //! Received less data than expected
+            MISSING_DATA,
+            //! Read DMA buffer overflowed
+            BUFFER_OVERFLOW,
+            //! Timeout occurred before data could be fully written or read
+            TIMEOUT
+        };
+
         //! Status due to processing events (see MapleBusInterface::processEvents)
         struct Status
         {
             //! The phase of the state machine
             Phase phase;
+            //! Set to failure reason when phase is WRITE_FAILED or READ_FAILED
+            FailureReason failureReason;
             //! A pointer to the bytes read or nullptr if no new data available
             const uint32_t* readBuffer;
             //! The number of words received or 0 if no new data available

@@ -334,18 +334,21 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
                 {
                     // Read failed because CRC was invalid
                     status.phase = Phase::READ_FAILED;
+                    status.failureReason = FailureReason::CRC_INVALID;
                 }
             }
             else
             {
                 // Read failed because not enough words read
                 status.phase = Phase::READ_FAILED;
+                status.failureReason = FailureReason::MISSING_DATA;
             }
         }
         else
         {
             // Read failed because nothing was sent through DMA
             status.phase = Phase::READ_FAILED;
+            status.failureReason = FailureReason::MISSING_DATA;
         }
 
         // We processed the read, so the machine can go back to idle
@@ -367,6 +370,7 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
         {
             // 1 extra word is allocated in the buffer, so transfer count should never reach 0
             status.phase = Phase::READ_FAILED;
+            status.failureReason = FailureReason::BUFFER_OVERFLOW;
             mCurrentPhase = Phase::IDLE;
         }
         else if (mLastReadTransferCount == transferCount)
@@ -377,6 +381,7 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
                 // Inter-word timeout occurred
                 mSmIn.stop();
                 status.phase = Phase::READ_FAILED;
+                status.failureReason = FailureReason::TIMEOUT;
                 mCurrentPhase = Phase::IDLE;
             }
         }
@@ -396,6 +401,7 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
         {
             mSmIn.stop();
             status.phase = Phase::READ_FAILED;
+            status.failureReason = FailureReason::TIMEOUT;
             mCurrentPhase = Phase::IDLE;
         }
         else // status.phase == Phase::WRITE_IN_PROGRESS - but also catches any other edge case
@@ -405,6 +411,7 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
             mSmOut.stop();
             mSmIn.stop();
             status.phase = Phase::WRITE_FAILED;
+            status.failureReason = FailureReason::TIMEOUT;
             mCurrentPhase = Phase::IDLE;
         }
     }

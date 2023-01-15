@@ -48,6 +48,12 @@ public:
     //! Sets my address augmenter
     inline void setAddrAugmenter(uint8_t augmenter) { mAddrAugmenter = augmenter; }
 
+    //! @returns true iff this peripheral is connected to host
+    inline bool isConnected() { return mConnected; }
+
+    //! @returns address of this peripheral
+    inline uint8_t getAddress() { return (mAddr | mAddrAugmenter); }
+
 private:
     //! Sets a string in device info array
     //! @param[in] wordIdx  The word index in device info array where string starts

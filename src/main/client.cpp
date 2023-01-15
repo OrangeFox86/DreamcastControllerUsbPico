@@ -59,6 +59,7 @@ void core0()
     subPeripheral1->addFunction(std::make_shared<client::DreamcastStorage>());
     mainPeripheral.addSubPeripheral(subPeripheral1);
 
+    uint8_t lastSender = 0;
     MaplePacket packetOut;
     packetOut.reservePayload(256);
     MaplePacket packetIn;
@@ -79,6 +80,7 @@ void core0()
                 bool writeIt = false;
 
                 packetIn.set(status.readBuffer, status.readBufferLen);
+                lastSender = packetIn.getFrameSenderAddr();
 
                 if (packetIn.getFrameCommand() == COMMAND_RESPONSE_REQUEST_RESEND)
                 {
@@ -105,6 +107,23 @@ void core0()
                             status = bus->processEvents(time_us_64());
                         } while (status.phase == MapleBusInterface::Phase::WRITE_IN_PROGRESS);
                     }
+                }
+            }
+            else if(status.phase == MapleBusInterface::Phase::READ_FAILED
+                    && status.failureReason == MapleBusInterface::FailureReason::CRC_INVALID
+                    && mainPeripheral.isConnected())
+            {
+                packetOut.reset();
+                packetOut.setCommand(COMMAND_RESPONSE_REQUEST_RESEND);
+                packetOut.setRecipientAddress(lastSender);
+                packetOut.setSenderAddress(mainPeripheral.getAddress());
+                packetOut.updateFrameLength();
+                if (bus->write(packetOut, false))
+                {
+                    do
+                    {
+                        status = bus->processEvents(time_us_64());
+                    } while (status.phase == MapleBusInterface::Phase::WRITE_IN_PROGRESS);
                 }
             }
             else
