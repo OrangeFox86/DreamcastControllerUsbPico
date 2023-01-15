@@ -9,6 +9,8 @@
 #define U16_TO_UPPER_HALF_WORD(val) ((static_cast<uint32_t>(val) << 24) | ((static_cast<uint32_t>(val) << 8) & 0x00FF0000))
 #define U16_TO_LOWER_HALF_WORD(val) (((static_cast<uint32_t>(val) << 8) & 0x0000FF00) | ((static_cast<uint32_t>(val) >> 8) & 0x000000FF))
 
+#define SWAP_UPPER_AND_LOWER_U16(val32) ((((val32) << 8) & 0xFF00FF00) | (((val32) >> 8) & 0x00FF00FF))
+
 namespace client
 {
 class DreamcastStorage : public DreamcastPeripheralFunction
@@ -16,9 +18,48 @@ class DreamcastStorage : public DreamcastPeripheralFunction
 public:
     inline DreamcastStorage() :
         DreamcastPeripheralFunction(DEVICE_FN_STORAGE),
-        mWriteData{},
-        mStorage{}
-    {}
+        mWriteData{}
+    {
+        // Setup freshly formatted and cleared memory for standard 128 KB storage
+        memset(mStorage, 0xFF, sizeof(mStorage));
+        //
+        // System Block
+        //
+        uint32_t* systemBlock =
+            reinterpret_cast<uint32_t*>(&mStorage[SYSTEM_BLOCK_NO * BYTES_PER_BLOCK]);
+        memset(systemBlock, 0x55, 4 * WORD_SIZE);
+        systemBlock[4] = 0x01FFFFFF;
+        systemBlock[5] = 0xFF000000;
+        memset(systemBlock + 6, 0, BYTES_PER_BLOCK - (6 * WORD_SIZE));
+        // Date/time markers
+        systemBlock[12] = 0x19990909;
+        systemBlock[13] = 0x00001000;
+        // Media info data
+        systemBlock[16] = 0xFF000000;
+        systemBlock[17] = 0xFF00FE00;
+        systemBlock[18] = 0x0100FD00;
+        systemBlock[19] = 0x0D000000;
+        systemBlock[20] = 0xC8001F00;
+        systemBlock[21] = 0x00008000;
+        //
+        // FAT Block
+        //
+        uint32_t* fatBlock = reinterpret_cast<uint32_t*>(
+                &mStorage[(FAT_BLOCK_NO - NUM_FAT_BLOCKS + 1) * BYTES_PER_BLOCK]);
+        for (uint32_t i = 0; i < WORDS_PER_BLOCK; ++i)
+        {
+            fatBlock[i] = U16_TO_UPPER_HALF_WORD(0xFFFC) | U16_TO_LOWER_HALF_WORD(0xFFFC);
+        }
+        fatBlock += ((NUM_FAT_BLOCKS) * WORDS_PER_BLOCK - 1);
+        *fatBlock-- = U16_TO_UPPER_HALF_WORD(0xFFFA) | U16_TO_LOWER_HALF_WORD(0xFFFA);
+        *fatBlock-- = U16_TO_UPPER_HALF_WORD(0x00FB) | U16_TO_LOWER_HALF_WORD(0x00FC);
+        *fatBlock-- = U16_TO_UPPER_HALF_WORD(0x00F9) | U16_TO_LOWER_HALF_WORD(0x00FA);
+        *fatBlock-- = U16_TO_UPPER_HALF_WORD(0x00F7) | U16_TO_LOWER_HALF_WORD(0x00F8);
+        *fatBlock-- = U16_TO_UPPER_HALF_WORD(0x00F5) | U16_TO_LOWER_HALF_WORD(0x00F6);
+        *fatBlock-- = U16_TO_UPPER_HALF_WORD(0x00F3) | U16_TO_LOWER_HALF_WORD(0x00F4);
+        *fatBlock-- = U16_TO_UPPER_HALF_WORD(0x00F1) | U16_TO_LOWER_HALF_WORD(0x00F2);
+        *fatBlock-- = U16_TO_UPPER_HALF_WORD(0xFFFC) | U16_TO_LOWER_HALF_WORD(0xFFFA);
+    }
 
     inline virtual bool handlePacket(const MaplePacket& in, MaplePacket& out) final
     {
@@ -28,24 +69,27 @@ public:
             case COMMAND_GET_MEMORY_INFORMATION:
             {
                 out.setCommand(COMMAND_RESPONSE_DATA_XFER);
-                uint16_t totalSize = (NUM_BLOCKS - 1);
+
+                // This media info is usually stored at block 16 offset in the system block. If
+                // memory is wiped though, the Dreamcast will get confused by the returned media
+                // info and not know how to manage data. Thus, this info is made static here with
+                // the exceptions of the volume icon and save area information.
+                uint16_t totalSize = SYSTEM_BLOCK_NO; // total size excluding system block
                 const uint16_t partitionNo = 0;
-                const uint16_t systemBlockNo = totalSize;
-                const uint16_t fatBlockNo = systemBlockNo - 1;
-                const uint16_t numFatBlocks = 1;
-                const uint16_t fileInfoBlockNo = fatBlockNo - numFatBlocks;
+                const uint32_t* storageMediaInfo =
+                    reinterpret_cast<const uint32_t*>(
+                        &mStorage[(SYSTEM_BLOCK_NO * BYTES_PER_BLOCK) + (MEDIA_INFO_WORD_OFFSET * WORD_SIZE)]);
+                const uint16_t fileInfoBlockNo = FAT_BLOCK_NO - NUM_FAT_BLOCKS;
                 const uint16_t numFileInfoBlocks = 13;
-                const uint16_t volumeIcon = 5;
-                const uint16_t saveAreaBlockNo = NUM_BLOCKS - 56;
-                const uint16_t numSaveAreaBlocks = 31;
                 uint32_t payload[7] = {
                     mFunctionCode,
                     U16_TO_UPPER_HALF_WORD(totalSize) | U16_TO_LOWER_HALF_WORD(partitionNo),
-                    U16_TO_UPPER_HALF_WORD(systemBlockNo) | U16_TO_LOWER_HALF_WORD(fatBlockNo),
-                    U16_TO_UPPER_HALF_WORD(numFatBlocks) | U16_TO_LOWER_HALF_WORD(fileInfoBlockNo),
-                    U16_TO_UPPER_HALF_WORD(numFileInfoBlocks) | U16_TO_LOWER_HALF_WORD(volumeIcon),
-                    U16_TO_UPPER_HALF_WORD(saveAreaBlockNo) | U16_TO_LOWER_HALF_WORD(numSaveAreaBlocks),
+                    U16_TO_UPPER_HALF_WORD(SYSTEM_BLOCK_NO) | U16_TO_LOWER_HALF_WORD(FAT_BLOCK_NO),
+                    U16_TO_UPPER_HALF_WORD(NUM_FAT_BLOCKS) | U16_TO_LOWER_HALF_WORD(fileInfoBlockNo),
+                    U16_TO_UPPER_HALF_WORD(numFileInfoBlocks) | (storageMediaInfo[3] & 0xFFFF),
+                    storageMediaInfo[4],
                     0x00008000};
+
                 out.setPayload(payload, 7);
                 return true;
             }
@@ -153,20 +197,26 @@ public:
 private:
     static const uint16_t NUMBER_OF_PARTITIONS = 1;
     static const uint16_t BYTES_PER_BLOCK = 512;
-    static const uint16_t WORDS_PER_BLOCK = BYTES_PER_BLOCK / 4;
+    static const uint8_t WORD_SIZE = sizeof(uint32_t);
+    static const uint16_t WORDS_PER_BLOCK = BYTES_PER_BLOCK / WORD_SIZE;
     static const uint8_t WRITES_PER_BLOCK = 4;
     static const uint8_t READS_PER_BLOCK = 1;
     static const bool IS_REMOVABLE = false;
     static const bool CRC_NEEDED = false;
     static const uint32_t MEMORY_SIZE_BYTES = 128 * 1024;
-    static const uint32_t MEMORY_WORD_COUNT = MEMORY_SIZE_BYTES / 4;
+    static const uint32_t MEMORY_WORD_COUNT = MEMORY_SIZE_BYTES / WORD_SIZE;
     static const uint16_t NUM_BLOCKS = MEMORY_WORD_COUNT / WORDS_PER_BLOCK;
     static const uint32_t BYTES_PER_WRITE = (WRITES_PER_BLOCK > 0) ? (BYTES_PER_BLOCK / WRITES_PER_BLOCK) : 0;
+    static const uint16_t SYSTEM_BLOCK_NO = (NUM_BLOCKS - 1);
+    static const uint16_t NUM_SYSTEM_BLOCKS = 1;
+    static const uint16_t MEDIA_INFO_WORD_OFFSET = 16;
+    static const uint16_t FAT_BLOCK_NO = SYSTEM_BLOCK_NO - NUM_SYSTEM_BLOCKS;
+    static const uint16_t NUM_FAT_BLOCKS = 1;
 
-    // Storage for a single block of data for write process
+    //! Storage for a single block of data for write process
     uint8_t mWriteData[BYTES_PER_BLOCK];
 
-    // Storage area in RAM (flash storage to be implemented later)
+    //! Storage area in RAM (flash storage to be implemented later)
     uint8_t mStorage[MEMORY_SIZE_BYTES];
 };
 }
