@@ -56,8 +56,8 @@ void core1()
                                                      *screenData[i],
                                                      clock,
                                                      usb_msc_get_file_system());
-        buses[i] = create_maple_bus(maplePins[i], MAPLE_HOST_ADDRESSES[i]);
-        schedulers[i] = std::make_shared<PrioritizedTxScheduler>();
+        buses[i] = create_maple_bus(maplePins[i]);
+        schedulers[i] = std::make_shared<PrioritizedTxScheduler>(MAPLE_HOST_ADDRESSES[i]);
         dreamcastMainNodes[i] = std::make_shared<DreamcastMainNode>(
             *buses[i],
             *playerData[i],

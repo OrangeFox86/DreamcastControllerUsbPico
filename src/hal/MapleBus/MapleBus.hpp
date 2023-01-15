@@ -21,16 +21,14 @@ class MapleBus : public MapleBusInterface
     public:
         //! Maple Bus constructor
         //! @param[in] pinA  GPIO index for pin A. The very next GPIO will be designated as pin B.
-        //! @param[in] senderAddr  The address of this device
-        MapleBus(uint32_t pinA, uint8_t senderAddr);
+        MapleBus(uint32_t pinA);
 
         //! Writes a packet to the maple bus
         //! @post processEvents() must periodically be called to check status
         //! @param[in] packet  The packet to send (sender address will be overloaded)
         //! @param[in] expectResponse  Set to true in order to start receive after send is complete
         //! @returns true iff the bus was "open" and send has started
-        bool write(const MaplePacket& packet,
-                   bool expectResponse);
+        bool write(const MaplePacket& packet, bool expectResponse);
 
         //! Begins waiting for input
         //! @post processEvents() must periodically be called to check status
@@ -101,8 +99,6 @@ class MapleBus : public MapleBusInterface
         const uint32_t mMaskB;
         //! GPIO mask for all bits used by this bus
         const uint32_t mMaskAB;
-        //! The address of this device
-        const uint8_t mSenderAddr;
         //! The PIO state machine used for output by this bus
         const MapleOutStateMachine mSmOut;
         //! The PIO state machine index used for input by this bus
@@ -130,9 +126,9 @@ class MapleBus : public MapleBusInterface
         uint32_t mLastReadTransferCount;
 };
 
-std::shared_ptr<MapleBusInterface> create_maple_bus(uint32_t pinA, uint8_t senderAddr)
+std::shared_ptr<MapleBusInterface> create_maple_bus(uint32_t pinA)
 {
-    return std::make_shared<MapleBus>(pinA, senderAddr);
+    return std::make_shared<MapleBus>(pinA);
 }
 
 #endif // __MAPLE_BUS_H__

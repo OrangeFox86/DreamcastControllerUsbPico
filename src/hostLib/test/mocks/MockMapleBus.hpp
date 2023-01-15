@@ -22,4 +22,6 @@ class MockMapleBus : public MapleBusInterface
         MOCK_METHOD(Status, processEvents, (uint64_t currentTimeUs), (override));
 
         MOCK_METHOD(bool, isBusy, (), (override));
+
+        MOCK_METHOD(bool, startRead, (uint64_t readTimeoutUs), (override));
 };

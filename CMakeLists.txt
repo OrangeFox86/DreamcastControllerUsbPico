@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
-if(NOT DREAMCAST_CONTROLLER_USB_PICO_TEST)
+if(NOT ENABLE_UNIT_TEST)
   # Have pico_sdk_import.cmake use the local SDK if it was pulled down; otherwise, use path at
   # PICO_SDK_PATH environment variable as specified within pico_sdk_import.cmake
   if (EXISTS "${CMAKE_SOURCE_DIR}/ext/pico-sdk/CMakeLists.txt")

@@ -63,6 +63,9 @@ class DreamcastStorage : public DreamcastPeripheral, UsbFile
         //! @returns file size in bytes (currently only up to 128KB supported)
         virtual uint32_t getFileSize() final;
 
+        //! @returns true iff this file is read only
+        virtual bool isReadOnly() final;
+
         //! Blocking read (must only be called from the core not operating maple bus)
         //! @param[in] blockNum  Block number to read (block is 512 bytes)
         //! @param[out] buffer  Buffer output

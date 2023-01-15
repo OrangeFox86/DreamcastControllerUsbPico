@@ -7,8 +7,70 @@
 #include "configuration.h"
 #include "dreamcast_constants.h"
 
+// TODO: MaplePacket has gotten waaaay too convoluted - simplify it
+
 struct MaplePacket
 {
+public:
+    //! Deconstructed frame word structure
+    struct Frame
+    {
+        uint8_t length;
+        uint8_t senderAddr;
+        uint8_t receiverAddr;
+        uint8_t command;
+
+        //! Constructor from a frame word
+        inline Frame(const uint32_t& frameWord) :
+            length(getFramePacketLength(frameWord)),
+            senderAddr(getFrameSenderAddr(frameWord)),
+            receiverAddr(getFrameRecipientAddr(frameWord)),
+            command(getFrameCommand(frameWord))
+        {}
+
+        //! Default constructor
+        inline Frame() :
+            length(0), senderAddr(0), receiverAddr(0), command(COMMAND_INVALID)
+        {}
+
+        //! @param[in] frameWord  The frame word to parse
+        //! @returns the packet length specified in the given frame word
+        static inline uint8_t getFramePacketLength(const uint32_t& frameWord)
+        {
+            return ((frameWord >> LEN_POSITION) & 0xFF);
+        }
+
+        //! @param[in] frameWord  The frame word to parse
+        //! @returns the sender address specified in the given frame word
+        static inline uint8_t getFrameSenderAddr(const uint32_t& frameWord)
+        {
+            return ((frameWord >> SENDER_ADDR_POSITION) & 0xFF);
+        }
+
+        //! @param[in] frameWord  The frame word to parse
+        //! @returns the recipient address specified in the given frame word
+        static inline uint8_t getFrameRecipientAddr(const uint32_t& frameWord)
+        {
+            return ((frameWord >> RECIPIENT_ADDR_POSITION) & 0xFF);
+        }
+
+        //! @param[in] frameWord  The frame word to parse
+        //! @returns the command specified in the given frame word
+        static inline uint8_t getFrameCommand(const uint32_t& frameWord)
+        {
+            return ((frameWord >> COMMAND_POSITION) & 0xFF);
+        }
+
+        //! @returns the accumulated frame word from each of the frame data parts
+        inline uint32_t getFrameWord()
+        {
+            return (static_cast<uint32_t>(length) << LEN_POSITION
+                    | static_cast<uint32_t>(senderAddr) << SENDER_ADDR_POSITION
+                    | static_cast<uint32_t>(receiverAddr) << RECIPIENT_ADDR_POSITION
+                    | static_cast<uint32_t>(command) << COMMAND_POSITION);
+        }
+    };
+
 private:
     //! Frame word
     uint32_t mFrameWord;
@@ -111,6 +173,20 @@ public:
         return mFrameWord == rhs.mFrameWord && mPayload == rhs.mPayload;
     }
 
+    //! Resets all data
+    inline void reset()
+    {
+        mFrameWord = COMMAND_INVALID << COMMAND_POSITION;
+        mPayload.clear();
+    }
+
+    //! Reserves space in payload
+    //! @param[in] len  Number of words to reserve
+    inline void reservePayload(uint32_t len)
+    {
+        mPayload.reserve(len);
+    }
+
     //! Sets packet contents from array
     //! @param[in] words  All words to set
     //! @param[in] len  Number of words in words (must be at least 1 for frame word to be valid)
@@ -118,7 +194,64 @@ public:
     {
         mFrameWord = len > 0 ? words[0] : (COMMAND_INVALID << COMMAND_POSITION);
         mPayload.clear();
-        mPayload.insert(mPayload.end(), &words[1], &words[1] + (len > 1 ? (len - 1) : 0));
+        if (len > 1)
+        {
+            mPayload.insert(mPayload.end(), &words[1], &words[1] + (len - 1));
+        }
+    }
+
+    //! Append words to payload from array
+    //! @param[in] words  Payload words to set
+    //! @param[in] len  Number of words in words
+    inline void appendPayload(const uint32_t* words, uint8_t len)
+    {
+        if (len > 0)
+        {
+            mPayload.insert(mPayload.end(), &words[0], &words[0] + len);
+        }
+    }
+
+    //! Appends a single word to payload
+    //! @param[in] word  The word to append
+    inline void appendPayload(uint32_t word)
+    {
+        appendPayload(&word, 1);
+    }
+
+    //! Sets payload from array
+    //! @param[in] words  Payload words to set
+    //! @param[in] len  Number of words in words
+    inline void setPayload(const uint32_t* words, uint8_t len)
+    {
+        mPayload.clear();
+        appendPayload(words, len);
+    }
+
+    //! Update length in frame word with the payload size
+    void updateFrameLength()
+    {
+        setFrameByte(LEN_POSITION, 0xFF, mPayload.size());
+    }
+
+    //! Sets the sender address of the frame word
+    //! @param[in] senderAddress  The sender address to set
+    void setSenderAddress(uint8_t senderAddress)
+    {
+        setFrameByte(SENDER_ADDR_POSITION, 0xFF, senderAddress);
+    }
+
+    //! Sets the recipient address of the frame word
+    //! @param[in] recipientAddress  The recipient address to set
+    void setRecipientAddress(uint8_t recipientAddress)
+    {
+        setFrameByte(RECIPIENT_ADDR_POSITION, 0xFF, recipientAddress);
+    }
+
+    //! Sets the command of the frame word
+    //! @param[in] command  The command to set
+    void setCommand(uint8_t command)
+    {
+        setFrameByte(COMMAND_POSITION, 0xFF, command);
     }
 
     //! @returns true iff frame word is valid
@@ -130,32 +263,31 @@ public:
     //! @returns the packet length specified in the frame word
     inline uint8_t getFramePacketLength() const
     {
-        return ((frameWord >> LEN_POSITION) & 0xFF);
+        return Frame::getFramePacketLength(frameWord);
     }
 
     //! @returns the sender address specified in the frame word
     inline uint8_t getFrameSenderAddr() const
     {
-        return ((frameWord >> SENDER_ADDR_POSITION) & 0xFF);
+        return Frame::getFrameSenderAddr(frameWord);
     }
 
     //! @returns the recipient address specified in the frame word
     inline uint8_t getFrameRecipientAddr() const
     {
-        return ((frameWord >> RECIPIENT_ADDR_POSITION) & 0xFF);
+        return Frame::getFrameRecipientAddr(frameWord);
     }
 
     //! @returns the command specified in the frame word
     inline uint8_t getFrameCommand() const
     {
-        return ((frameWord >> COMMAND_POSITION) & 0xFF);
+        return Frame::getFrameCommand(frameWord);
     }
 
-    //! @returns the frame word with an overloaded sender address
-    inline uint32_t getFrameWord(uint8_t overloadedSenderAddress) const
+    //! @returns the frame structure for the packet's frame word
+    inline Frame getFrame() const
     {
-        return ((frameWord & ~(0xFF << SENDER_ADDR_POSITION))
-                | (overloadedSenderAddress << SENDER_ADDR_POSITION));
+        return Frame(frameWord);
     }
 
     //! @param[in] numPayloadWords  Number of payload words in the packet
@@ -185,6 +317,12 @@ public:
     inline uint32_t getTxTimeNs() const
     {
         return getTxTimeNs(payload.size(), MAPLE_NS_PER_BIT);
+    }
+
+private:
+    inline void setFrameByte(uint32_t position, uint32_t mask, uint32_t value)
+    {
+        mFrameWord = ((frameWord & ~(mask << position)) | (value << position));
     }
 };
 

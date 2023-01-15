@@ -49,6 +49,7 @@ struct FileEntry
 {
   uint16_t startBlock;
   uint16_t numBlocks;
+  bool isReadOnly;
   uint32_t size;
   const char* filename;
   UsbFile* handle;
@@ -548,6 +549,11 @@ void set_file_entries()
         uint8_t addrAndSize[6] = {U16_TO_U8S_LE(fileEntries[i].startBlock),
                                   U32_TO_U8S_LE(fileEntries[i].size)};
         memcpy(rootDirEntry + (BYTES_PER_ROOT_ENTRY - 6), addrAndSize, 6);
+        // Set read only flag is it is set
+        if (fileEntries[i].isReadOnly)
+        {
+          rootDirEntry[11] |= ATTR1_READ_ONLY;
+        }
         // Move to next entry in FAT
         rootDirEntry += BYTES_PER_ROOT_ENTRY;
       }
@@ -584,6 +590,7 @@ void usb_msc_add(UsbFile* file)
         }
         fileEntries[i].startBlock = START_EXTERNAL_FILE_BLOCK + (i * BLOCKS_PER_FILE);
         fileEntries[i].numBlocks = INT_DIVIDE_CEILING(fileEntries[i].size, DISK_BLOCK_SIZE);
+        fileEntries[i].isReadOnly = file->isReadOnly();
         ++numFileEntries;
         set_file_entries();
         new_data = true;
@@ -897,15 +904,24 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
           // Found the matching file!
           found = true;
           uint32_t vmuAddr = realAddr & 0xFF;
-          numWrite = fileEntries[i].handle->write(vmuAddr, buffer, bufsize, 250000);
-          if (numWrite < 0)
+          if (!fileEntries[i].isReadOnly)
           {
-            // timeout
-            tud_msc_set_sense(lun, SCSI_SENSE_HARDWARE_ERROR, 0x44, 0x00);
-            if (errorCount < MAX_ERROR_COUNT)
+            numWrite = fileEntries[i].handle->write(vmuAddr, buffer, bufsize, 250000);
+            if (numWrite < 0)
             {
-              ++errorCount;
+              // timeout
+              tud_msc_set_sense(lun, SCSI_SENSE_HARDWARE_ERROR, 0x44, 0x00);
+              if (errorCount < MAX_ERROR_COUNT)
+              {
+                ++errorCount;
+              }
             }
+          }
+          else
+          {
+            // Throw a data protect error to stop the host from writing here
+            tud_msc_set_sense(lun, SCSI_SENSE_DATA_PROTECT, 0x00, 0x06);
+            numWrite = -1;
           }
           break;
         }

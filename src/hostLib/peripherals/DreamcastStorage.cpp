@@ -279,6 +279,11 @@ uint32_t DreamcastStorage::getFileSize()
     return (128 * 1024);
 }
 
+bool DreamcastStorage::isReadOnly()
+{
+    return (getWriteAccesCount() == 0);
+}
+
 int32_t DreamcastStorage::read(uint8_t blockNum,
                                void* buffer,
                                uint16_t bufferLen,
@@ -322,22 +327,26 @@ int32_t DreamcastStorage::write(uint8_t blockNum,
                                 uint16_t bufferLen,
                                 uint32_t timeoutUs)
 {
-    assert(mWriteState == READ_WRITE_IDLE);
-    assert(bufferLen % 4 == 0);
-    // Set data
-    mWritingBlock = blockNum;
-    mWriteBuffer = buffer;
-    mWriteBufferLen = bufferLen;
-    mWritingTxId = 0;
-    mWriteKillTime = mClock.getTimeUs() + timeoutUs;
-    // Commit it
-    mWriteState = READ_WRITE_STARTED;
+    if (!isReadOnly())
+    {
+        assert(mWriteState == READ_WRITE_IDLE);
+        assert(bufferLen % 4 == 0);
+        // Set data
+        mWritingBlock = blockNum;
+        mWriteBuffer = buffer;
+        mWriteBufferLen = bufferLen;
+        mWritingTxId = 0;
+        mWriteKillTime = mClock.getTimeUs() + timeoutUs;
+        // Commit it
+        mWriteState = READ_WRITE_STARTED;
 
-    // Wait for maple bus state machine to finish read
-    // I'm not too happy about this blocking operation, but it works
-    while(mWriteState != READ_WRITE_IDLE && !mExiting);
+        // Wait for maple bus state machine to finish read
+        // I'm not too happy about this blocking operation, but it works
+        while(mWriteState != READ_WRITE_IDLE && !mExiting);
 
-    return mWriteBufferLen;
+        return mWriteBufferLen;
+    }
+    return -1;
 }
 
 uint32_t DreamcastStorage::flipWordBytes(const uint32_t& word)
