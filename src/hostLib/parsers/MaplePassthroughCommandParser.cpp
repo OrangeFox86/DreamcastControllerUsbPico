@@ -28,7 +28,7 @@ public:
                             std::shared_ptr<const Transmission> tx) final
     {
         printf("%lu: complete {", (long unsigned int)tx->transmissionId);
-        printf("%08lX", (long unsigned int)packet->frameWord);
+        printf("%08lX", (long unsigned int)packet->frame.toWord());
         for (std::vector<uint32_t>::const_iterator iter = packet->payload.begin();
              iter != packet->payload.end();
              ++iter)
@@ -105,7 +105,7 @@ void MaplePassthroughCommandParser::submit(const char* chars, uint32_t len)
         MaplePacket packet(&words[0], words.size());
         if (packet.isValid())
         {
-            uint8_t sender = packet.getFrameSenderAddr();
+            uint8_t sender = packet.frame.senderAddr;
             int32_t idx = -1;
             const uint8_t* senderAddress = mSenderAddresses;
 

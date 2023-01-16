@@ -89,6 +89,14 @@ This project may be opened in vscode. In vscode, the default shortcut `ctrl+shif
 
 Hold the BOOTSEL button on the Pico while plugging the USB connection into your PC. A drive with a FAT partition labeled RPI-RP2 should pop up on your system. Open this drive, and then copy the desired uf2 file for either host or client operation here. The Pico should then automatically load the binary into flash and run it. For more information, refer to the official [Raspberry Pi Pico documentation](https://www.raspberrypi.com/documentation/microcontrollers/raspberry-pi-pico.html#documentation).
 
+## Helpful Tips
+
+### Host Mode Tips
+
+- The LED on the Pico board may be used for quick status - when connected to USB, it should remain on when no button is pressed on any controller and turn off once a button is pressed.
+- The included file `formatted_storage.bin` may be used to delete and format a VMU attached to a controller when this project is used in host mode. For example, rename this file vmu0.bin and copy to DC-Memory drive when a VMU is inserted into the upper slot of Player 1's controller.
+- A serial device shows up on the PC once attached - open serial terminal (BAUD and other settings don't matter), type `h`, and then press enter to see available instructions.
+
 ---
 
 # Maple Bus Implementation

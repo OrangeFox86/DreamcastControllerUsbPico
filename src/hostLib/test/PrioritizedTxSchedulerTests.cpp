@@ -40,7 +40,7 @@ TEST_F(TransmissionScheduleTest, multiAdd)
     // 3
     uint8_t priority = 255;
     uint64_t txTime = 123;
-    MaplePacket packet1(0x55, 0xAA, 0x99887766);
+    MaplePacket packet1({.command=0x55, .recipientAddr=0xAA}, 0x99887766);
     bool expectResponse = true;
     uint32_t expectedResponseNumPayloadWords = 3;
     uint32_t autoRepeatUs = 16000;
@@ -55,7 +55,7 @@ TEST_F(TransmissionScheduleTest, multiAdd)
 
     // 4
     txTime = 124;
-    MaplePacket packet2(0x01, 0x10, 0x11223344);
+    MaplePacket packet2({.command=0x01, .recipientAddr=0x10}, 0x11223344);
     uint32_t id2 = scheduler.add(priority,
                                  txTime,
                                  nullptr,
@@ -70,7 +70,7 @@ TEST_F(TransmissionScheduleTest, multiAdd)
     // Since it is high priority, it takes precidence.
     priority = 0;
     txTime = 230;
-    MaplePacket packet3(0x12, 0x34, 0x56789012);
+    MaplePacket packet3({.command=0x12, .recipientAddr=0x34}, 0x56789012);
     uint32_t id3 = scheduler.add(priority,
                                  txTime,
                                  nullptr,
@@ -83,7 +83,7 @@ TEST_F(TransmissionScheduleTest, multiAdd)
     // 2
     priority = 255;
     txTime = 22;
-    MaplePacket packet4(0x35, 0x79, 0x11111111);
+    MaplePacket packet4({.command=0x35, .recipientAddr=0x79}, 0x11111111);
     uint32_t id4 = scheduler.add(priority,
                                  txTime,
                                  nullptr,
@@ -111,7 +111,7 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary1)
 {
     uint8_t priority = 255;
     uint64_t txTime = 123;
-    MaplePacket packet1(0x11, 0xAA, 0x99887766);
+    MaplePacket packet1({.command=0x11, .recipientAddr=0xAA}, 0x99887766);
     bool expectResponse = true;
     uint32_t expectedResponseNumPayloadWords = 3; // 304 us
     uint32_t autoRepeatUs = 16000;
@@ -125,7 +125,7 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary1)
     EXPECT_EQ(id1, 1);
 
     txTime = 124;
-    MaplePacket packet2(0x33, 0xAA, 0x99887766);
+    MaplePacket packet2({.command=0x33, .recipientAddr=0xAA}, 0x99887766);
     uint32_t id2 = scheduler.add(priority,
                                  txTime,
                                  nullptr,
@@ -137,7 +137,7 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary1)
 
     priority = 0;
     txTime = 123 + 304;
-    MaplePacket packet3(0x22, 0xAA, 0x99887766);
+    MaplePacket packet3({.command=0x22, .recipientAddr=0xAA}, 0x99887766);
     uint32_t id3 = scheduler.add(priority,
                                  txTime,
                                  nullptr,
@@ -164,7 +164,7 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary2)
 {
     uint8_t priority = 0;
     uint64_t txTime = 123 + 304 + 1;
-    MaplePacket packet1(0x22, 0xAA, 0x99887766);
+    MaplePacket packet1({.command=0x22, .recipientAddr=0xAA}, 0x99887766);
     bool expectResponse = true;
     uint32_t expectedResponseNumPayloadWords = 3; // 304 us
     uint32_t autoRepeatUs = 16000;
@@ -179,7 +179,7 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary2)
 
     priority = 255;
     txTime = 123;
-    MaplePacket packet2(0x11, 0xAA, 0x99887766);
+    MaplePacket packet2({.command=0x11, .recipientAddr=0xAA}, 0x99887766);
     uint32_t id2 = scheduler.add(priority,
                                  txTime,
                                  nullptr,
@@ -190,7 +190,7 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary2)
     EXPECT_EQ(id2, 2);
 
     txTime = 124;
-    MaplePacket packet3(0x33, 0xAA, 0x99887766);
+    MaplePacket packet3({.command=0x33, .recipientAddr=0xAA}, 0x99887766);
     uint32_t id3 = scheduler.add(priority,
                                  txTime,
                                  nullptr,
@@ -217,7 +217,7 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary3)
 {
     uint8_t priority = 255;
     uint64_t txTime = 1;
-    MaplePacket packet1(0x11, 0x01, 0x99887766);
+    MaplePacket packet1({.command=0x11, .recipientAddr=0x01}, 0x99887766);
     bool expectResponse = true;
     uint32_t expectedResponseNumPayloadWords = 10;
     uint32_t autoRepeatUs = 0;
@@ -232,7 +232,7 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary3)
 
     txTime = 2;
     expectedResponseNumPayloadWords = 3; // 304 us
-    MaplePacket packet2(0x22, 0x02, 0x99887766);
+    MaplePacket packet2({.command=0x22, .recipientAddr=0x02}, 0x99887766);
     uint32_t id2 = scheduler.add(priority,
                     txTime,
                     nullptr,
@@ -245,7 +245,7 @@ TEST_F(TransmissionScheduleTest, multiAddBoundary3)
     priority = 0;
     txTime = 2 + 300;
     expectedResponseNumPayloadWords = 0;
-    MaplePacket packet3(0x33, 0x02, 0x99887766);
+    MaplePacket packet3({.command=0x33, .recipientAddr=0x02}, 0x99887766);
     uint32_t id3 = scheduler.add(priority,
                     txTime,
                     nullptr,
@@ -278,7 +278,7 @@ class TransmissionSchedulePopTestA : public TransmissionScheduleTest
         {
             uint8_t priority = 255;
             uint64_t txTime = 1;
-            MaplePacket packet1(0x11, 0x01, 0x99887766);
+            MaplePacket packet1({.command=0x11, .recipientAddr=0x01}, 0x99887766);
             bool expectResponse = true;
             uint32_t expectedResponseNumPayloadWords = 0;
             uint32_t autoRepeatUs = 0;
@@ -291,7 +291,7 @@ class TransmissionSchedulePopTestA : public TransmissionScheduleTest
                           autoRepeatUs);
             txTime = 2;
             autoRepeatUs = 16000;
-            MaplePacket packet2(0x22, 0x02, 0x99887766);
+            MaplePacket packet2({.command=0x22, .recipientAddr=0x02}, 0x99887766);
             scheduler.add(priority,
                           txTime,
                           nullptr,
@@ -300,7 +300,7 @@ class TransmissionSchedulePopTestA : public TransmissionScheduleTest
                           expectedResponseNumPayloadWords,
                           autoRepeatUs);
             txTime = 3;
-            MaplePacket packet3(0x33, 0x02, 0x99887766);
+            MaplePacket packet3({.command=0x33, .recipientAddr=0x02}, 0x99887766);
             scheduler.add(priority,
                           txTime,
                           nullptr,
@@ -332,10 +332,10 @@ TEST_F(TransmissionSchedulePopTestA, popTestAutoReload1)
     PrioritizedTxScheduler::ScheduleItem scheduleItem;
     std::shared_ptr<const Transmission> item = scheduler.popItem(scheduleItem = scheduler.peekNext(1));
     ASSERT_NE(item, nullptr);
-    EXPECT_EQ(item->packet->getFrameCommand(), 0x11);
+    EXPECT_EQ(item->packet->frame.command, 0x11);
     item = scheduler.popItem(scheduleItem = scheduler.peekNext(2));
     ASSERT_NE(item, nullptr);
-    EXPECT_EQ(item->packet->getFrameCommand(), 0x22);
+    EXPECT_EQ(item->packet->frame.command, 0x22);
 
     const std::vector<std::list<std::shared_ptr<Transmission>>> schedule = scheduler.getSchedule();
 
@@ -354,10 +354,10 @@ TEST_F(TransmissionSchedulePopTestA, popTestAutoReload2)
     PrioritizedTxScheduler::ScheduleItem scheduleItem;
     std::shared_ptr<const Transmission> item = scheduler.popItem(scheduleItem = scheduler.peekNext(1));
     ASSERT_NE(item, nullptr);
-    EXPECT_EQ(item->packet->getFrameCommand(), 0x11);
+    EXPECT_EQ(item->packet->frame.command, 0x11);
     item = scheduler.popItem(scheduleItem = scheduler.peekNext(16003));
     ASSERT_NE(item, nullptr);
-    EXPECT_EQ(item->packet->getFrameCommand(), 0x22);
+    EXPECT_EQ(item->packet->frame.command, 0x22);
 
     const std::vector<std::list<std::shared_ptr<Transmission>>> schedule = scheduler.getSchedule();
 
@@ -382,7 +382,7 @@ class TransmissionSchedulePopTestB : public TransmissionScheduleTest
         {
             uint8_t priority = 255;
             uint64_t txTime = 1;
-            MaplePacket packet1(0x11, 0x01, 0x99887766);
+            MaplePacket packet1({.command=0x11, .recipientAddr=0x01}, 0x99887766);
             bool expectResponse = true;
             uint32_t expectedResponseNumPayloadWords = 10;
             uint32_t autoRepeatUs = 0;
@@ -396,7 +396,7 @@ class TransmissionSchedulePopTestB : public TransmissionScheduleTest
             priority = 0;
             txTime = 2 + 330;
             expectedResponseNumPayloadWords = 0;
-            MaplePacket packet3(0x22, 0x02, 0x99887766);
+            MaplePacket packet3({.command=0x22, .recipientAddr=0x02}, 0x99887766);
             scheduler.add(priority,
                           txTime,
                           nullptr,
@@ -407,7 +407,7 @@ class TransmissionSchedulePopTestB : public TransmissionScheduleTest
             priority = 255;
             txTime = 2;
             expectedResponseNumPayloadWords = 3; // 304 us
-            MaplePacket packet2(0x33, 0x02, 0x99887766);
+            MaplePacket packet2({.command=0x33, .recipientAddr=0x02}, 0x99887766);
             autoRepeatUs = 1111;
             scheduler.add(priority,
                           txTime,
@@ -445,7 +445,7 @@ class TransmissionSchedulePopTestC : public TransmissionScheduleTest
         {
             uint8_t priority = 255;
             uint64_t txTime = PrioritizedTxScheduler::TX_TIME_ASAP;
-            MaplePacket packet1(0x11, 0x01, 0x99887766);
+            MaplePacket packet1({.command=0x11, .recipientAddr=0x01}, 0x99887766);
             bool expectResponse = true;
             uint32_t expectedResponseNumPayloadWords = 0;
             uint32_t autoRepeatUs = 0;
@@ -459,7 +459,7 @@ class TransmissionSchedulePopTestC : public TransmissionScheduleTest
             priority = 0;
             txTime = 100000;
             expectedResponseNumPayloadWords = 0;
-            MaplePacket packet2(0x22, 0x02, 0x99887766);
+            MaplePacket packet2({.command=0x22, .recipientAddr=0x02}, 0x99887766);
             scheduler.add(priority,
                           txTime,
                           nullptr,

@@ -80,9 +80,9 @@ void core0()
                 bool writeIt = false;
 
                 packetIn.set(status.readBuffer, status.readBufferLen);
-                lastSender = packetIn.getFrameSenderAddr();
+                lastSender = packetIn.frame.senderAddr;
 
-                if (packetIn.getFrameCommand() == COMMAND_RESPONSE_REQUEST_RESEND)
+                if (packetIn.frame.command == COMMAND_RESPONSE_REQUEST_RESEND)
                 {
                     // Write the previous packet
                     writeIt = true;
@@ -95,7 +95,7 @@ void core0()
 
                 if (!writeIt)
                 {
-                    packetOut.setCommand(COMMAND_RESPONSE_UNKNOWN_COMMAND);
+                    packetOut.frame.command = COMMAND_RESPONSE_UNKNOWN_COMMAND;
                 }
 
                 if (packetOut.isValid())
@@ -114,9 +114,9 @@ void core0()
                     && mainPeripheral.isConnected())
             {
                 packetOut.reset();
-                packetOut.setCommand(COMMAND_RESPONSE_REQUEST_RESEND);
-                packetOut.setRecipientAddress(lastSender);
-                packetOut.setSenderAddress(mainPeripheral.getAddress());
+                packetOut.frame.command = COMMAND_RESPONSE_REQUEST_RESEND;
+                packetOut.frame.recipientAddr = lastSender;
+                packetOut.frame.senderAddr = mainPeripheral.getAddress();
                 packetOut.updateFrameLength();
                 if (bus->write(packetOut, false))
                 {

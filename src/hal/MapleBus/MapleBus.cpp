@@ -216,7 +216,7 @@ bool MapleBus::write(const MaplePacket& packet,
         // bytes need to be flipped so the PIO state machine can work with it correctly.
         mWriteBuffer[0] = flipWordBytes(packet.getNumTotalBits());
         // Load the frame word and start computing the crc
-        mWriteBuffer[1] = packet.frameWord;
+        mWriteBuffer[1] = packet.frame.toWord();
         uint8_t crc = 0;
         crc8(mWriteBuffer[1], crc);
         // Load the rest of the packet

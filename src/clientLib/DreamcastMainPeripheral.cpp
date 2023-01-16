@@ -40,7 +40,7 @@ void DreamcastMainPeripheral::addSubPeripheral(std::shared_ptr<DreamcastPeripher
 
 bool DreamcastMainPeripheral::handlePacket(const MaplePacket& in, MaplePacket& out)
 {
-    uint8_t playerIdx = (in.getFrameSenderAddr() & PLAYER_ID_ADDR_MASK) >> PLAYER_ID_BIT_SHIFT;
+    uint8_t playerIdx = (in.frame.senderAddr & PLAYER_ID_ADDR_MASK) >> PLAYER_ID_BIT_SHIFT;
     setPlayerIndex(playerIdx);
 
     return DreamcastPeripheral::handlePacket(in, out);
@@ -48,7 +48,7 @@ bool DreamcastMainPeripheral::handlePacket(const MaplePacket& in, MaplePacket& o
 
 bool DreamcastMainPeripheral::dispensePacket(const MaplePacket& in, MaplePacket& out)
 {
-    uint8_t rawRecipientAddr = in.getFrameRecipientAddr() & ~PLAYER_ID_ADDR_MASK;
+    uint8_t rawRecipientAddr = in.frame.recipientAddr & ~PLAYER_ID_ADDR_MASK;
     if (rawRecipientAddr == mAddr)
     {
         // This is for me

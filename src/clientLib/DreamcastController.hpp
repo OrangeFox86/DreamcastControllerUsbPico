@@ -14,10 +14,10 @@ public:
 
     inline virtual bool handlePacket(const MaplePacket& in, MaplePacket& out) final
     {
-        const uint8_t cmd = in.getFrameCommand();
+        const uint8_t cmd = in.frame.command;
         if (cmd == COMMAND_GET_CONDITION)
         {
-            out.setCommand(COMMAND_RESPONSE_DATA_XFER);
+            out.frame.command = COMMAND_RESPONSE_DATA_XFER;
             out.reservePayload(3);
             out.appendPayload(getFunctionCode());
             // Controls in their neutral position

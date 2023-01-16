@@ -22,7 +22,7 @@ uint32_t EndpointTxScheduler::add(uint64_t txTime,
                                   uint32_t autoRepeatUs,
                                   uint64_t autoRepeatEndTimeUs)
 {
-    MaplePacket packet(command, mRecipientAddr, payload, payloadLen);
+    MaplePacket packet({.command=command, .recipientAddr=mRecipientAddr}, payload, payloadLen);
     return mPrioritizedScheduler->add(mFixedPriority,
                                       txTime,
                                       transmitter,

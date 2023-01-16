@@ -54,7 +54,7 @@ uint32_t PrioritizedTxScheduler::add(uint8_t priority,
     assert(mNextId != INVALID_TX_ID);
 
     // Update the sender address to my address
-    packet.setSenderAddress(mSenderAddress);
+    packet.frame.senderAddr = mSenderAddress;
 
     std::shared_ptr<Transmission> tx =
         std::make_shared<Transmission>(mNextId++,
@@ -118,7 +118,7 @@ PrioritizedTxScheduler::ScheduleItem PrioritizedTxScheduler::peekNext(uint64_t t
                 // Something was found, so make sure it won't be executing while something of higher
                 // priority is scheduled to run
                 uint64_t completionTime = (*itemIter)->getNextCompletionTime(time);
-                uint8_t recipientAddr = (*itemIter)->packet->getFrameRecipientAddr();
+                uint8_t recipientAddr = (*itemIter)->packet->frame.recipientAddr;
 
                 // Preserve order for each recipient
                 // (don't use this if we already skipped one for the same recipient)
@@ -225,7 +225,7 @@ uint32_t PrioritizedTxScheduler::cancelByRecipient(uint8_t recipientAddr)
         std::list<std::shared_ptr<Transmission>>::iterator iter = scheduleIter->begin();
         while (iter != scheduleIter->end())
         {
-            if ((*iter)->packet->getFrameRecipientAddr() == recipientAddr)
+            if ((*iter)->packet->frame.recipientAddr == recipientAddr)
             {
                 iter = scheduleIter->erase(iter);
                 ++n;
@@ -250,7 +250,7 @@ uint32_t PrioritizedTxScheduler::countRecipients(uint8_t recipientAddr)
             iter != scheduleIter->end();
             ++iter)
         {
-            if ((*iter)->packet->getFrameRecipientAddr() == recipientAddr)
+            if ((*iter)->packet->frame.recipientAddr == recipientAddr)
             {
                 ++n;
             }

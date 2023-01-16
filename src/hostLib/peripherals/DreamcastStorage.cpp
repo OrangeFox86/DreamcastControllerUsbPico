@@ -187,11 +187,11 @@ void DreamcastStorage::txComplete(std::shared_ptr<const MaplePacket> packet,
     if (mWriteState != READ_WRITE_IDLE && tx->transmissionId == mWritingTxId)
     {
         mLastWriteTimeUs = mClock.getTimeUs();
-        if (packet->getFrameCommand() == COMMAND_RESPONSE_ACK)
+        if (packet->frame.command == COMMAND_RESPONSE_ACK)
         {
             if (++mWritePhase >= getWriteAccesCount())
             {
-                if (tx->packet->getFrameCommand() == COMMAND_GET_LAST_ERROR)
+                if (tx->packet->frame.command == COMMAND_GET_LAST_ERROR)
                 {
                     // Complete!
                     mWriteState = READ_WRITE_IDLE;

@@ -42,7 +42,7 @@ void DreamcastMainNode::txComplete(std::shared_ptr<const MaplePacket> packet,
                                    std::shared_ptr<const Transmission> tx)
 {
     // Handle device info from main peripheral
-    if (packet != nullptr && packet->getFrameCommand() == COMMAND_RESPONSE_DEVICE_INFO)
+    if (packet != nullptr && packet->frame.command == COMMAND_RESPONSE_DEVICE_INFO)
     {
         if (packet->payload.size() > 3)
         {
@@ -101,8 +101,8 @@ void DreamcastMainNode::readTask(uint64_t currentTimeUs)
         mCommFailCount = 0;
 
         // Check addresses to determine what sub nodes are attached
-        uint8_t sendAddr = readStatus.received->getFrameSenderAddr();
-        uint8_t recAddr = readStatus.received->getFrameRecipientAddr();
+        uint8_t sendAddr = readStatus.received->frame.senderAddr;
+        uint8_t recAddr = readStatus.received->frame.recipientAddr;
         if ((recAddr & 0x3F) == 0x00)
         {
             // This packet was meant for me (the host)
@@ -143,7 +143,7 @@ void DreamcastMainNode::readTask(uint64_t currentTimeUs)
     else if (readStatus.busPhase == MapleBusInterface::Phase::READ_FAILED
              || readStatus.busPhase == MapleBusInterface::Phase::WRITE_FAILED)
     {
-        uint8_t recipientAddr = readStatus.transmission->packet->getFrameRecipientAddr();
+        uint8_t recipientAddr = readStatus.transmission->packet->frame.recipientAddr;
         if ((recipientAddr & mAddr) && ++mCommFailCount >= MAX_FAILURE_DISCONNECT_COUNT)
         {
             // A transmission failure on a main node must cause peripheral disconnect
