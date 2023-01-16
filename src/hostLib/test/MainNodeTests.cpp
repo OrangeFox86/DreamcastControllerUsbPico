@@ -149,8 +149,8 @@ TEST_F(MainNodeTest, successfulInfoRequest)
         .WillOnce(Return(status));
     // Since no peripherals are detected, the main node should do a info request, and it will be successful
     EXPECT_CALL(mMapleBus,
-                write(MaplePacket((uint8_t)COMMAND_DEVICE_INFO_REQUEST,
-                                  (uint8_t)0x20,
+                write(MaplePacket({.command=COMMAND_DEVICE_INFO_REQUEST,
+                                  .recipientAddr=0x20},
                                   (const uint32_t*)NULL,
                                   (uint8_t)0),
                       true))
@@ -180,8 +180,8 @@ TEST_F(MainNodeTest, unsuccessfulInfoRequest)
         .WillOnce(Return(status));
     // Since no peripherals are detected, the main node should do a info request, and it will be unsuccessful
     EXPECT_CALL(mMapleBus,
-                write(MaplePacket((uint8_t)COMMAND_DEVICE_INFO_REQUEST,
-                                  (uint8_t)0x20,
+                write(MaplePacket({.command=COMMAND_DEVICE_INFO_REQUEST,
+                                  .recipientAddr=0x20},
                                   (const uint32_t*)NULL,
                                   (uint8_t)0),
                       true))

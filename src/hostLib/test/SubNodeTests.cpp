@@ -118,8 +118,10 @@ TEST_F(SubNodeTest, handleDataCommandNoPeripheralsAdded)
     // --- MOCKING ---
     EXPECT_CALL(mDreamcastSubNode, mockMethodPeripheralFactory(_)).Times(1);
     uint32_t payload[4] = {1234567, 0, 0, 0};
-    std::shared_ptr<MaplePacket> packet = std::make_shared<MaplePacket>(5, 0, payload, 4);
-    std::shared_ptr<MaplePacket> txPacket = std::make_shared<MaplePacket>(4, 1, 7654321);
+    std::shared_ptr<MaplePacket> packet = std::make_shared<MaplePacket>(
+        MaplePacket::Frame{.command=5, .recipientAddr=0}, payload, 4);
+    std::shared_ptr<MaplePacket> txPacket = std::make_shared<MaplePacket>(
+        MaplePacket::Frame{.command=4, .recipientAddr=1}, 7654321);
     std::shared_ptr<const Transmission> tx =
         std::make_shared<Transmission>(0, 0, true, 123, 0, 0, 0, txPacket, nullptr);
 
@@ -139,8 +141,10 @@ TEST_F(SubNodeTest, handleDataCommandPeripheralAdded)
     mDreamcastSubNode.mPeripheralsToAdd.push_back(mockedDreamcastPeripheral);
     EXPECT_CALL(mDreamcastSubNode, mockMethodPeripheralFactory(_)).Times(1);
     uint32_t payload[4] = {1234567, 0, 0, 0};
-    std::shared_ptr<MaplePacket> packet = std::make_shared<MaplePacket>(5, 0, payload, 4);
-    std::shared_ptr<MaplePacket> txPacket = std::make_shared<MaplePacket>(4, 1, 7654321);
+    std::shared_ptr<MaplePacket> packet = std::make_shared<MaplePacket>(
+        MaplePacket::Frame{.command=5, .recipientAddr=0}, payload, 4);
+    std::shared_ptr<MaplePacket> txPacket = std::make_shared<MaplePacket>(
+        MaplePacket::Frame{.command=4, .recipientAddr=1}, 7654321);
     std::shared_ptr<const Transmission> tx =
         std::make_shared<Transmission>(0, 0, true, 123, 0, 0, 0, txPacket, nullptr);
 
@@ -158,8 +162,10 @@ TEST_F(SubNodeTest, handleDataCommandInvalidPayloadSize)
     std::shared_ptr<MockDreamcastPeripheral> mockedDreamcastPeripheral =
         std::make_shared<MockDreamcastPeripheral>(0x01, 0, mEndpointTxScheduler, mPlayerData.playerIndex);
     mDreamcastSubNode.mPeripheralsToAdd.push_back(mockedDreamcastPeripheral);
-    std::shared_ptr<MaplePacket> packet = std::make_shared<MaplePacket>(5, 0, (uint32_t*)NULL, 0);
-    std::shared_ptr<MaplePacket> txPacket = std::make_shared<MaplePacket>(4, 1, 7654321);
+    std::shared_ptr<MaplePacket> packet = std::make_shared<MaplePacket>(
+        MaplePacket::Frame{.command=5, .recipientAddr=0}, (uint32_t*)NULL, 0);
+    std::shared_ptr<MaplePacket> txPacket = std::make_shared<MaplePacket>(
+        MaplePacket::Frame{.command=4, .recipientAddr=1}, 7654321);
     std::shared_ptr<const Transmission> tx =
         std::make_shared<Transmission>(0, 0, true, 123, 0, 0, 0, txPacket, nullptr);
     EXPECT_CALL(mDreamcastSubNode, mockMethodPeripheralFactory(_)).Times(0);

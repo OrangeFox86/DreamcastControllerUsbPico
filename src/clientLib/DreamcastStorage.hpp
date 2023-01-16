@@ -74,12 +74,12 @@ public:
 
     inline virtual bool handlePacket(const MaplePacket& in, MaplePacket& out) final
     {
-        const uint8_t cmd = in.getFrameCommand();
+        const uint8_t cmd = in.frame.command;
         switch (cmd)
         {
             case COMMAND_GET_MEMORY_INFORMATION:
             {
-                out.setCommand(COMMAND_RESPONSE_DATA_XFER);
+                out.frame.command = COMMAND_RESPONSE_DATA_XFER;
 
                 // This media info is usually stored at block 16 offset in the system block. If
                 // memory is wiped though, the Dreamcast will get confused by the returned media
@@ -114,12 +114,12 @@ public:
                     if (blockOffset >= NUM_BLOCKS || phase != 0)
                     {
                         // Outside range
-                        out.setCommand(COMMAND_RESPONSE_FILE_ERROR);
+                        out.frame.command = COMMAND_RESPONSE_FILE_ERROR;
                     }
                     else
                     {
                         // This takes about 100 microseconds to read
-                        out.setCommand(COMMAND_RESPONSE_DATA_XFER);
+                        out.frame.command = COMMAND_RESPONSE_DATA_XFER;
                         uint32_t byteOffset = (blockOffset * BYTES_PER_BLOCK);
                         out.reservePayload(WORDS_PER_BLOCK + 2);
                         out.setPayload(&mFunctionCode, 1);
@@ -144,13 +144,13 @@ public:
                         || (in.payload.size() - 2) != (BYTES_PER_WRITE / 4))
                     {
                         // Outside range
-                        out.setCommand(COMMAND_RESPONSE_FILE_ERROR);
+                        out.frame.command = COMMAND_RESPONSE_FILE_ERROR;
                     }
                     else
                     {
                         uint32_t byteOffset = (phase * BYTES_PER_WRITE);
                         memcpy(&mWriteData[byteOffset], &in.payload[2], BYTES_PER_WRITE);
-                        out.setCommand(COMMAND_RESPONSE_ACK);
+                        out.frame.command = COMMAND_RESPONSE_ACK;
                     }
                     return true;
                 }
@@ -167,13 +167,13 @@ public:
                     if (blockOffset >= NUM_BLOCKS || phase != WRITES_PER_BLOCK)
                     {
                         // Outside range
-                        out.setCommand(COMMAND_RESPONSE_FILE_ERROR);
+                        out.frame.command = COMMAND_RESPONSE_FILE_ERROR;
                     }
                     else
                     {
                         uint32_t byteOffset = (blockOffset * BYTES_PER_BLOCK);
                         memcpy(&mStorage[byteOffset], mWriteData, BYTES_PER_BLOCK);
-                        out.setCommand(COMMAND_RESPONSE_ACK);
+                        out.frame.command = COMMAND_RESPONSE_ACK;
                     }
                     return true;
                 }

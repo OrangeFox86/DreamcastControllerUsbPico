@@ -108,7 +108,7 @@ bool DreamcastPeripheral::handlePacket(const MaplePacket& in, MaplePacket& out)
 {
     bool status = false;
 
-    const uint8_t cmd = in.getFrameCommand();
+    const uint8_t cmd = in.frame.command;
 
     // Don't process anything until the first device info command
     if (!mConnected && (cmd == COMMAND_DEVICE_INFO_REQUEST || cmd == COMMAND_EXT_DEVICE_INFO_REQUEST))
@@ -122,7 +122,7 @@ bool DreamcastPeripheral::handlePacket(const MaplePacket& in, MaplePacket& out)
         {
             case COMMAND_DEVICE_INFO_REQUEST:
             {
-                out.setCommand(COMMAND_RESPONSE_DEVICE_INFO);
+                out.frame.command = COMMAND_RESPONSE_DEVICE_INFO;
                 out.setPayload(mDevInfo, 28);
                 status = true;
             }
@@ -130,7 +130,7 @@ bool DreamcastPeripheral::handlePacket(const MaplePacket& in, MaplePacket& out)
 
             case COMMAND_EXT_DEVICE_INFO_REQUEST:
             {
-                out.setCommand(COMMAND_RESPONSE_EXT_DEVICE_INFO);
+                out.frame.command = COMMAND_RESPONSE_EXT_DEVICE_INFO;
                 out.setPayload(mDevInfo, 48);
                 status = true;
             }
@@ -139,7 +139,7 @@ bool DreamcastPeripheral::handlePacket(const MaplePacket& in, MaplePacket& out)
             case COMMAND_RESET:
             {
                 reset();
-                out.setCommand(COMMAND_RESPONSE_ACK);
+                out.frame.command = COMMAND_RESPONSE_ACK;
                 status = true;
             }
             break;
@@ -147,7 +147,7 @@ bool DreamcastPeripheral::handlePacket(const MaplePacket& in, MaplePacket& out)
             case COMMAND_SHUTDOWN:
             {
                 shutdown();
-                out.setCommand(COMMAND_RESPONSE_ACK);
+                out.frame.command = COMMAND_RESPONSE_ACK;
                 status = true;
             }
             break;
@@ -170,7 +170,7 @@ bool DreamcastPeripheral::handlePacket(const MaplePacket& in, MaplePacket& out)
                 }
                 else
                 {
-                    out.setCommand(COMMAND_RESPONSE_FUNCTION_CODE_NOT_SUPPORTED);
+                    out.frame.command = COMMAND_RESPONSE_FUNCTION_CODE_NOT_SUPPORTED;
                     status = true;
                 }
             }
@@ -188,8 +188,8 @@ bool DreamcastPeripheral::handlePacket(const MaplePacket& in, MaplePacket& out)
     {
         // Set all of the common data in frame word
         out.updateFrameLength();
-        out.setSenderAddress(mAddr | mAddrAugmenter);
-        out.setRecipientAddress(in.getFrameSenderAddr());
+        out.frame.senderAddr = (mAddr | mAddrAugmenter);
+        out.frame.recipientAddr = in.frame.senderAddr;
     }
 
     return status;

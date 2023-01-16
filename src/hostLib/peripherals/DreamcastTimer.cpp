@@ -43,7 +43,7 @@ void DreamcastTimer::txComplete(std::shared_ptr<const MaplePacket> packet,
                                 std::shared_ptr<const Transmission> tx)
 {
     if (tx->transmissionId == mButtonStatusId
-        && packet->getFrameCommand() == COMMAND_RESPONSE_DATA_XFER
+        && packet->frame.command == COMMAND_RESPONSE_DATA_XFER
         && packet->payload.size() >= 2)
     {
         // Set controller!

@@ -46,7 +46,7 @@ void DreamcastController::txComplete(std::shared_ptr<const MaplePacket> packet,
     {
         mWaitingForData = false;
 
-        if (packet->getFrameCommand() == COMMAND_RESPONSE_DATA_XFER
+        if (packet->frame.command == COMMAND_RESPONSE_DATA_XFER
             && packet->payload.size() >= 3
             && packet->payload[0] == DEVICE_FN_CONTROLLER)
         {

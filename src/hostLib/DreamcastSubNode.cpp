@@ -22,7 +22,7 @@ void DreamcastSubNode::txComplete(std::shared_ptr<const MaplePacket> packet,
                                   std::shared_ptr<const Transmission> tx)
 {
     // If device info received, add the sub peripheral
-    if (packet->getFrameCommand() == COMMAND_RESPONSE_DEVICE_INFO)
+    if (packet->frame.command == COMMAND_RESPONSE_DEVICE_INFO)
     {
         if (packet->payload.size() > 3)
         {
