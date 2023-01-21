@@ -68,6 +68,9 @@ void core0()
     uint8_t lastSender = 0;
     MaplePacket packetOut;
     packetOut.reservePayload(256);
+    MaplePacket lastPacketOut;
+    lastPacketOut.reservePayload(256);
+    bool packetSent = false;
     MaplePacket packetIn;
     packetIn.reservePayload(256);
     while(true)
@@ -90,22 +93,22 @@ void core0()
 
                 if (packetIn.frame.command == COMMAND_RESPONSE_REQUEST_RESEND)
                 {
-                    // Write the previous packet
-                    writeIt = true;
+                    if (packetSent)
+                    {
+                        // Write the previous packet
+                        packetOut = lastPacketOut;
+                        writeIt = true;
+                    }
                 }
                 else
                 {
-                    packetOut.reset();
                     writeIt = mainPeripheral.dispensePacket(packetIn, packetOut);
                 }
 
-                if (!writeIt)
+                if (writeIt)
                 {
-                    packetOut.frame.command = COMMAND_RESPONSE_UNKNOWN_COMMAND;
-                }
-
-                if (packetOut.isValid())
-                {
+                    packetSent = true;
+                    lastPacketOut = packetOut;
                     if (bus->write(packetOut, false))
                     {
                         do
@@ -114,6 +117,7 @@ void core0()
                         } while (status.phase == MapleBusInterface::Phase::WRITE_IN_PROGRESS);
                     }
                 }
+                // else: write nothing, and the host will eventually stall out
             }
             else if(status.phase == MapleBusInterface::Phase::READ_FAILED
                     && status.failureReason == MapleBusInterface::FailureReason::CRC_INVALID
