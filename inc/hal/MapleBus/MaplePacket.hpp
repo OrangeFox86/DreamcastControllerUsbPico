@@ -255,6 +255,13 @@ struct MaplePacket
         appendPayload(words, len);
     }
 
+    //! Sets a single word in payload
+    //! @param[in] word  The word to set
+    inline void setPayload(uint32_t word)
+    {
+        setPayload(&word, 1);
+    }
+
     //! Update length in frame word with the payload size
     void updateFrameLength()
     {
