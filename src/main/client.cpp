@@ -9,6 +9,7 @@
 #include "CriticalSectionMutex.hpp"
 #include "Mutex.hpp"
 #include "Clock.hpp"
+#include "VolatileSystemMemory.hpp"
 
 #include "hal/System/LockGuard.hpp"
 #include "hal/MapleBus/MapleBusInterface.hpp"
@@ -56,7 +57,12 @@ void core0()
             "Version 1.005,1999/04/15,315-6208-03,SEGA Visual Memory System BIOS Produced by IOS Produced",
             12.4,
             13.0);
-    subPeripheral1->addFunction(std::make_shared<client::DreamcastStorage>());
+    std::shared_ptr<VolatileSystemMemory> mem =
+        std::make_shared<VolatileSystemMemory>(client::DreamcastStorage::MEMORY_SIZE_BYTES);
+    std::shared_ptr<client::DreamcastStorage> dremcastStorage =
+        std::make_shared<client::DreamcastStorage>(mem, 0);
+    dremcastStorage->format();
+    subPeripheral1->addFunction(dremcastStorage);
     mainPeripheral.addSubPeripheral(subPeripheral1);
 
     uint8_t lastSender = 0;
