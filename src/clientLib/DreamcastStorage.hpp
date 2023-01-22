@@ -50,12 +50,15 @@ private:
 
     //! Write a block of data
     //! @param[in] blockNum  The block number to write
-    //! @param[in] data  The block of data to write
+    //! @param[in, out] data  The block of data to write (system block may be overridden)
     //! @returns true if successful or false if a failure occurred
-    bool writeBlock(uint16_t blockNum, const void* data);
+    bool writeBlock(uint16_t blockNum, void* data);
 
     //! Sets default media info words to out
-    void setDefaultMediaInfo(uint32_t* out);
+    //! @param[out] out  Pointer to where media info will be written
+    //! @param[in] infoOffset  Media info word offset
+    //! @param[in] infoLen  Number of media info words to copy
+    void setDefaultMediaInfo(uint32_t* out, uint8_t infoOffset = 0, uint8_t infoLen = 6);
 
 public:
     static const uint16_t NUMBER_OF_PARTITIONS = 1;
@@ -73,6 +76,7 @@ public:
     static const uint16_t SYSTEM_BLOCK_NO = (NUM_BLOCKS - 1);
     static const uint16_t NUM_SYSTEM_BLOCKS = 1;
     static const uint16_t MEDIA_INFO_WORD_OFFSET = 16;
+    static const uint16_t SAVE_AREA_MEDIA_INFO_OFFSET = 4;
     static const uint16_t FAT_BLOCK_NO = SYSTEM_BLOCK_NO - NUM_SYSTEM_BLOCKS;
     static const uint16_t NUM_FAT_BLOCKS = 1;
     static const uint16_t FILE_INFO_BLOCK_NO = FAT_BLOCK_NO - NUM_FAT_BLOCKS;
