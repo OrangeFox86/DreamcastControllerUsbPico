@@ -18,7 +18,8 @@ NonVolatilePicoSystemMemory::NonVolatilePicoSystemMemory(uint32_t flashOffset, u
     mMutex(),
     mProgrammingState(ProgrammingState::WAITING_FOR_JOB),
     mSectorQueue(),
-    mDelayedWriteTime(0)
+    mDelayedWriteTime(0),
+    mLastActivityTime(0)
 {
     assert(flashOffset % SECTOR_SIZE == 0);
 
@@ -34,6 +35,7 @@ uint32_t NonVolatilePicoSystemMemory::getMemorySize()
 
 const uint8_t* NonVolatilePicoSystemMemory::read(uint32_t offset, uint32_t& size)
 {
+    mLastActivityTime = time_us_64();
     // A copy of memory is kept in RAM because nothing can be read from flash while erase is
     // processing which takes way too long for this to return within 500 microseconds
     return mLocalMem.read(offset, size);
@@ -43,6 +45,8 @@ bool NonVolatilePicoSystemMemory::write(uint32_t offset, const void* data, uint3
 {
     // This entire function is serialized with process()
     LockGuard lock(mMutex, true);
+
+    mLastActivityTime = time_us_64();
 
     // First, store this data into local RAM
     bool success = mLocalMem.write(offset, data, size);
@@ -85,6 +89,12 @@ bool NonVolatilePicoSystemMemory::write(uint32_t offset, const void* data, uint3
     return success;
 }
 
+uint64_t NonVolatilePicoSystemMemory::getLastActivityTime()
+{
+    // WARNING: Not an atomic read, but this isn't a critical thing anyway
+    return mLastActivityTime;
+}
+
 void NonVolatilePicoSystemMemory::process()
 {
     mMutex.lock();
@@ -99,6 +109,7 @@ void NonVolatilePicoSystemMemory::process()
                 uint16_t sector = *mSectorQueue.begin();
                 uint32_t flashByte = sectorToFlashByte(sector);
 
+                mLastActivityTime = time_us_64();
                 setWriteDelay();
                 mProgrammingState = ProgrammingState::SECTOR_ERASING;
 
@@ -123,6 +134,7 @@ void NonVolatilePicoSystemMemory::process()
 
         case ProgrammingState::DELAYING_WRITE:
         {
+            mLastActivityTime = time_us_64();
             // Write is delayed until the host moves on to writing another sector or if timeout
             // is reached. This helps ensure that the same sector isn't written multiple times.
             if (time_us_64() >= mDelayedWriteTime)

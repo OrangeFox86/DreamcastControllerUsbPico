@@ -67,6 +67,10 @@ public:
     //! @returns true iff all bytes were written or at least queued for write
     virtual bool write(uint32_t offset, const void* data, uint32_t& size) final;
 
+    //! Used to determine read/write status for status LED
+    //! @returns the time of last read/write activity
+    virtual uint64_t getLastActivityTime() final;
+
     //! Must be called to periodically process flash access
     //! @warning this may block for up to 400 ms
     void process();
@@ -100,4 +104,6 @@ private:
     //! The time at which write should execute after erase has completed
     //! (or 0 to execute on next process())
     uint64_t mDelayedWriteTime;
+    //! Last system time of read/write activity
+    uint64_t mLastActivityTime;
 };

@@ -23,4 +23,8 @@ public:
     //! @param[in,out] size  Number of bytes to write, set with number of bytes written
     //! @returns true iff all bytes were written or at least queued for write
     virtual bool write(uint32_t offset, const void* data, uint32_t& size) = 0;
+
+    //! Used to determine read/write status for status LED
+    //! @returns the time of last read/write activity
+    virtual uint64_t getLastActivityTime() = 0;
 };
