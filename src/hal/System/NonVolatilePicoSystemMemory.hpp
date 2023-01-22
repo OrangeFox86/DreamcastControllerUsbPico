@@ -3,24 +3,35 @@
 #include "hal/System/SystemMemory.hpp"
 #include "VolatileSystemMemory.hpp"
 #include "Mutex.hpp"
-#include "hal/System/LockGuard.hpp"
 
-#include "hardware/flash.h"
-#include "pico/stdlib.h"
-
-#include <assert.h>
 #include <memory>
-#include <string.h>
 #include <list>
-#include <algorithm>
 
-// For W25Q16JV
+// The Raspberry Pi Pico uses an external flash chip, the W25Q16JV, to store code. There are some
+// limitations which make it difficult to use as storage space.
+// Datasheet: https://www.winbond.com/resource-files/w25q16jv%20spi%20revh%2004082019%20plus.pdf
+// For W25Q16JV:
 // - Read or write of 256 byte page will take approximately 4 microseconds
-// - Write can only keep a bit "1" or flip a bit from "1" to "0"
-// - Erasing flips all bits to "1" within a 4096 byte sector which takes up to 400 ms
+// - Write can only keep a bit "1" or flip a bit from "1" to "0" (true for most flash)
+// - Erasing sets all bits to "1" within a 4096 byte sector which takes up to 400 ms
+// - The XIP (execute in place) feature cannot be used during write/erasure
+
+// The Pico uses the XIP feature of this chip to execute code. This means it is necessary to run
+// code from RAM while accessing the flash in code. The time that it takes to erase memory also puts
+// a damper on things. The only way that I could think to make this work is to enable copy_to_ram
+// for the executable so that the entire program loads into RAM before executing. Then the second
+// core can be used to do erase and write in the background. Because nothing can be read from flash
+// while erase is executing, a copy of memory is also stored in RAM so that read() returns quickly.
+// Ultimately, this limits program size up to 128 KB (assuming 128 KB in RAM is used for
+// the local copy of non-volatile memory). That size of course becomes more limited the more RAM is
+// used for the program itself.
 
 //! SystemMemory class using Pico's onboard flash
-//! In order for this to work properly, program must be running from RAM
+//! In order for this to work properly, entire program must be running from RAM. No other component
+//! within the program may access flash when this class is used. One core may call read() and
+//! write() while the other core must call process() to process queued writes. It should be possible
+//! to do all execution from a single core in the future once the TODO within process() is
+//! addressed.
 class NonVolatilePicoSystemMemory : public SystemMemory
 {
 public:
@@ -38,168 +49,34 @@ public:
     //! Constructor
     //! @param[in] flashOffset  Offset into flash, must align to SECTOR_SIZE
     //! @param[in] size  Number of bytes to allow read/write
-    NonVolatilePicoSystemMemory(uint32_t flashOffset, uint32_t size) :
-        SystemMemory(),
-        mOffset(flashOffset),
-        mSize(size),
-        mLocalMem(size),
-        mMutex(),
-        mProgrammingState(ProgrammingState::WAITING_FOR_JOB),
-        mSectorQueue(),
-        mDelayedWriteTime(0)
-    {
-        assert(flashOffset % SECTOR_SIZE == 0);
-
-        // Copy all of flash into volatile memory
-        const uint8_t* const readFlash = (const uint8_t *)(XIP_BASE + mOffset);
-        mLocalMem.write(0, readFlash, size);
-    }
+    NonVolatilePicoSystemMemory(uint32_t flashOffset, uint32_t size);
 
     //! @returns number of bytes reserved in memory
-    virtual uint32_t getMemorySize() final
-    {
-        return mSize;
-    }
+    virtual uint32_t getMemorySize() final;
 
     //! Reads from memory - must return within 500 microseconds
     //! @param[in] offset  Offset into memory in bytes
     //! @param[in,out] size  Number of bytes to read, set with the number of bytes read
     //! @returns a pointer containing the number of bytes returned in size
-    virtual const uint8_t* read(uint32_t offset, uint32_t& size) final
-    {
-        return mLocalMem.read(offset, size);
-    }
+    virtual const uint8_t* read(uint32_t offset, uint32_t& size) final;
 
     //! Writes to memory - must return within 500 microseconds
     //! @param[in] offset  Offset into memory in bytes
     //! @param[in] data  The data to write
     //! @param[in,out] size  Number of bytes to write, set with number of bytes written
     //! @returns true iff all bytes were written or at least queued for write
-    virtual bool write(uint32_t offset, const void* data, uint32_t& size) final
-    {
-        LockGuard lock(mMutex, true);
-
-        bool success = mLocalMem.write(offset, data, size);
-
-        if (size > 0)
-        {
-            uint16_t firstSector = offset / SECTOR_SIZE;
-            uint16_t lastSector = (offset + size - 1) / SECTOR_SIZE;
-            bool delayWrite = false;
-            bool itemAdded = false;
-            for (uint32_t i = firstSector; i <= lastSector; ++i)
-            {
-                std::list<uint16_t>::iterator it =
-                    std::find(mSectorQueue.begin(), mSectorQueue.end(), i);
-
-                if (it == mSectorQueue.end())
-                {
-                    // Add this sector
-                    mSectorQueue.push_back(i);
-                    itemAdded = true;
-                }
-                else if (it == mSectorQueue.begin())
-                {
-                    if (mProgrammingState != ProgrammingState::WAITING_FOR_JOB)
-                    {
-                        // Currently processing this sector - delay write even further
-                        delayWrite = true;
-                    }
-                }
-            }
-
-            if (itemAdded)
-            {
-                // If delaying, no longer need to delay write
-                mDelayedWriteTime = 0;
-            }
-            else if (delayWrite)
-            {
-                setWriteDelay();
-            }
-        }
-
-        return success;
-    }
+    virtual bool write(uint32_t offset, const void* data, uint32_t& size) final;
 
     //! Must be called to periodically process flash access
-    inline void process()
-    {
-        mMutex.lock();
-        bool unlock = true;
-
-        switch (mProgrammingState)
-        {
-            case ProgrammingState::WAITING_FOR_JOB:
-            {
-                if (!mSectorQueue.empty())
-                {
-                    uint16_t sector = *mSectorQueue.begin();
-                    uint32_t flashByte = sectorToFlashByte(sector);
-
-                    setWriteDelay();
-                    mProgrammingState = ProgrammingState::SECTOR_ERASING;
-
-                    // flash_range_erase blocks until erase is complete, so don't hold the lock
-                    mMutex.unlock();
-                    unlock = false;
-                    flash_range_erase(flashByte, SECTOR_SIZE);
-                }
-            }
-            break;
-
-            case ProgrammingState::SECTOR_ERASING:
-            {
-                // Nothing to do in this state
-                mProgrammingState = ProgrammingState::DELAYING_WRITE;
-            }
-            // Fall through
-
-            case ProgrammingState::DELAYING_WRITE:
-            {
-                if (time_us_64() >= mDelayedWriteTime)
-                {
-                    uint16_t sector = *mSectorQueue.begin();
-                    uint32_t localByte = sector * SECTOR_SIZE;
-                    uint32_t size = SECTOR_SIZE;
-                    const uint8_t* mem = mLocalMem.read(localByte, size);
-
-                    assert(mem != nullptr);
-
-                    uint32_t flashByte = sectorToFlashByte(sector);
-                    flash_range_program(flashByte, mem, SECTOR_SIZE);
-
-                    mSectorQueue.pop_front();
-                    mProgrammingState = ProgrammingState::WAITING_FOR_JOB;
-                }
-            }
-            break;
-
-            default:
-            {
-                assert(false);
-            }
-            break;
-        }
-
-        if (unlock)
-        {
-            mMutex.unlock();
-        }
-    }
+    //! @warning this may block for up to 400 ms
+    void process();
 
 private:
     //! Converts a local sector index to flash byte offset
-    inline uint32_t sectorToFlashByte(uint16_t sector)
-    {
-        return mOffset + (sector * SECTOR_SIZE);
-    }
+    uint32_t sectorToFlashByte(uint16_t sector);
 
     //! Set the write delay using the current time
-    inline void setWriteDelay()
-    {
-        mDelayedWriteTime = time_us_64() + WRITE_DELAY_US;
-    }
+    void setWriteDelay();
 
 private:
     //! Number of bytes in a sector
@@ -216,8 +93,11 @@ private:
     VolatileSystemMemory mLocalMem;
     //! Mutex to serialize write() and flash programming
     Mutex mMutex;
-
+    //! Keeps track of the state in process()
     ProgrammingState mProgrammingState;
+    //! Queue of sectors which needs to be written to flash
     std::list<uint16_t> mSectorQueue;
+    //! The time at which write should execute after erase has completed
+    //! (or 0 to execute on next process())
     uint64_t mDelayedWriteTime;
 };

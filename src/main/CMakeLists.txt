@@ -68,7 +68,6 @@ target_link_libraries(client-pico-non-volatile-mem
     hal-System
     pico_stdio_usb
     clientLib
-    hardware_flash
 )
 target_compile_options(client-pico-non-volatile-mem PRIVATE
   -Wall
