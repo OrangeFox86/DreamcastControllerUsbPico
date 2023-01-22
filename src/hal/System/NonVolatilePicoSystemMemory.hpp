@@ -92,19 +92,21 @@ public:
                 std::list<uint16_t>::iterator it =
                     std::find(mSectorQueue.begin(), mSectorQueue.end(), i);
 
-                if (it == mSectorQueue.begin())
+                if (it == mSectorQueue.end())
+                {
+                    // Add this sector
+                    mSectorQueue.push_back(i);
+                    itemAdded = true;
+
+                    DEBUG_PRINT("Queued sector %lu\n", i);
+                }
+                else if (it == mSectorQueue.begin())
                 {
                     if (mProgrammingState != ProgrammingState::WAITING_FOR_JOB)
                     {
                         // Currently processing this sector - delay write even further
                         delayWrite = true;
                     }
-                }
-                else if (it == mSectorQueue.end())
-                {
-                    // Add this sector
-                    mSectorQueue.push_back(i);
-                    itemAdded = true;
                 }
             }
 
@@ -169,6 +171,7 @@ public:
                     uint32_t flashByte = sectorToFlashByte(sector);
                     flash_range_program(flashByte, mem, SECTOR_SIZE);
 
+                    mSectorQueue.pop_front();
                     mProgrammingState = ProgrammingState::WAITING_FOR_JOB;
                 }
             }
