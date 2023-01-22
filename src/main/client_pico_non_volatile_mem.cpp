@@ -9,7 +9,7 @@
 #include "CriticalSectionMutex.hpp"
 #include "Mutex.hpp"
 #include "Clock.hpp"
-#include "VolatileSystemMemory.hpp"
+#include "NonVolatilePicoSystemMemory.hpp"
 
 #include "hal/System/LockGuard.hpp"
 #include "hal/MapleBus/MapleBusInterface.hpp"
@@ -21,12 +21,23 @@
 #include <memory>
 #include <algorithm>
 
-#define MAX_DEVICES 4
+std::shared_ptr<NonVolatilePicoSystemMemory> mem =
+    std::make_shared<NonVolatilePicoSystemMemory>(
+        PICO_FLASH_SIZE_BYTES - client::DreamcastStorage::MEMORY_SIZE_BYTES,
+        client::DreamcastStorage::MEMORY_SIZE_BYTES);
 
-const uint8_t MAPLE_HOST_ADDRESSES[MAX_DEVICES] = {0x00, 0x40, 0x80, 0xC0};
+// Second Core Process
+void core1()
+{
+    set_sys_clock_khz(CPU_FREQ_KHZ, true);
+
+    while (true)
+    {
+        mem->process();
+    }
+}
 
 // First Core Process
-// The first core is in charge of initialization and USB communication
 void core0()
 {
     set_sys_clock_khz(CPU_FREQ_KHZ, true);
@@ -35,6 +46,8 @@ void core0()
     stdio_uart_init();
     stdio_usb_init();
 #endif
+
+    multicore_launch_core1(core1);
 
     std::shared_ptr<MapleBusInterface> bus = create_maple_bus(P1_BUS_START_PIN);
     client::DreamcastMainPeripheral mainPeripheral(
@@ -57,11 +70,8 @@ void core0()
             "Version 1.005,1999/04/15,315-6208-03,SEGA Visual Memory System BIOS Produced by IOS Produced",
             12.4,
             13.0);
-    std::shared_ptr<VolatileSystemMemory> mem =
-        std::make_shared<VolatileSystemMemory>(client::DreamcastStorage::MEMORY_SIZE_BYTES);
     std::shared_ptr<client::DreamcastStorage> dremcastStorage =
         std::make_shared<client::DreamcastStorage>(mem, 0);
-    dremcastStorage->format();
     subPeripheral1->addFunction(dremcastStorage);
     mainPeripheral.addSubPeripheral(subPeripheral1);
 
