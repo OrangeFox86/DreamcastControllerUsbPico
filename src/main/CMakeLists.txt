@@ -60,7 +60,7 @@ target_include_directories(client-volatile-mem
 file(GLOB CLIENT_SRC "${CMAKE_CURRENT_SOURCE_DIR}/client_pico_non_volatile_mem.cpp")
 add_executable(client-pico-non-volatile-mem ${CLIENT_SRC})
 pico_add_extra_outputs(client-pico-non-volatile-mem)
-pico_set_binary_type(client-pico-non-volatile-mem no_flash)
+pico_set_binary_type(client-pico-non-volatile-mem copy_to_ram)
 target_link_libraries(client-pico-non-volatile-mem
   PRIVATE
     pico_multicore
@@ -68,6 +68,7 @@ target_link_libraries(client-pico-non-volatile-mem
     hal-System
     pico_stdio_usb
     clientLib
+    hardware_flash
 )
 target_compile_options(client-pico-non-volatile-mem PRIVATE
   -Wall

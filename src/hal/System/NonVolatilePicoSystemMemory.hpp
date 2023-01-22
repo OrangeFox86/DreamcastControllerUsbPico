@@ -97,8 +97,6 @@ public:
                     // Add this sector
                     mSectorQueue.push_back(i);
                     itemAdded = true;
-
-                    DEBUG_PRINT("Queued sector %lu\n", i);
                 }
                 else if (it == mSectorQueue.begin())
                 {
