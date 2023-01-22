@@ -29,13 +29,24 @@ const uint8_t* client::DreamcastStorage::readBlock(uint16_t blockNum)
     return mem;
 }
 
-bool client::DreamcastStorage::writeBlock(uint16_t blockNum, const void* data)
+bool client::DreamcastStorage::writeBlock(uint16_t blockNum, void* data)
 {
     uint32_t size = BYTES_PER_BLOCK;
+    if (blockNum == (SYSTEM_BLOCK_NO - NUM_SYSTEM_BLOCKS + 1))
+    {
+        // Dreamcast does something weird where the save area block count and number is seemingly
+        // expected to be overridden by the memory unit itself if host sets it to 0
+        uint32_t* data32 = reinterpret_cast<uint32_t*>(data);
+        uint32_t* saveAreaWord = data32 + MEDIA_INFO_WORD_OFFSET + SAVE_AREA_MEDIA_INFO_OFFSET;
+        if (*saveAreaWord == 0)
+        {
+            setDefaultMediaInfo(saveAreaWord, SAVE_AREA_MEDIA_INFO_OFFSET, 1);
+        }
+    }
     return mSystemMemory->write(mMemoryOffset + (blockNum * BYTES_PER_BLOCK), data, size);
 }
 
-void client::DreamcastStorage::setDefaultMediaInfo(uint32_t* out)
+void client::DreamcastStorage::setDefaultMediaInfo(uint32_t* out, uint8_t infoOffset, uint8_t infoLen)
 {
     static const uint32_t executionFile = 0x00008000;
     static const uint32_t mediaInfo[6] = {
@@ -46,7 +57,7 @@ void client::DreamcastStorage::setDefaultMediaInfo(uint32_t* out)
         U16_TO_UPPER_HALF_WORD(NUM_SAVE_AREA_BLOCKS) | U16_TO_LOWER_HALF_WORD(SAVE_AREA_BLOCK_NO),
         executionFile
     };
-    memcpy(out, mediaInfo, sizeof(mediaInfo));
+    memcpy(out, mediaInfo + infoOffset, infoLen * sizeof(mediaInfo[0]));
 }
 
 bool client::DreamcastStorage::format()
@@ -70,7 +81,7 @@ bool client::DreamcastStorage::format()
     systemBlock[12] = 0x19990909;
     systemBlock[13] = 0x00001000;
     // Media info data
-    setDefaultMediaInfo(&systemBlock[16]);
+    setDefaultMediaInfo(&systemBlock[MEDIA_INFO_WORD_OFFSET]);
     if (!writeBlock(SYSTEM_BLOCK_NO - NUM_SYSTEM_BLOCKS + 1, systemBlock))
     {
         return false;
