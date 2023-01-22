@@ -40,7 +40,6 @@ std::shared_ptr<const Transmission> TransmissionTimeliner::writeTask(uint64_t cu
         txSent = item.getTx();
         if (txSent != nullptr)
         {
-            assert(txSent->packet->isValid());
             if (mBus.write(*txSent->packet, txSent->expectResponse))
             {
                 mCurrentTx = txSent;

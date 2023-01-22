@@ -5,6 +5,11 @@ DIST_DIR="dist"
 GCC="/usr/bin/arm-none-eabi-gcc"
 GPP="/usr/bin/arm-none-eabi-g++"
 
+# Force the elf and uf2 binary files to always be regenerated on build
+# (this is so old uf2 files don't pile up in dist directory)
+rm ${BUILD_DIR}/src/*/*.elf
+rm ${BUILD_DIR}/src/*/*.uf2
+
 /usr/bin/cmake \
     --no-warn-unused-cli \
     -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE \

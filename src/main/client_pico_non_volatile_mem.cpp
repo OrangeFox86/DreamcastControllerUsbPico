@@ -9,6 +9,7 @@
 #include "CriticalSectionMutex.hpp"
 #include "Mutex.hpp"
 #include "Clock.hpp"
+#include "NonVolatilePicoSystemMemory.hpp"
 
 #include "hal/System/LockGuard.hpp"
 #include "hal/MapleBus/MapleBusInterface.hpp"
@@ -20,12 +21,28 @@
 #include <memory>
 #include <algorithm>
 
-#define MAX_DEVICES 4
+// Only a single LED function for client
+#define CLIENT_LED_PIN ((USB_LED_PIN >= 0) ? USB_LED_PIN : SIMPLE_USB_LED_PIN)
 
-const uint8_t MAPLE_HOST_ADDRESSES[MAX_DEVICES] = {0x00, 0x40, 0x80, 0xC0};
+void led_task();
+
+std::shared_ptr<NonVolatilePicoSystemMemory> mem =
+    std::make_shared<NonVolatilePicoSystemMemory>(
+        PICO_FLASH_SIZE_BYTES - client::DreamcastStorage::MEMORY_SIZE_BYTES,
+        client::DreamcastStorage::MEMORY_SIZE_BYTES);
+
+// Second Core Process
+void core1()
+{
+    set_sys_clock_khz(CPU_FREQ_KHZ, true);
+
+    while (true)
+    {
+        mem->process();
+    }
+}
 
 // First Core Process
-// The first core is in charge of initialization and USB communication
 void core0()
 {
     set_sys_clock_khz(CPU_FREQ_KHZ, true);
@@ -34,6 +51,8 @@ void core0()
     stdio_uart_init();
     stdio_usb_init();
 #endif
+
+    multicore_launch_core1(core1);
 
     std::shared_ptr<MapleBusInterface> bus = create_maple_bus(P1_BUS_START_PIN);
     client::DreamcastMainPeripheral mainPeripheral(
@@ -56,12 +75,17 @@ void core0()
             "Version 1.005,1999/04/15,315-6208-03,SEGA Visual Memory System BIOS Produced by IOS Produced",
             12.4,
             13.0);
-    subPeripheral1->addFunction(std::make_shared<client::DreamcastStorage>());
+    std::shared_ptr<client::DreamcastStorage> dremcastStorage =
+        std::make_shared<client::DreamcastStorage>(mem, 0);
+    subPeripheral1->addFunction(dremcastStorage);
     mainPeripheral.addSubPeripheral(subPeripheral1);
 
     uint8_t lastSender = 0;
     MaplePacket packetOut;
     packetOut.reservePayload(256);
+    MaplePacket lastPacketOut;
+    lastPacketOut.reservePayload(256);
+    bool packetSent = false;
     MaplePacket packetIn;
     packetIn.reservePayload(256);
     while(true)
@@ -84,22 +108,22 @@ void core0()
 
                 if (packetIn.frame.command == COMMAND_RESPONSE_REQUEST_RESEND)
                 {
-                    // Write the previous packet
-                    writeIt = true;
+                    if (packetSent)
+                    {
+                        // Write the previous packet
+                        packetOut = lastPacketOut;
+                        writeIt = true;
+                    }
                 }
                 else
                 {
-                    packetOut.reset();
                     writeIt = mainPeripheral.dispensePacket(packetIn, packetOut);
                 }
 
-                if (!writeIt)
+                if (writeIt)
                 {
-                    packetOut.frame.command = COMMAND_RESPONSE_UNKNOWN_COMMAND;
-                }
-
-                if (packetOut.isValid())
-                {
+                    packetSent = true;
+                    lastPacketOut = packetOut;
                     if (bus->write(packetOut, false))
                     {
                         do
@@ -108,6 +132,7 @@ void core0()
                         } while (status.phase == MapleBusInterface::Phase::WRITE_IN_PROGRESS);
                     }
                 }
+                // else: write nothing, and the host will eventually stall out
             }
             else if(status.phase == MapleBusInterface::Phase::READ_FAILED
                     && status.failureReason == MapleBusInterface::FailureReason::CRC_INVALID
@@ -131,13 +156,56 @@ void core0()
                 mainPeripheral.reset();
             }
         }
+
+        led_task();
     }
 }
 
 int main()
 {
+    gpio_init(CLIENT_LED_PIN);
+    gpio_set_dir_out_masked(1<<CLIENT_LED_PIN);
     core0();
     return 0;
+}
+
+void led_task()
+{
+    static bool ledOn = false;
+    static uint64_t startUs = 0;
+    static const uint32_t BLINK_TIME_US = 250000;
+    static const uint32_t ACTIVITY_DELAY_US = 500000;
+
+    // To correct for the non-atomic read in getLastActivityTime(), only update activityStopTime
+    // if a new time is greater
+    uint64_t currentTime = time_us_64();
+    static uint64_t activityStopTime = 0;
+    uint64_t lastActivityTime = mem->getLastActivityTime();
+    if (lastActivityTime != 0)
+    {
+        lastActivityTime += ACTIVITY_DELAY_US;
+        if (lastActivityTime > activityStopTime)
+        {
+            activityStopTime = lastActivityTime;
+        }
+    }
+
+    if (activityStopTime > currentTime)
+    {
+        uint64_t t = currentTime - startUs;
+        if (t >= BLINK_TIME_US)
+        {
+            startUs += BLINK_TIME_US;
+            ledOn = !ledOn;
+        }
+    }
+    else
+    {
+        startUs = currentTime;
+        ledOn = true;
+    }
+
+    gpio_put(CLIENT_LED_PIN, ledOn);
 }
 
 #endif

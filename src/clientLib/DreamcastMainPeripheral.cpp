@@ -48,22 +48,34 @@ bool DreamcastMainPeripheral::handlePacket(const MaplePacket& in, MaplePacket& o
 
 bool DreamcastMainPeripheral::dispensePacket(const MaplePacket& in, MaplePacket& out)
 {
+    bool handled = false;
+    bool valid = false;
+    out.reset();
+
     uint8_t rawRecipientAddr = in.frame.recipientAddr & ~PLAYER_ID_ADDR_MASK;
     if (rawRecipientAddr == mAddr)
     {
         // This is for me
-        return handlePacket(in, out);
+        handled = true;
+        valid = handlePacket(in, out);
     }
     else if (mSubPeripherals.find(rawRecipientAddr) != mSubPeripherals.end())
     {
         // This is for one of my sub-peripherals
-        return mSubPeripherals[rawRecipientAddr]->handlePacket(in, out);
+        handled = true;
+        valid = mSubPeripherals[rawRecipientAddr]->handlePacket(in, out);
     }
-    else
+    // else: not handled
+
+    if (handled && !valid && out.frame.senderAddr != out.frame.recipientAddr)
     {
-        // This is invalid
-        return false;
+        out.frame.command = COMMAND_RESPONSE_UNKNOWN_COMMAND;
+        out.payload.clear();
+        out.updateFrameLength();
+        valid = true;
     }
+
+    return valid;
 }
 
 void DreamcastMainPeripheral::reset()

@@ -42,7 +42,7 @@ struct MaplePacket
         //! Generate a default, invalid frame
         inline static Frame defaultFrame()
         {
-            Frame f = {.command=COMMAND_INVALID};
+            static const Frame f = {.command=COMMAND_INVALID};
             return f;
         }
 
@@ -91,14 +91,24 @@ struct MaplePacket
                     | static_cast<uint32_t>(command) << COMMAND_POSITION);
         }
 
-        // Assignment operator from uint32 value
+        //! Assignment operator
+        Frame& operator=(const Frame& rhs)
+        {
+            length = rhs.length;
+            senderAddr = rhs.senderAddr;
+            recipientAddr = rhs.recipientAddr;
+            command = rhs.command;
+            return *this;
+        }
+
+        //! Assignment operator from uint32 value
         Frame& operator=(const uint32_t& rhs)
         {
             setFromFrameWord(rhs);
             return *this;
         }
 
-        // Assignment operator from int32 value
+        //! Assignment operator from int32 value
         Frame& operator=(const int32_t& rhs)
         {
             operator=(static_cast<uint32_t>(rhs));
@@ -128,9 +138,8 @@ struct MaplePacket
     //! @param[in] payload  The payload words to set
     //! @param[in] len  Number of words in payload
     inline MaplePacket(Frame frame, const uint32_t* payload, uint8_t len) :
-        mPayload(payload, payload + len),
         frame(frame),
-        payload(mPayload)
+        payload(payload, payload + len)
     {
         updateFrameLength();
     }
@@ -173,17 +182,23 @@ struct MaplePacket
 
     //! Copy constructor
     inline MaplePacket(const MaplePacket& rhs) :
-        mPayload(rhs.mPayload),
         frame(rhs.frame),
-        payload(mPayload)
+        payload(rhs.payload)
     {}
 
     //! Move constructor
     inline MaplePacket(MaplePacket&& rhs) :
-        mPayload(std::move(rhs.mPayload)),
         frame(rhs.frame),
-        payload(mPayload)
+        payload(std::move(rhs.payload))
     {}
+
+    //! Assignment operator
+    MaplePacket& operator=(const MaplePacket& rhs)
+    {
+        frame = rhs.frame;
+        payload = rhs.payload;
+        return *this;
+    }
 
     //! == operator for this class
     inline bool operator==(const MaplePacket& rhs) const
@@ -191,11 +206,19 @@ struct MaplePacket
         return frame == rhs.frame && payload == rhs.payload;
     }
 
+    //! @returns frame word value with corrected length
+    uint32_t getFrameWord() const
+    {
+        Frame f = frame;
+        f.length = payload.size();
+        return f.toWord();
+    }
+
     //! Resets all data
     inline void reset()
     {
-        frame = Frame();
-        mPayload.clear();
+        frame = Frame::defaultFrame();
+        payload.clear();
         updateFrameLength();
     }
 
@@ -203,7 +226,7 @@ struct MaplePacket
     //! @param[in] len  Number of words to reserve
     inline void reservePayload(uint32_t len)
     {
-        mPayload.reserve(len);
+        payload.reserve(len);
     }
 
     //! Sets packet contents from array
@@ -217,12 +240,12 @@ struct MaplePacket
         }
         else
         {
-            frame = Frame();
+            frame = Frame::defaultFrame();
         }
-        mPayload.clear();
+        payload.clear();
         if (len > 1)
         {
-            mPayload.insert(mPayload.end(), &words[1], &words[1] + (len - 1));
+            payload.insert(payload.end(), &words[1], &words[1] + (len - 1));
         }
         updateFrameLength();
     }
@@ -234,7 +257,7 @@ struct MaplePacket
     {
         if (len > 0)
         {
-            mPayload.insert(mPayload.end(), &words[0], &words[0] + len);
+            payload.insert(payload.end(), &words[0], &words[0] + len);
             updateFrameLength();
         }
     }
@@ -251,8 +274,15 @@ struct MaplePacket
     //! @param[in] len  Number of words in words
     inline void setPayload(const uint32_t* words, uint8_t len)
     {
-        mPayload.clear();
+        payload.clear();
         appendPayload(words, len);
+    }
+
+    //! Sets a single word in payload
+    //! @param[in] word  The word to set
+    inline void setPayload(uint32_t word)
+    {
+        setPayload(&word, 1);
     }
 
     //! Update length in frame word with the payload size
@@ -296,16 +326,10 @@ struct MaplePacket
         return getTxTimeNs(payload.size(), MAPLE_NS_PER_BIT);
     }
 
-private:
-    //! Writeable packet payload - external write to payload protected so that length value in frame
-    //! word doesn't go out of sync
-    std::vector<uint32_t> mPayload;
-
-public:
     //! Packet frame word value
     Frame frame;
-    //! Read-only packet payload
-    const std::vector<uint32_t>& payload;
+    //! Packet payload
+    std::vector<uint32_t> payload;
 };
 
 #endif // __MAPLE_PACKET_H__

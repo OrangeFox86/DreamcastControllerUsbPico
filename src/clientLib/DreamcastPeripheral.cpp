@@ -184,13 +184,10 @@ bool DreamcastPeripheral::handlePacket(const MaplePacket& in, MaplePacket& out)
         }
     }
 
-    if (status)
-    {
-        // Set all of the common data in frame word
-        out.updateFrameLength();
-        out.frame.senderAddr = (mAddr | mAddrAugmenter);
-        out.frame.recipientAddr = in.frame.senderAddr;
-    }
+    // Set all of the common data in frame word
+    out.frame.senderAddr = (mAddr | mAddrAugmenter);
+    out.frame.recipientAddr = in.frame.senderAddr;
+    out.updateFrameLength();
 
     return status;
 }

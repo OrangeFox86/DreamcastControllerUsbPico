@@ -8,6 +8,7 @@ add_library(hal-System STATIC ${SRC})
 target_link_libraries(hal-System
   PUBLIC
     pico_stdlib
+    hardware_flash
 )
 target_compile_options(hal-System PRIVATE
   -Wall
