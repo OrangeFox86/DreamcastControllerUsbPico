@@ -6,7 +6,8 @@
 namespace client
 {
 
-DreamcastMainPeripheral::DreamcastMainPeripheral(uint8_t addr,
+DreamcastMainPeripheral::DreamcastMainPeripheral(std::shared_ptr<MapleBusInterface> bus,
+                                                 uint8_t addr,
                                                  uint8_t regionCode,
                                                  uint8_t connectionDirectionCode,
                                                  const char* descriptionStr,
@@ -22,9 +23,19 @@ DreamcastMainPeripheral::DreamcastMainPeripheral(uint8_t addr,
                         versionStr,
                         standbyCurrentmA,
                         maxCurrentmA),
+    mBus(bus),
     mPlayerIndex(0),
-    mSubPeripherals()
-{}
+    mSubPeripherals(),
+    mLastSender(0),
+    mPacketOut(),
+    mLastPacketOut(),
+    mPacketSent(false),
+    mPacketIn()
+{
+    mPacketOut.reservePayload(256);
+    mLastPacketOut.reservePayload(256);
+    mPacketIn.reservePayload(256);
+}
 
 void DreamcastMainPeripheral::addSubPeripheral(std::shared_ptr<DreamcastPeripheral> subPeripheral)
 {
@@ -111,6 +122,96 @@ void DreamcastMainPeripheral::setPlayerIndex(uint8_t idx)
             // The only augmenter in sub-peripherals is player index
             iter->second->setAddrAugmenter(augmenterMask);
         }
+    }
+}
+
+void DreamcastMainPeripheral::task(uint64_t currentTimeUs)
+{
+    MapleBusInterface::Status status = mBus->processEvents(currentTimeUs);
+
+    switch (status.phase)
+    {
+        case MapleBusInterface::Phase::READ_FAILED:
+        {
+            if (status.failureReason == MapleBusInterface::FailureReason::CRC_INVALID
+                && isConnected())
+            {
+                // Data doesn't look right - tell host to resend
+                mPacketOut.reset();
+                mPacketOut.frame.command = COMMAND_RESPONSE_REQUEST_RESEND;
+                mPacketOut.frame.recipientAddr = mLastSender;
+                mPacketOut.frame.senderAddr = getAddress();
+                mPacketOut.updateFrameLength();
+                (void)mBus->write(mPacketOut, false);
+            }
+            else
+            {
+                // Nothing received for a while; reset peripheral
+                reset();
+                // Start waiting for directive from host
+                (void)mBus->startRead(READ_TIMEOUT_US);
+            }
+        }
+        break;
+
+        case MapleBusInterface::Phase::INVALID: // Fall through
+        case MapleBusInterface::Phase::IDLE: // Fall through
+        default:
+        {
+            // Initialization or invalid state
+            reset();
+        }
+        // Fall through
+        case MapleBusInterface::Phase::WRITE_FAILED: // Fall through
+        case MapleBusInterface::Phase::WRITE_COMPLETE:
+        {
+            // Start waiting for directive from host
+            (void)mBus->startRead(READ_TIMEOUT_US);
+        }
+        break;
+
+        case MapleBusInterface::Phase::WRITE_IN_PROGRESS: // Fall through
+        case MapleBusInterface::Phase::WAITING_FOR_READ_START: // Fall through
+        case MapleBusInterface::Phase::READ_IN_PROGRESS:
+        {
+            // Nothing to do (waiting for current process to complete)
+        }
+        break;
+
+        case MapleBusInterface::Phase::READ_COMPLETE:
+        {
+            bool writeIt = false;
+
+            mPacketIn.set(status.readBuffer, status.readBufferLen);
+            mLastSender = mPacketIn.frame.senderAddr;
+
+            if (mPacketIn.frame.command == COMMAND_RESPONSE_REQUEST_RESEND)
+            {
+                if (mPacketSent)
+                {
+                    // Write the previous packet
+                    mPacketOut = mLastPacketOut;
+                    writeIt = true;
+                }
+            }
+            else
+            {
+                writeIt = dispensePacket(mPacketIn, mPacketOut);
+            }
+
+            if (writeIt)
+            {
+                mPacketSent = true;
+                mLastPacketOut = mPacketOut;
+                (void)mBus->write(mPacketOut, false);
+            }
+            else
+            {
+                // Write nothing, and the host will eventually stall out
+                (void)mBus->startRead(READ_TIMEOUT_US);
+            }
+        }
+        break;
     }
 }
 

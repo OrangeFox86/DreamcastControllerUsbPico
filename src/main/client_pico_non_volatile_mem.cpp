@@ -56,6 +56,7 @@ void core0()
 
     std::shared_ptr<MapleBusInterface> bus = create_maple_bus(P1_BUS_START_PIN);
     client::DreamcastMainPeripheral mainPeripheral(
+        bus,
         0x20,
         0xFF,
         0x00,
@@ -80,83 +81,9 @@ void core0()
     subPeripheral1->addFunction(dremcastStorage);
     mainPeripheral.addSubPeripheral(subPeripheral1);
 
-    uint8_t lastSender = 0;
-    MaplePacket packetOut;
-    packetOut.reservePayload(256);
-    MaplePacket lastPacketOut;
-    lastPacketOut.reservePayload(256);
-    bool packetSent = false;
-    MaplePacket packetIn;
-    packetIn.reservePayload(256);
     while(true)
     {
-        if (bus->startRead(1000000))
-        {
-            MapleBusInterface::Status status;
-            do
-            {
-                status = bus->processEvents(time_us_64());
-            } while (status.phase == MapleBusInterface::Phase::WAITING_FOR_READ_START
-                    || status.phase == MapleBusInterface::Phase::READ_IN_PROGRESS);
-
-            if (status.phase == MapleBusInterface::Phase::READ_COMPLETE)
-            {
-                bool writeIt = false;
-
-                packetIn.set(status.readBuffer, status.readBufferLen);
-                lastSender = packetIn.frame.senderAddr;
-
-                if (packetIn.frame.command == COMMAND_RESPONSE_REQUEST_RESEND)
-                {
-                    if (packetSent)
-                    {
-                        // Write the previous packet
-                        packetOut = lastPacketOut;
-                        writeIt = true;
-                    }
-                }
-                else
-                {
-                    writeIt = mainPeripheral.dispensePacket(packetIn, packetOut);
-                }
-
-                if (writeIt)
-                {
-                    packetSent = true;
-                    lastPacketOut = packetOut;
-                    if (bus->write(packetOut, false))
-                    {
-                        do
-                        {
-                            status = bus->processEvents(time_us_64());
-                        } while (status.phase == MapleBusInterface::Phase::WRITE_IN_PROGRESS);
-                    }
-                }
-                // else: write nothing, and the host will eventually stall out
-            }
-            else if(status.phase == MapleBusInterface::Phase::READ_FAILED
-                    && status.failureReason == MapleBusInterface::FailureReason::CRC_INVALID
-                    && mainPeripheral.isConnected())
-            {
-                packetOut.reset();
-                packetOut.frame.command = COMMAND_RESPONSE_REQUEST_RESEND;
-                packetOut.frame.recipientAddr = lastSender;
-                packetOut.frame.senderAddr = mainPeripheral.getAddress();
-                packetOut.updateFrameLength();
-                if (bus->write(packetOut, false))
-                {
-                    do
-                    {
-                        status = bus->processEvents(time_us_64());
-                    } while (status.phase == MapleBusInterface::Phase::WRITE_IN_PROGRESS);
-                }
-            }
-            else
-            {
-                mainPeripheral.reset();
-            }
-        }
-
+        mainPeripheral.task(time_us_64());
         led_task();
     }
 }
