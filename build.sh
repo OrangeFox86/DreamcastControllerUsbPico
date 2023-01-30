@@ -7,8 +7,8 @@ GPP="/usr/bin/arm-none-eabi-g++"
 
 # Force the elf and uf2 binary files to always be regenerated on build
 # (this is so old uf2 files don't pile up in dist directory)
-rm ${BUILD_DIR}/src/*/*.elf
-rm ${BUILD_DIR}/src/*/*.uf2
+rm ${BUILD_DIR}/src/*/*/*.elf
+rm ${BUILD_DIR}/src/*/*/*.uf2
 
 /usr/bin/cmake \
     --no-warn-unused-cli \
@@ -43,4 +43,4 @@ fi
 
 mkdir -p ${DIST_DIR}
 rm -rf ${DIST_DIR}/*
-cp ${BUILD_DIR}/src/*/*.uf2 ${DIST_DIR}
+cp ${BUILD_DIR}/src/*/*/*.uf2 ${DIST_DIR}
