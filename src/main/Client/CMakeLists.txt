@@ -12,7 +12,6 @@ target_link_libraries(client-volatile-mem
     pico_multicore
     hal-MapleBus
     hal-System
-    pico_stdio_usb
     clientLib
 )
 target_compile_options(client-volatile-mem PRIVATE

@@ -31,11 +31,6 @@ void core0()
 {
     set_sys_clock_khz(CPU_FREQ_KHZ, true);
 
-#if SHOW_DEBUG_MESSAGES
-    stdio_uart_init();
-    stdio_usb_init();
-#endif
-
     std::shared_ptr<MapleBusInterface> bus = create_maple_bus(P1_BUS_START_PIN);
     client::DreamcastMainPeripheral mainPeripheral(
         bus,
