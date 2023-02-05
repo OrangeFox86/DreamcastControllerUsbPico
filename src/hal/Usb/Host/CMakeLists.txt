@@ -17,6 +17,9 @@ target_compile_options(hal-Usb-Host PRIVATE
   -O3
 )
 
+# This is a workaround for a bug in pico-sdk under usb host
+target_compile_definitions(tinyusb_host INTERFACE NDEBUG=1)
+
 target_include_directories(hal-Usb-Host
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
