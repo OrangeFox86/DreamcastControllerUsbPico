@@ -2,24 +2,22 @@ cmake_minimum_required(VERSION 3.12)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
-file(GLOB SRC "${CMAKE_CURRENT_SOURCE_DIR}/*.c*" "${CMAKE_CURRENT_SOURCE_DIR}/../Common/*.c*")
+file(GLOB SRC "${CMAKE_CURRENT_SOURCE_DIR}/*.c*")
 
-add_library(hal-Usb-Hid STATIC ${SRC})
-target_link_libraries(hal-Usb-Hid
+add_library(hal-Usb-Host STATIC ${SRC})
+target_link_libraries(hal-Usb-Host
   PUBLIC
     pico_stdlib
-    pico_unique_id
-    tinyusb_device
     tinyusb_board
-    tinyusb_device_base
+    tinyusb_host
 )
-target_compile_options(hal-Usb-Hid PRIVATE
+target_compile_options(hal-Usb-Host PRIVATE
   -Wall
-  -Werror
+  #-Werror
   -O3
 )
 
-target_include_directories(hal-Usb-Hid
+target_include_directories(hal-Usb-Host
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/../Common"

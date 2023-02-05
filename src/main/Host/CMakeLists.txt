@@ -10,7 +10,7 @@ target_link_libraries(host
     pico_multicore
     hal-MapleBus
     hal-System
-    hal-Usb-Hid
+    hal-Usb-Client-Hid
     pico_stdio_usb
     hostLib
 )

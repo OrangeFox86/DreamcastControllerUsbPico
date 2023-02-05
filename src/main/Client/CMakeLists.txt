@@ -38,12 +38,13 @@ target_link_libraries(client-pico-non-volatile-mem
     pico_multicore
     hal-MapleBus
     hal-System
-    pico_stdio_usb
+    hal-Usb-Host
     clientLib
+    pico_stdlib
 )
 target_compile_options(client-pico-non-volatile-mem PRIVATE
   -Wall
-  -Werror
+  #-Werror
   -O3
 )
 

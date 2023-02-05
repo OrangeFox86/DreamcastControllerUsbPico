@@ -13,6 +13,8 @@
 
 #include "hal/System/LockGuard.hpp"
 #include "hal/MapleBus/MapleBusInterface.hpp"
+#include "hal/Usb/host_usb_interface.hpp"
+#include "GamepadHost.hpp"
 
 #include "DreamcastMainPeripheral.hpp"
 #include "DreamcastController.hpp"
@@ -22,6 +24,8 @@
 
 #include <memory>
 #include <algorithm>
+
+void hid_set_controller(client::DreamcastController* ctrlr);
 
 std::shared_ptr<NonVolatilePicoSystemMemory> mem =
     std::make_shared<NonVolatilePicoSystemMemory>(
@@ -33,8 +37,13 @@ void core1()
 {
     set_sys_clock_khz(CPU_FREQ_KHZ, true);
 
+    usb_init();
+
+    printf("Starting USB host\n");
+
     while (true)
     {
+        usb_task();
         mem->process();
     }
 }
@@ -43,13 +52,6 @@ void core1()
 void core0()
 {
     set_sys_clock_khz(CPU_FREQ_KHZ, true);
-
-#if SHOW_DEBUG_MESSAGES
-    stdio_uart_init();
-    stdio_usb_init();
-#endif
-
-    multicore_launch_core1(core1);
 
     std::shared_ptr<MapleBusInterface> bus = create_maple_bus(P1_BUS_START_PIN);
     client::DreamcastMainPeripheral mainPeripheral(
@@ -62,7 +64,10 @@ void core0()
         "Version 1.010,1998/09/28,315-6211-AB   ,Analog Module : The 4th Edition.5/8  +DF",
         43.0,
         50.0);
-    mainPeripheral.addFunction(std::make_shared<client::DreamcastController>());
+    std::shared_ptr<client::DreamcastController> controller =
+        std::make_shared<client::DreamcastController>();
+    set_gamepad_host(controller.get());
+    mainPeripheral.addFunction(controller);
     std::shared_ptr<client::DreamcastPeripheral> subPeripheral1 =
         std::make_shared<client::DreamcastPeripheral>(
             0x01,
@@ -77,6 +82,8 @@ void core0()
         std::make_shared<client::DreamcastStorage>(mem, 0);
     subPeripheral1->addFunction(dremcastStorage);
     mainPeripheral.addSubPeripheral(subPeripheral1);
+
+    multicore_launch_core1(core1);
 
     while(true)
     {
