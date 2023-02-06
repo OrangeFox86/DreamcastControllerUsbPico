@@ -4,8 +4,8 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 file(GLOB SRC "${CMAKE_CURRENT_SOURCE_DIR}/*.c*" "${CMAKE_CURRENT_SOURCE_DIR}/../Common/*.c*")
 
-add_library(hal-Usb-Hid STATIC ${SRC})
-target_link_libraries(hal-Usb-Hid
+add_library(hal-Usb-Client-Hid STATIC ${SRC})
+target_link_libraries(hal-Usb-Client-Hid
   PUBLIC
     pico_stdlib
     pico_unique_id
@@ -13,13 +13,13 @@ target_link_libraries(hal-Usb-Hid
     tinyusb_board
     tinyusb_device_base
 )
-target_compile_options(hal-Usb-Hid PRIVATE
+target_compile_options(hal-Usb-Client-Hid PRIVATE
   -Wall
   -Werror
   -O3
 )
 
-target_include_directories(hal-Usb-Hid
+target_include_directories(hal-Usb-Client-Hid
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/../Common"
