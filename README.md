@@ -72,10 +72,11 @@ sudo apt -y install build-essential gdb
 git clone https://github.com/Tails86/DreamcastControllerUsbPico.git
 cd DreamcastControllerUsbPico
 ```
-4. Pull down the pico SDK (this is optional if you have PICO_SDK_PATH set in your environment which points to the SDK somewhere on your system)
+4. Pull down the pico SDK (this project now uses a fork of the SDK - it will no longer compile under the standard SDK)
 ```bash
 git submodule update --recursive --init
 ```
+Hint: if you have issues building, the easiest way to correct any submodule synchronization issue is to delete the `ext/pico-sdk` directory (ex: `rm -rf ext/pico-sdk`), and then re-run the above submodule update command.
 5. (optional) Build and run tests - this runs core lib unit tests locally
 ```bash
 ./run_tests.sh
