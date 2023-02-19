@@ -63,23 +63,29 @@ If running under Windows, install [WSL](https://docs.microsoft.com/en-us/windows
 sudo apt update
 sudo apt -y install git cmake gcc-arm-none-eabi
 ```
+
 2. (optional) In order to run and debug tests, install standard gcc compilers and gdb by running the following
 ```bash
 sudo apt -y install build-essential gdb
 ```
+
 3. Clone this repo then cd into the created directory
 ```bash
 git clone https://github.com/Tails86/DreamcastControllerUsbPico.git
 cd DreamcastControllerUsbPico
 ```
-4. Pull down the pico SDK (this is optional if you have PICO_SDK_PATH set in your environment which points to the SDK somewhere on your system)
+
+4. Pull down the pico SDK (this project now uses a fork of the SDK - it will no longer compile under the standard SDK)
 ```bash
 git submodule update --recursive --init
 ```
+Hint: if you have issues building, the easiest way to correct any submodule synchronization issue is to delete the `ext/pico-sdk` directory (ex: `rm -rf ext/pico-sdk`), and then re-run the above submodule update command.
+
 5. (optional) Build and run tests - this runs core lib unit tests locally
 ```bash
 ./run_tests.sh
 ```
+
 6. Execute the build script
 ```bash
 ./build.sh

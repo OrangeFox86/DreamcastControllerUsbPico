@@ -19,6 +19,7 @@
 #include "DreamcastMainPeripheral.hpp"
 #include "DreamcastController.hpp"
 #include "DreamcastStorage.hpp"
+#include "DreamcastVibration.hpp"
 
 #include "led.hpp"
 
@@ -43,7 +44,7 @@ void core1()
 
     while (true)
     {
-        usb_task();
+        usb_task(time_us_64());
         mem->process();
     }
 }
@@ -53,7 +54,10 @@ void core0()
 {
     set_sys_clock_khz(CPU_FREQ_KHZ, true);
 
+    // Create the bus for client-mode operation
     std::shared_ptr<MapleBusInterface> bus = create_maple_bus(P1_BUS_START_PIN);
+
+    // Main peripheral (address of 0x20) with 1 function: controller
     client::DreamcastMainPeripheral mainPeripheral(
         bus,
         0x20,
@@ -68,6 +72,8 @@ void core0()
         std::make_shared<client::DreamcastController>();
     set_gamepad_host(controller.get());
     mainPeripheral.addFunction(controller);
+
+    // First sub peripheral (address of 0x01) with 1 function: memory
     std::shared_ptr<client::DreamcastPeripheral> subPeripheral1 =
         std::make_shared<client::DreamcastPeripheral>(
             0x01,
@@ -75,13 +81,30 @@ void core0()
             0x00,
             "Memory",
             "Produced By or Under License From SEGA ENTERPRISES,LTD.",
-            "Version 1.005,1999/04/15,315-6208-03,SEGA Visual Memory System BIOS Produced by IOS Produced",
+            "Version 1.005,1999/04/15,315-6208-03,SEGA Visual Memory System BIOS",
             12.4,
             13.0);
     std::shared_ptr<client::DreamcastStorage> dremcastStorage =
         std::make_shared<client::DreamcastStorage>(mem, 0);
     subPeripheral1->addFunction(dremcastStorage);
     mainPeripheral.addSubPeripheral(subPeripheral1);
+
+    // Second sub peripheral (address of 0x02) with 1 function: vibration
+    std::shared_ptr<client::DreamcastPeripheral> subPeripheral2 =
+        std::make_shared<client::DreamcastPeripheral>(
+            0x02,
+            0xFF,
+            0x00,
+            "Puru Puru Pack",
+            "Produced By or Under License From SEGA ENTERPRISES,LTD.",
+            "Version 1.000,1998/11/10,315-6211-AH   ,Vibration Motor:1 , Fm:4 - 30Hz ,Pow:7",
+            20.0,
+            160.0);
+    std::shared_ptr<client::DreamcastVibration> dreamcastVibration =
+        std::make_shared<client::DreamcastVibration>();
+    dreamcastVibration->setObserver(get_usb_vibration_observer());
+    subPeripheral2->addFunction(dreamcastVibration);
+    mainPeripheral.addSubPeripheral(subPeripheral2);
 
     multicore_launch_core1(core1);
 

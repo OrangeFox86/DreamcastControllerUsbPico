@@ -24,6 +24,8 @@
  *
  */
 
+#include "hid_app.hpp"
+
 #include "bsp/board.h"
 #include "tusb.h"
 #include "tusb_config.h"
@@ -31,7 +33,158 @@
 #include "GamepadHost.hpp"
 #include <string.h>
 
+#include "VibrationObserver.hpp"
+
 static GamepadHost* pGamepadHost = nullptr;
+
+typedef struct TU_ATTR_PACKED {
+  // First 16 bits set what data is pertinent in this structure (1 = set; 0 = not set)
+  uint8_t set_rumble : 1;
+  uint8_t set_led : 1;
+  uint8_t set_led_blink : 1;
+  uint8_t set_ext_write : 1;
+  uint8_t set_left_volume : 1;
+  uint8_t set_right_volume : 1;
+  uint8_t set_mic_volume : 1;
+  uint8_t set_speaker_volume : 1;
+  uint8_t set_flags2;
+
+  uint8_t reserved;
+
+  uint8_t motor_right;
+  uint8_t motor_left;
+
+  uint8_t lightbar_red;
+  uint8_t lightbar_green;
+  uint8_t lightbar_blue;
+  uint8_t lightbar_blink_on;
+  uint8_t lightbar_blink_off;
+
+  uint8_t ext_data[8];
+
+  uint8_t volume_left;
+  uint8_t volume_right;
+  uint8_t volume_mic;
+  uint8_t volume_speaker;
+
+  uint8_t other[9];
+} sony_ds4_output_report_t;
+
+class Ds4VibrationClient : public VibrationObserver
+{
+public:
+  inline Ds4VibrationClient() :
+    mIsMounted(false),
+    mIsStopped(true),
+    mDevAddr(0),
+    mInstance(0),
+    mCurrentTime(0),
+    mStopTime(0),
+    mStartingIntensity(0),
+    mCurrentInclination(0),
+    mCurrentMotorIntensity(0),
+    mLastUpdateTime(0)
+  {}
+
+  inline void mount(uint8_t dev_addr, uint8_t instance)
+  {
+    mDevAddr = dev_addr;
+    mInstance = instance;
+    mIsMounted = true;
+  }
+
+  inline void unmount()
+  {
+    mIsMounted = false;
+  }
+
+  inline bool isMounted()
+  {
+    return mIsMounted;
+  }
+
+  inline bool isDevice(uint8_t dev_addr, uint8_t instance)
+  {
+    return (mIsMounted && dev_addr == mDevAddr && instance == mInstance);
+  }
+
+  inline void task(uint64_t time)
+  {
+    mCurrentTime = time;
+    if (mIsMounted)
+    {
+      if (!mIsStopped)
+      {
+        if (time >= mStopTime)
+        {
+          mIsStopped = true;
+          mCurrentMotorIntensity = 0;
+        }
+        else if (mCurrentInclination < 0)
+        {
+          uint32_t remainingDuration = mStopTime - time;
+          float mult = (float)remainingDuration / mDuration;
+          mCurrentMotorIntensity = mStartingIntensity * mult + 0.5;
+        }
+        else if (mCurrentInclination > 0)
+        {
+          uint32_t remainingDuration = mStopTime - time;
+          float mult = (float)remainingDuration / mDuration;
+          uint8_t delta = 255 - mStartingIntensity;
+          mCurrentMotorIntensity = 255 - (delta * mult + 0.5);
+        }
+      }
+
+      // Update motor every 50 ms
+      if (time - mLastUpdateTime > 50000)
+      {
+        sendVibration(mCurrentMotorIntensity);
+        mLastUpdateTime = time;
+      }
+    }
+  }
+
+  inline void sendVibration(uint8_t intensity)
+  {
+    sony_ds4_output_report_t output_report = {0};
+    output_report.set_rumble = 1;
+    output_report.motor_left = intensity;
+    output_report.motor_right = intensity;
+    tuh_hid_send_report(mDevAddr, mInstance, 5, &output_report, sizeof(output_report));
+  }
+
+  virtual inline void vibrate(
+    float frequency, float intensity, int8_t inclination, float duration) final
+  {
+    if (mIsMounted)
+    {
+      mDuration = (duration * 1000000);
+      mStopTime = mCurrentTime + mDuration;
+      mCurrentInclination = inclination;
+      mStartingIntensity = intensity * 255;
+      mIsStopped = false;
+      mCurrentMotorIntensity = mStartingIntensity;
+      mLastUpdateTime = mCurrentTime;
+      sendVibration(mCurrentMotorIntensity);
+    }
+  }
+
+private:
+  bool mIsMounted;
+  bool mIsStopped;
+  uint8_t mDevAddr;
+  uint8_t mInstance;
+  uint64_t mCurrentTime;
+  uint64_t mStopTime;
+  uint32_t mDuration;
+  uint8_t mStartingIntensity;
+  int8_t mCurrentInclination;
+
+  uint8_t mCurrentMotorIntensity;
+  uint64_t mLastUpdateTime;
+};
+
+Ds4VibrationClient ds4_vibration_client;
 
 // Sony DS4 report layout detail https://www.psdevwiki.com/ps4/DS4-USB
 typedef struct TU_ATTR_PACKED
@@ -77,6 +230,11 @@ typedef struct TU_ATTR_PACKED
 
 } sony_ds4_report_t;
 
+VibrationObserver* get_usb_vibration_observer()
+{
+  return &ds4_vibration_client;
+}
+
 void set_gamepad_host(GamepadHost* ctrlr)
 {
   pGamepadHost = ctrlr;
@@ -99,9 +257,9 @@ static inline bool is_sony_ds4(uint8_t dev_addr)
 // MACRO TYPEDEF CONSTANT ENUM DECLARATION
 //--------------------------------------------------------------------+
 
-void hid_app_task(void)
+void hid_app_task(uint64_t timeUs)
 {
-  // nothing to do
+  ds4_vibration_client.task(timeUs);
 }
 
 //--------------------------------------------------------------------+
@@ -123,6 +281,7 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
   // Sony DualShock 4 [CUH-ZCT2x]
   if ( is_sony_ds4(dev_addr) )
   {
+    ds4_vibration_client.mount(dev_addr, instance);
     // request to receive report
     // tuh_hid_report_received_cb() will be invoked when report is available
     if ( !tuh_hid_receive_report(dev_addr, instance) )
@@ -135,27 +294,10 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
 // Invoked when device with hid interface is un-mounted
 void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance)
 {
-}
-
-// check if different than 2
-bool diff_than_2(uint8_t x, uint8_t y)
-{
-  return (x - y > 2) || (y - x > 2);
-}
-
-// check if 2 reports are different enough
-bool diff_report(sony_ds4_report_t const* rpt1, sony_ds4_report_t const* rpt2)
-{
-  bool result;
-
-  // x, y, z, rz must different than 2 to be counted
-  result = diff_than_2(rpt1->x, rpt2->x) || diff_than_2(rpt1->y , rpt2->y ) ||
-           diff_than_2(rpt1->z, rpt2->z) || diff_than_2(rpt1->rz, rpt2->rz);
-
-  // check the reset with mem compare
-  result |= memcmp(&rpt1->rz + 1, &rpt2->rz + 1, sizeof(sony_ds4_report_t)-4);
-
-  return result;
+  if (ds4_vibration_client.isDevice(dev_addr, instance))
+  {
+    ds4_vibration_client.unmount();
+  }
 }
 
 void process_sony_ds4(uint8_t const* report, uint16_t len)
@@ -190,7 +332,8 @@ void process_sony_ds4(uint8_t const* report, uint16_t len)
       condition.r1 = ds4_report.r1;
       condition.l1 = ds4_report.l1;
       condition.l3 = ds4_report.l3;
-      condition.start = ds4_report.ps;
+      // Both PS and touchpad press will register as start
+      condition.start = ds4_report.ps || ds4_report.tpad;
       condition.menu = ds4_report.option;
       switch(ds4_report.dpad)
       {
