@@ -41,6 +41,7 @@ public:
                         out.frame.command = COMMAND_RESPONSE_DATA_XFER;
                         out.reservePayload(2);
                         out.appendPayload(getFunctionCode());
+                        // Same as OEM puru puru pack - no arbitrary waveform support
                         out.appendPayload(0x10E0073B);
                         return true;
                     }
@@ -99,10 +100,15 @@ public:
                                 // Continuous duration
                                 duration = mAutoStopValue * 0.25 + 0.25;
                             }
-                            else if (inclination != 0)
+                            else if (inclination < 0)
                             {
                                 // Multiply by each power value in the inclination for total duration
                                 duration *= pow3;
+                            }
+                            else if (inclination > 0)
+                            {
+                                // Multiply by each power value upt to max for total duration
+                                duration *= (8 - pow3);
                             }
 
                             // Send it!
@@ -198,7 +204,9 @@ public:
             }
             break;
 
-            default: // Ignore
+            default:
+                // Ignore
+                break;
         }
 
         return false;
