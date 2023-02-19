@@ -332,7 +332,8 @@ void process_sony_ds4(uint8_t const* report, uint16_t len)
       condition.r1 = ds4_report.r1;
       condition.l1 = ds4_report.l1;
       condition.l3 = ds4_report.l3;
-      condition.start = ds4_report.ps;
+      // Both PS and touchpad press will register as start
+      condition.start = ds4_report.ps || ds4_report.tpad;
       condition.menu = ds4_report.option;
       switch(ds4_report.dpad)
       {
