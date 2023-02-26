@@ -21,7 +21,9 @@ class MapleBus : public MapleBusInterface
     public:
         //! Maple Bus constructor
         //! @param[in] pinA  GPIO index for pin A. The very next GPIO will be designated as pin B.
-        MapleBus(uint32_t pinA);
+        //! @param[in] dirPin  GPIO pin which selects direction (-1 to disable)
+        //! @param[in] dirOutHigh  True if dirPin should be high on write; false for low on write
+        MapleBus(uint32_t pinA, int32_t dirPin = -1, bool dirOutHigh = true);
 
         //! Writes a packet to the maple bus
         //! @post processEvents() must periodically be called to check status
@@ -93,6 +95,10 @@ class MapleBus : public MapleBusInterface
         const uint32_t mPinA;
         //! Pin B GPIO index for this bus
         const uint32_t mPinB;
+        //! Direction pin or -1 if not defined
+        const int32_t mDirPin;
+        //! True to set dir pin high on write and low on read; false for opposite
+        const bool mDirOutHigh;
         //! Pin A GPIO mask for this bus
         const uint32_t mMaskA;
         //! Pin B GPIO mask for this bus
@@ -126,9 +132,9 @@ class MapleBus : public MapleBusInterface
         uint32_t mLastReadTransferCount;
 };
 
-std::shared_ptr<MapleBusInterface> create_maple_bus(uint32_t pinA)
+std::shared_ptr<MapleBusInterface> create_maple_bus(uint32_t pinA, int32_t dirPin, bool dirOutHigh)
 {
-    return std::make_shared<MapleBus>(pinA);
+    return std::make_shared<MapleBus>(pinA, dirPin, dirOutHigh);
 }
 
 #endif // __MAPLE_BUS_H__

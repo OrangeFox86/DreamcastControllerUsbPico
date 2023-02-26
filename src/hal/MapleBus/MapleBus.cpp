@@ -91,9 +91,11 @@ void MapleBus::initIsrs()
     pio_set_irq1_source_enabled(MAPLE_IN_PIO, pis_interrupt3, true);
 }
 
-MapleBus::MapleBus(uint32_t pinA) :
+MapleBus::MapleBus(uint32_t pinA, int32_t dirPin, bool dirOutHigh) :
     mPinA(pinA),
     mPinB(pinA + 1),
+    mDirPin(dirPin),
+    mDirOutHigh(dirOutHigh),
     mMaskA(1 << mPinA),
     mMaskB(1 << mPinB),
     mMaskAB(mMaskA | mMaskB),
@@ -112,6 +114,14 @@ MapleBus::MapleBus(uint32_t pinA) :
 {
     mapleWriteIsr[mSmOut.mSmIdx] = this;
     mapleReadIsr[mSmIn.mSmIdx] = this;
+
+    if (mDirPin >= 0)
+    {
+        // Initialize directional pin and set as input
+        gpio_init(mDirPin);
+        gpio_put(mDirPin, !mDirOutHigh);
+        gpio_set_dir(mDirPin, true);
+    }
 
     // This only needs to be called once but no issue calling it for each
     initIsrs();
@@ -168,15 +178,25 @@ inline void MapleBus::writeIsr()
 {
     // This ISR gets called from write PIO once writing has completed
 
+    // Stop write which transitions pins to input with pull-up
     mSmOut.stop();
+
+    // Output to dir pin that we are in input mode
+    if (mDirPin >= 0)
+    {
+        gpio_put(mDirPin, !mDirOutHigh);
+    }
+
     if (mExpectingResponse)
     {
+        // Transition to read - start waiting for start sequence
         mSmIn.start();
         mProcKillTime = time_us_64() + MAPLE_RESPONSE_TIMEOUT_US;
         mCurrentPhase = Phase::WAITING_FOR_READ_START;
     }
     else
     {
+        // Nothing more to do
         mCurrentPhase = Phase::WRITE_COMPLETE;
     }
 }
@@ -194,6 +214,12 @@ bool MapleBus::writeInit()
             return false;
         }
     } while (time_us_64() < targetTime);
+
+    // Output to dir pin that we are in output mode
+    if (mDirPin >= 0)
+    {
+        gpio_put(mDirPin, mDirOutHigh);
+    }
 
     mSmOut.start();
 
@@ -281,6 +307,12 @@ bool MapleBus::startRead(uint64_t readTimeoutUs)
             mProcKillTime = time_us_64() + readTimeoutUs;
         }
         mCurrentPhase = Phase::WAITING_FOR_READ_START;
+
+        // Output to dir pin that we are in input mode
+        if (mDirPin >= 0)
+        {
+            gpio_put(mDirPin, !mDirOutHigh);
+        }
 
         // Start reading
         mSmIn.start();
@@ -410,6 +442,11 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
             // have *just* transitioned to read as we were processing this timeout)
             mSmOut.stop();
             mSmIn.stop();
+            // Output to dir pin that we are in input mode
+            if (mDirPin >= 0)
+            {
+                gpio_put(mDirPin, !mDirOutHigh);
+            }
             status.phase = Phase::WRITE_FAILED;
             status.failureReason = FailureReason::TIMEOUT;
             mCurrentPhase = Phase::IDLE;

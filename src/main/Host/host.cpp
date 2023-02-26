@@ -40,6 +40,9 @@ void core1()
     uint32_t maplePins[MAX_DEVICES] = {
         P1_BUS_START_PIN, P2_BUS_START_PIN, P3_BUS_START_PIN, P4_BUS_START_PIN
     };
+    int32_t mapleDirPins[MAX_DEVICES] = {
+        P1_DIR_PIN, P2_DIR_PIN, P3_DIR_PIN, P4_DIR_PIN
+    };
     CriticalSectionMutex screenMutexes[numDevices];
     std::shared_ptr<ScreenData> screenData[numDevices];
     std::shared_ptr<PlayerData> playerData[numDevices];
@@ -56,7 +59,7 @@ void core1()
                                                      *screenData[i],
                                                      clock,
                                                      usb_msc_get_file_system());
-        buses[i] = create_maple_bus(maplePins[i]);
+        buses[i] = create_maple_bus(maplePins[i], mapleDirPins[i], DIR_OUT_HIGH);
         schedulers[i] = std::make_shared<PrioritizedTxScheduler>(MAPLE_HOST_ADDRESSES[i]);
         dreamcastMainNodes[i] = std::make_shared<DreamcastMainNode>(
             *buses[i],
