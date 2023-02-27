@@ -203,6 +203,7 @@ inline void MapleBus::writeIsr()
 
 bool MapleBus::writeInit()
 {
+#if (MAPLE_OPEN_LINE_CHECK_TIME_US > 0)
     const uint64_t targetTime = time_us_64() + MAPLE_OPEN_LINE_CHECK_TIME_US + 1;
 
     // Ensure no one is pulling low
@@ -214,6 +215,7 @@ bool MapleBus::writeInit()
             return false;
         }
     } while (time_us_64() < targetTime);
+#endif
 
     // Output to dir pin that we are in output mode
     if (mDirPin >= 0)

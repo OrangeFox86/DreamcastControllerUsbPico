@@ -12,7 +12,7 @@
 #define CPU_FREQ_KHZ 133000
 
 // The minimum amount of time we check for an open line before taking control of it
-#define MAPLE_OPEN_LINE_CHECK_TIME_US 10
+#define MAPLE_OPEN_LINE_CHECK_TIME_US 0
 
 // Amount of time in nanoseconds at which each bit transmits (value should be divisible by 3)
 // 480 ns achieves just over 2 mbps, just as the Dreamcast does

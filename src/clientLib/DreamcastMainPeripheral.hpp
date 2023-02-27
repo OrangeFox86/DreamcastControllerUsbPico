@@ -24,6 +24,15 @@ public:
                             float standbyCurrentmA,
                             float maxCurrentmA);
 
+    DreamcastMainPeripheral(std::shared_ptr<MapleBusInterface> bus,
+                            uint8_t addr,
+                            uint8_t regionCode,
+                            uint8_t connectionDirectionCode,
+                            const char* descriptionStr,
+                            const char* versionStr,
+                            float standbyCurrentmA,
+                            float maxCurrentmA);
+
     DreamcastMainPeripheral() = delete;
 
     //! Add a sub-peripheral to this peripheral (only valid of main peripheral)

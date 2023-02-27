@@ -26,6 +26,14 @@ public:
                         float standbyCurrentmA,
                         float maxCurrentmA);
 
+    DreamcastPeripheral(uint8_t addr,
+                        uint8_t regionCode,
+                        uint8_t connectionDirectionCode,
+                        const char* descriptionStr,
+                        const char* versionStr,
+                        float standbyCurrentmA,
+                        float maxCurrentmA);
+
     //! Virtual destructor
     virtual inline ~DreamcastPeripheral() {}
 
