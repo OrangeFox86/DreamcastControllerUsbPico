@@ -37,6 +37,35 @@ DreamcastMainPeripheral::DreamcastMainPeripheral(std::shared_ptr<MapleBusInterfa
     mPacketIn.reservePayload(256);
 }
 
+DreamcastMainPeripheral::DreamcastMainPeripheral(std::shared_ptr<MapleBusInterface> bus,
+                                                 uint8_t addr,
+                                                 uint8_t regionCode,
+                                                 uint8_t connectionDirectionCode,
+                                                 const char* descriptionStr,
+                                                 const char* versionStr,
+                                                 float standbyCurrentmA,
+                                                 float maxCurrentmA) :
+    DreamcastPeripheral(addr,
+                        regionCode,
+                        connectionDirectionCode,
+                        descriptionStr,
+                        versionStr,
+                        standbyCurrentmA,
+                        maxCurrentmA),
+    mBus(bus),
+    mPlayerIndex(0),
+    mSubPeripherals(),
+    mLastSender(0),
+    mPacketOut(),
+    mLastPacketOut(),
+    mPacketSent(false),
+    mPacketIn()
+{
+    mPacketOut.reservePayload(256);
+    mLastPacketOut.reservePayload(256);
+    mPacketIn.reservePayload(256);
+}
+
 void DreamcastMainPeripheral::addSubPeripheral(std::shared_ptr<DreamcastPeripheral> subPeripheral)
 {
     // This sub-peripheral's address must be unique

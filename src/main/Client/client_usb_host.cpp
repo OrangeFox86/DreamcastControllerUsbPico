@@ -40,8 +40,6 @@ void core1()
 
     usb_init();
 
-    printf("Starting USB host\n");
-
     while (true)
     {
         usb_task(time_us_64());
@@ -55,7 +53,7 @@ void core0()
     set_sys_clock_khz(CPU_FREQ_KHZ, true);
 
     // Create the bus for client-mode operation
-    std::shared_ptr<MapleBusInterface> bus = create_maple_bus(P1_BUS_START_PIN);
+    std::shared_ptr<MapleBusInterface> bus = create_maple_bus(P1_BUS_START_PIN, P1_DIR_PIN, DIR_OUT_HIGH);
 
     // Main peripheral (address of 0x20) with 1 function: controller
     client::DreamcastMainPeripheral mainPeripheral(
@@ -64,7 +62,6 @@ void core0()
         0xFF,
         0x00,
         "Dreamcast Controller",
-        "Produced By or Under License From SEGA ENTERPRISES,LTD.",
         "Version 1.010,1998/09/28,315-6211-AB   ,Analog Module : The 4th Edition.5/8  +DF",
         43.0,
         50.0);
@@ -80,7 +77,6 @@ void core0()
             0xFF,
             0x00,
             "Memory",
-            "Produced By or Under License From SEGA ENTERPRISES,LTD.",
             "Version 1.005,1999/04/15,315-6208-03,SEGA Visual Memory System BIOS",
             12.4,
             13.0);
@@ -96,7 +92,6 @@ void core0()
             0xFF,
             0x00,
             "Puru Puru Pack",
-            "Produced By or Under License From SEGA ENTERPRISES,LTD.",
             "Version 1.000,1998/11/10,315-6211-AH   ,Vibration Motor:1 , Fm:4 - 30Hz ,Pow:7",
             20.0,
             160.0);

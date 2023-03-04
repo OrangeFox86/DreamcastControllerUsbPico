@@ -12,6 +12,7 @@
 #define CPU_FREQ_KHZ 133000
 
 // The minimum amount of time we check for an open line before taking control of it
+// Set to 0 to completely disable this check
 #define MAPLE_OPEN_LINE_CHECK_TIME_US 10
 
 // Amount of time in nanoseconds at which each bit transmits (value should be divisible by 3)
@@ -34,6 +35,15 @@
 // Maximum amount of time in microseconds to pass in between received words before read is canceled
 // Dreamcast controllers sometimes have a ~180 us gap between words, so 300 us accommodates for that
 #define MAPLE_INTER_WORD_READ_TIMEOUT_US 300
+
+// The pin which sets IO direction for each player (-1 to disable)
+#define P1_DIR_PIN 6
+#define P2_DIR_PIN 7
+#define P3_DIR_PIN 26
+#define P4_DIR_PIN 27
+
+// True if DIR pin is HIGH for output and LOW for input; false if opposite
+#define DIR_OUT_HIGH true
 
 // The start pin of the two-pin bus for each player
 #define P1_BUS_START_PIN 10

@@ -103,6 +103,6 @@ class MapleBusInterface
 
 //! Creates a maple bus
 //! @param[in] pinA  GPIO index for pin A. The very next GPIO will be designated as pin B.
-extern std::shared_ptr<MapleBusInterface> create_maple_bus(uint32_t pinA);
+extern std::shared_ptr<MapleBusInterface> create_maple_bus(uint32_t pinA, int32_t dirPin = -1, bool dirOutHigh = true);
 
 #endif // __MAPLE_BUS_INTERFACE_H__
