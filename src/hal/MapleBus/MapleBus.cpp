@@ -221,6 +221,8 @@ bool MapleBus::writeInit()
     if (mDirPin >= 0)
     {
         gpio_put(mDirPin, mDirOutHigh);
+        // There will be enough of a delay between now and when data lines on microcontroller
+        // transition to output
     }
 
     mSmOut.start();
