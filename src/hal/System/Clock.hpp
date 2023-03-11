@@ -6,7 +6,7 @@
 class Clock : public ClockInterface
 {
     public:
-        virtual uint64_t getTimeUs() final;
+        virtual uint64_t getTimeUs() const final;
 };
 
 #endif // __CLOCK_H__
