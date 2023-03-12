@@ -20,6 +20,8 @@
 #include "DreamcastController.hpp"
 #include "DreamcastStorage.hpp"
 #include "DreamcastVibration.hpp"
+#include "DreamcastScreen.hpp"
+#include "DreamcastTimer.hpp"
 
 #include "led.hpp"
 
@@ -27,6 +29,16 @@
 #include <algorithm>
 
 void hid_set_controller(client::DreamcastController* ctrlr);
+
+void screenCb(const uint32_t* screen, uint32_t len)
+{
+    // TODO: Fill in
+}
+
+void setTimeCb(const client::DreamcastTimer::SetTime& setTime)
+{
+    // TODO: Fill in
+}
 
 std::shared_ptr<NonVolatilePicoSystemMemory> mem =
     std::make_shared<NonVolatilePicoSystemMemory>(
@@ -76,13 +88,21 @@ void core0()
             0x01,
             0xFF,
             0x00,
-            "Memory",
+            "Visual Memory",
             "Version 1.005,1999/04/15,315-6208-03,SEGA Visual Memory System BIOS",
             12.4,
             13.0);
-    std::shared_ptr<client::DreamcastStorage> dremcastStorage =
+    std::shared_ptr<client::DreamcastStorage> dreamcastStorage =
         std::make_shared<client::DreamcastStorage>(mem, 0);
-    subPeripheral1->addFunction(dremcastStorage);
+    subPeripheral1->addFunction(dreamcastStorage);
+    std::shared_ptr<client::DreamcastScreen> dreamcastScreen =
+        std::make_shared<client::DreamcastScreen>(screenCb, 48, 32);
+    subPeripheral1->addFunction(dreamcastScreen);
+    Clock clock;
+    std::shared_ptr<client::DreamcastTimer> dreamcastTimer =
+        std::make_shared<client::DreamcastTimer>(clock, setTimeCb);
+    subPeripheral1->addFunction(dreamcastTimer);
+
     mainPeripheral.addSubPeripheral(subPeripheral1);
 
     // Second sub peripheral (address of 0x02) with 1 function: vibration

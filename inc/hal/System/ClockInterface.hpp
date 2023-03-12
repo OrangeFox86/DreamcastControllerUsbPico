@@ -7,7 +7,7 @@ class ClockInterface
 {
     public:
         virtual ~ClockInterface() {}
-        virtual uint64_t getTimeUs() = 0;
+        virtual uint64_t getTimeUs() const = 0;
 };
 
 #endif // __CLOCK_INTERFACE_H__
