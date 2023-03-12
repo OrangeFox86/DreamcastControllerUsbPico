@@ -92,9 +92,9 @@ void core0()
             "Version 1.005,1999/04/15,315-6208-03,SEGA Visual Memory System BIOS",
             12.4,
             13.0);
-    std::shared_ptr<client::DreamcastStorage> dremcastStorage =
+    std::shared_ptr<client::DreamcastStorage> dreamcastStorage =
         std::make_shared<client::DreamcastStorage>(mem, 0);
-    subPeripheral1->addFunction(dremcastStorage);
+    subPeripheral1->addFunction(dreamcastStorage);
     std::shared_ptr<client::DreamcastScreen> dreamcastScreen =
         std::make_shared<client::DreamcastScreen>(screenCb, 48, 32);
     subPeripheral1->addFunction(dreamcastScreen);
