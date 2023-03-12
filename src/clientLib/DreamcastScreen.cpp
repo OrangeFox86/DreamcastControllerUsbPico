@@ -35,7 +35,7 @@ bool DreamcastScreen::handlePacket(const MaplePacket& in, MaplePacket& out)
             {
                 if (mCallback)
                 {
-                    mCallback(&in.payload[2], in.payload.size() - 2);
+                    mCallback(in.payload.data() + 2, in.payload.size() - 2);
                 }
                 out.frame.command = COMMAND_RESPONSE_ACK;
                 return true;
@@ -69,7 +69,7 @@ void DreamcastScreen::reset()
     {
         uint32_t words = ((mWidth * mHeight) + 31) / 32;
         uint32_t dat[words] = {};
-        mCallback(dat, words * 4);
+        mCallback(dat, words);
     }
 }
 
