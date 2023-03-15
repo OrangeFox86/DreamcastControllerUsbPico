@@ -189,7 +189,7 @@ bool client::DreamcastStorage::handlePacket(const MaplePacket& in, MaplePacket& 
                         out.reservePayload(WORDS_PER_BLOCK + 2);
                         out.setPayload(&mFunctionCode, 1);
                         out.appendPayload(locationWord);
-                        out.appendPayload(reinterpret_cast<const uint32_t*>(mem), WORDS_PER_BLOCK);
+                        out.appendPayloadFlipWords(reinterpret_cast<const uint32_t*>(mem), WORDS_PER_BLOCK);
                     }
                     else
                     {
@@ -221,7 +221,21 @@ bool client::DreamcastStorage::handlePacket(const MaplePacket& in, MaplePacket& 
                 else
                 {
                     uint32_t byteOffset = (phase * BYTES_PER_WRITE);
-                    memcpy(&mDataBlock[byteOffset], &in.payload[2], BYTES_PER_WRITE);
+                    uint32_t numBytes = sizeof(uint32_t);
+                    uint8_t* outPtr = &mDataBlock[byteOffset];
+                    const uint32_t* inPtr = &in.payload[2];
+                    for (uint32_t i = 0; i < BYTES_PER_WRITE; i+=4, outPtr+=numBytes, ++inPtr)
+                    {
+                        if (i + numBytes > BYTES_PER_WRITE)
+                        {
+                            // Last chunk is not full 4 bytes
+                            // (this should never happen with standard DC storage)
+                            numBytes = BYTES_PER_WRITE - i;
+                        }
+                        uint32_t flippedWord = flipWordBytes(*inPtr);
+                        memcpy(outPtr, &flippedWord, numBytes);
+                    }
+
                     out.frame.command = COMMAND_RESPONSE_ACK;
                 }
                 return true;
@@ -295,4 +309,9 @@ void client::DreamcastStorage::setFatAddr(uint32_t*& fatBlock, bool& lower, uint
         *fatBlock = U16_TO_UPPER_HALF_WORD(value) | (*fatBlock & 0x0000FFFF);
         --fatBlock;
     }
+}
+
+uint32_t client::DreamcastStorage::flipWordBytes(const uint32_t& word)
+{
+    return MaplePacket::flipWordBytes(word);
 }
