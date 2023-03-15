@@ -285,6 +285,42 @@ struct MaplePacket
         setPayload(&word, 1);
     }
 
+    //! Append words to payload from array, flipping the byte order before setting their values
+    //! @param[in] words  Payload words to set
+    //! @param[in] len  Number of words in words
+    inline void appendPayloadFlipWords(const uint32_t* words, uint8_t len)
+    {
+        reservePayload(payload.size() + len);
+        while (len-- > 0)
+        {
+            payload.push_back(flipWordBytes(*words++));
+        }
+        updateFrameLength();
+    }
+
+    //! Appends a single word to payload
+    //! @param[in] word  The word to append
+    inline void appendPayloadFlipWords(uint32_t word)
+    {
+        appendPayloadFlipWords(&word, 1);
+    }
+
+    //! Sets payload from array
+    //! @param[in] words  Payload words to set
+    //! @param[in] len  Number of words in words
+    inline void setPayloadFlipWords(const uint32_t* words, uint8_t len)
+    {
+        payload.clear();
+        appendPayloadFlipWords(words, len);
+    }
+
+    //! Sets a single word in payload
+    //! @param[in] word  The word to set
+    inline void setPayloadFlipWords(uint32_t word)
+    {
+        setPayloadFlipWords(&word, 1);
+    }
+
     //! Update length in frame word with the payload size
     void updateFrameLength()
     {
@@ -324,6 +360,11 @@ struct MaplePacket
     inline uint32_t getTxTimeNs() const
     {
         return getTxTimeNs(payload.size(), MAPLE_NS_PER_BIT);
+    }
+
+    static uint32_t flipWordBytes(const uint32_t& word)
+    {
+        return (word << 24) | (word << 8 & 0xFF0000) | (word >> 8 & 0xFF00) | (word >> 24);
     }
 
     //! Packet frame word value
