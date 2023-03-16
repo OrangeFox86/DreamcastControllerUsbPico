@@ -40,7 +40,7 @@ bool client::DreamcastStorage::writeBlock(uint16_t blockNum, void* data)
         uint32_t* saveAreaWord = data32 + MEDIA_INFO_WORD_OFFSET + SAVE_AREA_MEDIA_INFO_OFFSET;
         if (*saveAreaWord == 0)
         {
-            setDefaultMediaInfo(saveAreaWord, SAVE_AREA_MEDIA_INFO_OFFSET, 1);
+            setDefaultMediaInfoFlipped(saveAreaWord, SAVE_AREA_MEDIA_INFO_OFFSET, 1);
         }
     }
     return mSystemMemory->write(mMemoryOffset + (blockNum * BYTES_PER_BLOCK), data, size);
@@ -60,6 +60,16 @@ void client::DreamcastStorage::setDefaultMediaInfo(uint32_t* out, uint8_t infoOf
     memcpy(out, mediaInfo + infoOffset, infoLen * sizeof(mediaInfo[0]));
 }
 
+void client::DreamcastStorage::setDefaultMediaInfoFlipped(uint32_t* out, uint8_t infoOffset, uint8_t infoLen)
+{
+    setDefaultMediaInfo(out, infoOffset, infoLen);
+    while (infoLen-- > 0)
+    {
+        *out = flipWordBytes(*out);
+        ++out;
+    }
+}
+
 bool client::DreamcastStorage::format()
 {
     //
@@ -67,6 +77,7 @@ bool client::DreamcastStorage::format()
     //
     uint32_t* systemBlock = reinterpret_cast<uint32_t*>(mDataBlock);
     memset(systemBlock, 0, BYTES_PER_BLOCK);
+    // There should only ever be 1 system block, but if there is more, clear up to system block num
     for (uint32_t i = 0; i < NUM_SYSTEM_BLOCKS - 1; ++i)
     {
         if (!writeBlock(SYSTEM_BLOCK_NO - i, systemBlock))
@@ -75,13 +86,13 @@ bool client::DreamcastStorage::format()
         }
     }
     memset(systemBlock, 0x55, 4 * WORD_SIZE);
-    systemBlock[4] = 0x01FFFFFF;
-    systemBlock[5] = 0xFF000000;
+    systemBlock[4] = flipWordBytes(0x01FFFFFF);
+    systemBlock[5] = flipWordBytes(0xFF000000);
     // Date/time markers
-    systemBlock[12] = 0x19990909;
-    systemBlock[13] = 0x00001000;
+    systemBlock[12] = flipWordBytes(0x19990909);
+    systemBlock[13] = flipWordBytes(0x00001000);
     // Media info data
-    setDefaultMediaInfo(&systemBlock[MEDIA_INFO_WORD_OFFSET]);
+    setDefaultMediaInfoFlipped(&systemBlock[MEDIA_INFO_WORD_OFFSET]);
     if (!writeBlock(SYSTEM_BLOCK_NO - NUM_SYSTEM_BLOCKS + 1, systemBlock))
     {
         return false;
@@ -92,7 +103,7 @@ bool client::DreamcastStorage::format()
     uint32_t* fatBlock = reinterpret_cast<uint32_t*>(mDataBlock);
     for (uint32_t i = 0; i < WORDS_PER_BLOCK; ++i)
     {
-        fatBlock[i] = U16_TO_UPPER_HALF_WORD(0xFFFC) | U16_TO_LOWER_HALF_WORD(0xFFFC);
+        fatBlock[i] = flipWordBytes(U16_TO_UPPER_HALF_WORD(0xFFFC) | U16_TO_LOWER_HALF_WORD(0xFFFC));
     }
     for (uint32_t i = 0; i < NUM_FAT_BLOCKS - 1; ++i)
     {
@@ -152,8 +163,8 @@ bool client::DreamcastStorage::handlePacket(const MaplePacket& in, MaplePacket& 
                     reinterpret_cast<const uint32_t*>(mem) + MEDIA_INFO_WORD_OFFSET;
                 uint32_t payload[7] = {mFunctionCode};
                 setDefaultMediaInfo(&payload[1]);
-                payload[4] = (payload[4] & 0xFFFF0000) | (storageMediaInfo[3] & 0x0000FFFF);
-                payload[5] = storageMediaInfo[4];
+                payload[4] = (payload[4] & 0xFFFF0000) | (flipWordBytes(storageMediaInfo[3]) & 0x0000FFFF);
+                payload[5] = flipWordBytes(storageMediaInfo[4]);
 
                 out.setPayload(payload, 7);
             }
@@ -300,18 +311,12 @@ void client::DreamcastStorage::setFatAddr(uint32_t*& fatBlock, bool& lower, uint
 {
     if (lower)
     {
-        lower = false;
-        *fatBlock = (*fatBlock & 0xFFFF0000) | U16_TO_LOWER_HALF_WORD(value);
+        *fatBlock = flipWordBytes((flipWordBytes(*fatBlock) & 0xFFFF0000) | U16_TO_LOWER_HALF_WORD(value));
     }
     else
     {
-        lower = true;
-        *fatBlock = U16_TO_UPPER_HALF_WORD(value) | (*fatBlock & 0x0000FFFF);
+        *fatBlock = flipWordBytes(U16_TO_UPPER_HALF_WORD(value) | (flipWordBytes(*fatBlock) & 0x0000FFFF));
         --fatBlock;
     }
-}
-
-uint32_t client::DreamcastStorage::flipWordBytes(const uint32_t& word)
-{
-    return MaplePacket::flipWordBytes(word);
+    lower = !lower;
 }
