@@ -60,10 +60,19 @@ private:
     //! @param[in] infoLen  Number of media info words to copy
     void setDefaultMediaInfo(uint32_t* out, uint8_t infoOffset = 0, uint8_t infoLen = 6);
 
+    //! Sets default media info words to out with output word bytes flipped
+    //! @param[out] out  Pointer to where media info will be written
+    //! @param[in] infoOffset  Media info word offset
+    //! @param[in] infoLen  Number of media info words to copy
+    void setDefaultMediaInfoFlipped(uint32_t* out, uint8_t infoOffset = 0, uint8_t infoLen = 6);
+
     //! Flips the endianness of a word
     //! @param[in] word  Input word
     //! @returns output word
-    static uint32_t flipWordBytes(const uint32_t& word);
+    static inline uint32_t flipWordBytes(const uint32_t& word)
+    {
+        return MaplePacket::flipWordBytes(word);
+    }
 
 public:
     static const uint16_t NUMBER_OF_PARTITIONS = 1;
