@@ -53,6 +53,10 @@ public:
     //! @param[in] fn  The function to add
     void addFunction(std::shared_ptr<DreamcastPeripheralFunction> fn);
 
+    //! Remove a previously added function
+    //! @param[in] functionCode  The function code of the function to remove
+    bool removeFunction(uint32_t functionCode);
+
     //! Sets my address augmenter
     inline void setAddrAugmenter(uint8_t augmenter) { mAddrAugmenter = augmenter; }
 
@@ -69,6 +73,9 @@ private:
     //! @param[in] len  The number of bytes reserved for the string
     //! @param[in] str  The null-terminated string to set
     void setDevInfoStr(uint8_t wordIdx, uint8_t offset, uint8_t len, const char* str);
+
+    //! Sets the function definitions within device info array based on all added functions
+    void setDevInfoFunctionDefinitions();
 
 public:
     static const uint8_t PLAYER_ID_ADDR_MASK = 0xC0;

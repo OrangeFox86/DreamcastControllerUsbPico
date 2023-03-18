@@ -53,7 +53,7 @@ DreamcastMainPeripheral::DreamcastMainPeripheral(std::shared_ptr<MapleBusInterfa
                         standbyCurrentmA,
                         maxCurrentmA),
     mBus(bus),
-    mPlayerIndex(0),
+    mPlayerIndex(-1),
     mSubPeripherals(),
     mLastSender(0),
     mPacketOut(),
@@ -72,10 +72,22 @@ void DreamcastMainPeripheral::addSubPeripheral(std::shared_ptr<DreamcastPeripher
     assert(mSubPeripherals.find(subPeripheral->mAddr) == mSubPeripherals.end());
     assert(subPeripheral->mAddr != mAddr);
     // Add it
-    mSubPeripherals.insert(std::pair<uint8_t, std::shared_ptr<DreamcastPeripheral>>(
-        subPeripheral->mAddr, subPeripheral));
+    mSubPeripherals.insert(std::make_pair(subPeripheral->mAddr, subPeripheral));
     // Accumulate to my address (main peripheral communicates back what sub peripherals are attached)
     mAddrAugmenter |= subPeripheral->mAddr;
+}
+
+bool DreamcastMainPeripheral::removeSubPeripheral(uint8_t addr)
+{
+    bool removed = false;
+    std::map<uint8_t, std::shared_ptr<DreamcastPeripheral>>::iterator iter = mSubPeripherals.find(addr);
+    if (iter != mSubPeripherals.end())
+    {
+        mAddrAugmenter &= ~(iter->second->mAddr);
+        mSubPeripherals.erase(iter);
+        removed = true;
+    }
+    return removed;
 }
 
 bool DreamcastMainPeripheral::handlePacket(const MaplePacket& in, MaplePacket& out)
@@ -121,13 +133,18 @@ bool DreamcastMainPeripheral::dispensePacket(const MaplePacket& in, MaplePacket&
 void DreamcastMainPeripheral::reset()
 {
     DreamcastPeripheral::reset();
-    mPlayerIndex = 0;
+    mPlayerIndex = -1;
     for (std::map<uint8_t, std::shared_ptr<DreamcastPeripheral>>::iterator iter = mSubPeripherals.begin();
          iter != mSubPeripherals.end();
          ++iter)
     {
         iter->second->reset();
     }
+}
+
+int16_t DreamcastMainPeripheral::getPlayerIndex()
+{
+    return mPlayerIndex;
 }
 
 void DreamcastMainPeripheral::setPlayerIndex(uint8_t idx)

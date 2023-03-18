@@ -5,7 +5,8 @@ namespace client
 {
 
 DreamcastController::DreamcastController() :
-    DreamcastPeripheralFunction(DEVICE_FN_CONTROLLER)
+    DreamcastPeripheralFunction(DEVICE_FN_CONTROLLER),
+    mConditionSamples(0)
 {
     setCondition(NEUTRAL_CONTROLLER_CONDITION);
 }
@@ -15,6 +16,7 @@ bool DreamcastController::handlePacket(const MaplePacket& in, MaplePacket& out)
     const uint8_t cmd = in.frame.command;
     if (cmd == COMMAND_GET_CONDITION)
     {
+        ++mConditionSamples;
         out.frame.command = COMMAND_RESPONSE_DATA_XFER;
         out.reservePayload(3);
         out.appendPayload(getFunctionCode());
@@ -112,6 +114,11 @@ void DreamcastController::setControls(const Controls& controls)
     condition.rightb = 1;
 
     setCondition(condition);
+}
+
+uint32_t DreamcastController::getConditionSamples()
+{
+    return mConditionSamples;
 }
 
 } // namespace client

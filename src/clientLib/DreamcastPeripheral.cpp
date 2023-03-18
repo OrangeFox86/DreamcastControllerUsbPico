@@ -224,14 +224,8 @@ void DreamcastPeripheral::reset()
 void DreamcastPeripheral::shutdown()
 {}
 
-void DreamcastPeripheral::addFunction(std::shared_ptr<DreamcastPeripheralFunction> fn)
+void DreamcastPeripheral::setDevInfoFunctionDefinitions()
 {
-    mDevices.insert(std::pair<uint32_t, std::shared_ptr<DreamcastPeripheralFunction>>(
-        fn->getFunctionCode(), fn));
-    // No more than 3 functions may be added
-    assert(mDevices.size() <= 3);
-    // Accumulate the function codes into the device info array
-    mDevInfo[0] |= fn->getFunctionCode();
     // Set the function definitions
     uint8_t pt = 1;
     uint32_t mask = 0x80000000;
@@ -242,6 +236,34 @@ void DreamcastPeripheral::addFunction(std::shared_ptr<DreamcastPeripheralFunctio
             mDevInfo[pt++] = mDevices[mask]->getFunctionDefinition();
         }
     }
+}
+
+void DreamcastPeripheral::addFunction(std::shared_ptr<DreamcastPeripheralFunction> fn)
+{
+    mDevices.insert(std::make_pair(fn->getFunctionCode(), fn));
+    // No more than 3 functions may be added
+    assert(mDevices.size() <= 3);
+    // Accumulate the function codes into the device info array
+    mDevInfo[0] |= fn->getFunctionCode();
+    // Refresh the function definitions in device info
+    setDevInfoFunctionDefinitions();
+}
+
+bool DreamcastPeripheral::removeFunction(uint32_t functionCode)
+{
+    bool removed = false;
+    std::map<uint32_t, std::shared_ptr<DreamcastPeripheralFunction>>::iterator iter =
+        mDevices.find(functionCode);
+    if (iter != mDevices.end())
+    {
+        mDevInfo[0] &= ~(iter->second->getFunctionCode());
+        mDevices.erase(iter);
+        // Refresh the function definitions in device info
+        setDevInfoFunctionDefinitions();
+
+        removed = true;
+    }
+    return removed;
 }
 
 }

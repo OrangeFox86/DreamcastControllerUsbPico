@@ -38,6 +38,10 @@ public:
     //! Add a sub-peripheral to this peripheral (only valid of main peripheral)
     void addSubPeripheral(std::shared_ptr<DreamcastPeripheral> subPeripheral);
 
+    //! Removes a previously added sub-peripheral
+    //! @param[in] addr  The address of the sub-peripheral to remove
+    bool removeSubPeripheral(uint8_t addr);
+
     //! Handle packet that is meant for me
     virtual bool handlePacket(const MaplePacket& in, MaplePacket& out) final;
 
@@ -47,13 +51,18 @@ public:
     //! @return true iff the packet was dispensed and handled
     bool dispensePacket(const MaplePacket& in, MaplePacket& out);
 
+    //! Called when player index changed, timeout occurred, or reset command received
     virtual void reset() final;
 
     //! Must be called periodically to process communication
     //! @param[in] currentTimeUs  The current system time in microseconds
     void task(uint64_t currentTimeUs);
 
+    //! @returns player index [0,3] if set or -1 if not set
+    int16_t getPlayerIndex();
+
 private:
+    //! Set player index received from interface
     void setPlayerIndex(uint8_t idx);
 
 public:
@@ -61,14 +70,21 @@ public:
     static const uint64_t READ_TIMEOUT_US = 1000000;
 
 private:
+    //! The bus this main peripheral is connected to
     const std::shared_ptr<MapleBusInterface> mBus;
-    uint8_t mPlayerIndex;
+    //! The current player index detected [0,3] or -1 if not set
+    int16_t mPlayerIndex;
+    //! All of the sub-peripherals attached to this main peripheral
     std::map<uint8_t, std::shared_ptr<DreamcastPeripheral>> mSubPeripherals;
-
+    //! The sender address of the last received packet
     uint8_t mLastSender;
+    //! Output packet buffer data
     MaplePacket mPacketOut;
+    //! Last successfully sent packet, used for resend requests from host
     MaplePacket mLastPacketOut;
+    //! Initialized to false and set to true once the first packet is sent
     bool mPacketSent;
+    //! Input packet buffer
     MaplePacket mPacketIn;
 };
 
