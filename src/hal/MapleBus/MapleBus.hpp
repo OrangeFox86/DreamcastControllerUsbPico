@@ -132,9 +132,6 @@ class MapleBus : public MapleBusInterface
         uint32_t mLastReadTransferCount;
 };
 
-std::shared_ptr<MapleBusInterface> create_maple_bus(uint32_t pinA, int32_t dirPin, bool dirOutHigh)
-{
-    return std::make_shared<MapleBus>(pinA, dirPin, dirOutHigh);
-}
+std::shared_ptr<MapleBusInterface> create_maple_bus(uint32_t pinA, int32_t dirPin, bool dirOutHigh);
 
 #endif // __MAPLE_BUS_H__

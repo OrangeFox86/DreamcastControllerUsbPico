@@ -9,6 +9,11 @@
 #include "string.h"
 #include "utils.h"
 
+std::shared_ptr<MapleBusInterface> create_maple_bus(uint32_t pinA, int32_t dirPin, bool dirOutHigh)
+{
+    return std::make_shared<MapleBus>(pinA, dirPin, dirOutHigh);
+}
+
 MapleBus* mapleWriteIsr[4] = {};
 MapleBus* mapleReadIsr[4] = {};
 
