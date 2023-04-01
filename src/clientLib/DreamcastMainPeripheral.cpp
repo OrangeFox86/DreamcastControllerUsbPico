@@ -59,7 +59,8 @@ DreamcastMainPeripheral::DreamcastMainPeripheral(std::shared_ptr<MapleBusInterfa
     mPacketOut(),
     mLastPacketOut(),
     mPacketSent(false),
-    mPacketIn()
+    mPacketIn(),
+    mPlayerIndexChangedCb(nullptr)
 {
     mPacketOut.reservePayload(256);
     mLastPacketOut.reservePayload(256);
@@ -168,6 +169,11 @@ void DreamcastMainPeripheral::setPlayerIndex(uint8_t idx)
             // The only augmenter in sub-peripherals is player index
             iter->second->setAddrAugmenter(augmenterMask);
         }
+
+        if (mPlayerIndexChangedCb != nullptr)
+        {
+            mPlayerIndexChangedCb(mPlayerIndex);
+        }
     }
 }
 
@@ -259,6 +265,11 @@ void DreamcastMainPeripheral::task(uint64_t currentTimeUs)
         }
         break;
     }
+}
+
+void DreamcastMainPeripheral::setPlayerIndexChangedCb(PlayerIndexChangedFn fn)
+{
+    mPlayerIndexChangedCb = fn;
 }
 
 }

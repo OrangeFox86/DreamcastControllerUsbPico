@@ -14,6 +14,9 @@ namespace client
 class DreamcastMainPeripheral : public DreamcastPeripheral
 {
 public:
+    typedef void (*PlayerIndexChangedFn)(int16_t idx);
+
+public:
     DreamcastMainPeripheral(std::shared_ptr<MapleBusInterface> bus,
                             uint8_t addr,
                             uint8_t regionCode,
@@ -61,6 +64,10 @@ public:
     //! @returns player index [0,3] if set or -1 if not set
     int16_t getPlayerIndex();
 
+    //! Set the player index changed callback
+    //! @param[in] fn  Callback function pointer
+    void setPlayerIndexChangedCb(PlayerIndexChangedFn fn);
+
 private:
     //! Set player index received from interface
     void setPlayerIndex(uint8_t idx);
@@ -86,6 +93,8 @@ private:
     bool mPacketSent;
     //! Input packet buffer
     MaplePacket mPacketIn;
+    //! Callback for player index changed event
+    PlayerIndexChangedFn mPlayerIndexChangedCb;
 };
 
 }
