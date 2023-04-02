@@ -10,7 +10,28 @@ namespace client
 class DreamcastController : public DreamcastPeripheralFunction, public GamepadHost
 {
 public:
+    struct EnabledControls
+    {
+        bool enLeftD;
+        bool enRightD;
+        bool enLeftA;
+        bool enRightA;
+        bool enL;
+        bool enR;
+        bool enStart;
+        bool enA;
+        bool enB;
+        bool enC;
+        bool enD;
+        bool enX;
+        bool enY;
+        bool enZ;
+    };
+
+public:
     DreamcastController();
+
+    DreamcastController(EnabledControls enabledControls);
 
     //! Inherited from DreamcastPeripheralFunction
     virtual bool handlePacket(const MaplePacket& in, MaplePacket& out) final;
@@ -31,6 +52,8 @@ public:
     uint32_t getConditionSamples();
 
 private:
+    //! All controls reported as enabled to the host
+    const EnabledControls mEnabledControls;
     //! Last set controller condition
     uint32_t mCondition[2];
     //! Number of condition samples requested by host

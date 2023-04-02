@@ -5,7 +5,27 @@ namespace client
 {
 
 DreamcastController::DreamcastController() :
+    DreamcastController({
+        .enLeftD = true,
+        .enRightD = false,
+        .enLeftA = true,
+        .enRightA = true,
+        .enL = true,
+        .enR = true,
+        .enStart = true,
+        .enA = true,
+        .enB = true,
+        .enC = true,
+        .enD = true,
+        .enX = true,
+        .enY = true,
+        .enZ = true
+    })
+{}
+
+DreamcastController::DreamcastController(EnabledControls enabledControls) :
     DreamcastPeripheralFunction(DEVICE_FN_CONTROLLER),
+    mEnabledControls(enabledControls),
     mConditionSamples(0)
 {
     setCondition(NEUTRAL_CONTROLLER_CONDITION);
@@ -31,8 +51,23 @@ void DreamcastController::reset()
 
 uint32_t DreamcastController::getFunctionDefinition()
 {
-    // Everything supported except the secondary D-pad
-    return 0x003F0FFF;
+    // This is mostly a guess
+    return (
+        (mEnabledControls.enLeftD  ? 0x000000F0 : 0) |
+        (mEnabledControls.enRightD ? 0x0000F000 : 0) |
+        (mEnabledControls.enLeftA  ? 0x000C0000 : 0) |
+        (mEnabledControls.enRightA ? 0x00300000 : 0) |
+        (mEnabledControls.enL      ? 0x00020000 : 0) |
+        (mEnabledControls.enR      ? 0x00010000 : 0) |
+        (mEnabledControls.enStart  ? 0x00000008 : 0) |
+        (mEnabledControls.enA      ? 0x00000004 : 0) |
+        (mEnabledControls.enB      ? 0x00000002 : 0) |
+        (mEnabledControls.enC      ? 0x00000001 : 0) |
+        (mEnabledControls.enD      ? 0x00000800 : 0) |
+        (mEnabledControls.enX      ? 0x00000400 : 0) |
+        (mEnabledControls.enY      ? 0x00000200 : 0) |
+        (mEnabledControls.enZ      ? 0x00000100 : 0)
+    );
 }
 
 void DreamcastController::setCondition(controller_condition_t condition)
