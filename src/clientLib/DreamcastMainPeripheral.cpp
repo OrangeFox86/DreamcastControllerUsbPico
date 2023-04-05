@@ -141,6 +141,11 @@ void DreamcastMainPeripheral::reset()
     {
         iter->second->reset();
     }
+
+    if (mPlayerIndexChangedCb != nullptr)
+    {
+        mPlayerIndexChangedCb(-1);
+    }
 }
 
 int16_t DreamcastMainPeripheral::getPlayerIndex()
