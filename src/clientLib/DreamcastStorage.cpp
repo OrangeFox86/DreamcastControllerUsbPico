@@ -86,8 +86,14 @@ bool client::DreamcastStorage::format()
         }
     }
     memset(systemBlock, 0x55, 4 * WORD_SIZE);
+
+    // I've seen the following data on some VMUs but not others. It doesn't seem necessary, so this
+    // is omitted until I have better understanding of the purpose.
+#if 0
     systemBlock[4] = flipWordBytes(0x01FFFFFF);
     systemBlock[5] = flipWordBytes(0xFF000000);
+#endif
+
     // Date/time markers
     systemBlock[12] = flipWordBytes(0x19990909);
     systemBlock[13] = flipWordBytes(0x00001000);

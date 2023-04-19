@@ -24,7 +24,7 @@ bool DreamcastScreen::handlePacket(const MaplePacket& in, MaplePacket& out)
             out.frame.command = COMMAND_RESPONSE_DATA_XFER;
             out.reservePayload(2);
             out.appendPayload(getFunctionCode());
-            out.appendPayload(((mWidth - 1) << 24) | ((mHeight - 1) << 16) | 0x1000);
+            out.appendPayload(((mWidth - 1) << 24) | ((mHeight - 1) << 16) | 0x1002);
             return true;
         }
         break;
