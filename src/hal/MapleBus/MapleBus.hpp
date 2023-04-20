@@ -28,9 +28,12 @@ class MapleBus : public MapleBusInterface
         //! Writes a packet to the maple bus
         //! @post processEvents() must periodically be called to check status
         //! @param[in] packet  The packet to send (sender address will be overloaded)
-        //! @param[in] expectResponse  Set to true in order to start receive after send is complete
+        //! @param[in] autostartRead  Set to true in order to start receive after send is complete
+        //! @param[in] readTimeoutUs  When autostartRead is true, the read timeout to set
         //! @returns true iff the bus was "open" and send has started
-        bool write(const MaplePacket& packet, bool expectResponse);
+        bool write(const MaplePacket& packet,
+                   bool autostartRead,
+                   uint64_t readTimeoutUs=MAPLE_RESPONSE_TIMEOUT_US);
 
         //! Begins waiting for input
         //! @post processEvents() must periodically be called to check status
@@ -42,7 +45,7 @@ class MapleBus : public MapleBusInterface
         //!       at least 2).
         //! @param[in] readTimeoutUs  Minimum number of microseconds to read for (optional)
         //! @returns true iff bus was not busy and read started
-        bool startRead(uint64_t readTimeoutUs=std::numeric_limits<uint64_t>::max());
+        bool startRead(uint64_t readTimeoutUs=NO_TIMEOUT);
 
         //! Called from a PIO ISR when read has completed for this sender.
         void readIsr();
@@ -90,6 +93,10 @@ class MapleBus : public MapleBusInterface
         //! Initializes all interrupt service routines for all Maple Busses
         static void initIsrs();
 
+    public:
+        //! Timeout value to use when no timeout is desired
+        static const uint64_t NO_TIMEOUT = std::numeric_limits<uint64_t>::max();
+
     private:
         //! Pin A GPIO index for this bus
         const uint32_t mPinA;
@@ -106,9 +113,9 @@ class MapleBus : public MapleBusInterface
         //! GPIO mask for all bits used by this bus
         const uint32_t mMaskAB;
         //! The PIO state machine used for output by this bus
-        const MapleOutStateMachine mSmOut;
+        MapleOutStateMachine mSmOut;
         //! The PIO state machine index used for input by this bus
-        const MapleInStateMachine mSmIn;
+        MapleInStateMachine mSmIn;
         //! The DMA channel used for writing by this bus
         const int mDmaWriteChannel;
         //! The DMA channel used for reading by this bus
@@ -124,6 +131,8 @@ class MapleBus : public MapleBusInterface
         Phase mCurrentPhase;
         //! True if read should be started immediately after write has completed
         bool mExpectingResponse;
+        //! The read timeout to use when mExpectingResponse is true
+        uint64_t mResponseTimeoutUs;
         //! The time at which the next timeout will occur
         volatile uint64_t mProcKillTime;
         //! The last time which number of received words changed

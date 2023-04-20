@@ -91,7 +91,8 @@ class MapleInStateMachine
             mPinA(pin_a),
             mPinB(pin_a + 1),
             mMaskAB(3 << pin_a),
-            mSmIdx(pio_claim_unused_sm(mProgram.mPio, true))
+            mSmIdx(pio_claim_unused_sm(mProgram.mPio, true)),
+            mPrestarted(false)
         {
             // Initialize the two pins as inputs with pullups
             gpio_set_dir_in_masked(mMaskAB);
@@ -116,13 +117,24 @@ class MapleInStateMachine
             pio_sm_init(mProgram.mPio, mSmIdx, mProgram.mProgramOffset, &c);
         }
 
-        inline void start() const
+        inline void prestart()
         {
             // Reset pointers
             pio_sm_clear_fifos(mProgram.mPio, mSmIdx);
             pio_sm_restart(mProgram.mPio, mSmIdx);
             pio_sm_clkdiv_restart(mProgram.mPio, mSmIdx);
             pio_sm_exec(mProgram.mPio, mSmIdx, pio_encode_jmp(mProgram.mProgramOffset));
+            mPrestarted = true;
+        }
+
+        inline void start()
+        {
+            if (!mPrestarted)
+            {
+                prestart();
+            }
+            mPrestarted = false;
+
             // Pin direction starts as input
             pio_sm_set_consecutive_pindirs(mProgram.mPio, mSmIdx, mPinA, 2, false);
             // Set this pin's GPIO function (connect PIO to the pad)
@@ -155,6 +167,7 @@ class MapleInStateMachine
         const uint mPinB;
         const uint mMaskAB;
         const uint mSmIdx;
+        bool mPrestarted;
 };
 
 %}
