@@ -115,7 +115,8 @@ MapleBus::MapleBus(uint32_t pinA, int32_t dirPin, bool dirOutHigh) :
     mExpectingResponse(false),
     mProcKillTime(0xFFFFFFFFFFFFFFFFULL),
     mLastReceivedWordTimeUs(0),
-    mLastReadTransferCount(0)
+    mLastReadTransferCount(0),
+    mWriteIsrCnt(0)
 {
     mapleWriteIsr[mSmOut.mSmIdx] = this;
     mapleReadIsr[mSmIn.mSmIdx] = this;
@@ -181,35 +182,38 @@ inline void MapleBus::readIsr()
 
 inline void MapleBus::writeIsr()
 {
-    // This ISR gets called from write PIO once writing has completed
+    // This ISR gets called from write PIO once writing is about to complete and when completed
 
-    // Pause write which transitions pins to input with pull-up
-    mSmOut.stop(!mExpectingResponse);
-
-    // Output to dir pin that we are in input mode
-    if (mDirPin >= 0)
+    if (++mWriteIsrCnt > 1)
     {
-        gpio_put(mDirPin, !mDirOutHigh);
-    }
+        // Pause write which transitions pins to input with pull-up
+        mSmOut.stop(!mExpectingResponse);
 
-    if (mExpectingResponse)
-    {
-        // Transition to read - start waiting for start sequence
-        mSmIn.start();
-        if (mResponseTimeoutUs == NO_TIMEOUT)
+        // Output to dir pin that we are in input mode
+        if (mDirPin >= 0)
         {
-            mProcKillTime = std::numeric_limits<uint64_t>::max();
+            gpio_put(mDirPin, !mDirOutHigh);
+        }
+
+        if (mExpectingResponse)
+        {
+            // Transition to read - start waiting for start sequence
+            mSmIn.start();
+            if (mResponseTimeoutUs == NO_TIMEOUT)
+            {
+                mProcKillTime = std::numeric_limits<uint64_t>::max();
+            }
+            else
+            {
+                mProcKillTime = time_us_64() + mResponseTimeoutUs;
+            }
+            mCurrentPhase = Phase::WAITING_FOR_READ_START;
         }
         else
         {
-            mProcKillTime = time_us_64() + mResponseTimeoutUs;
+            // Nothing more to do
+            mCurrentPhase = Phase::WRITE_COMPLETE;
         }
-        mCurrentPhase = Phase::WAITING_FOR_READ_START;
-    }
-    else
-    {
-        // Nothing more to do
-        mCurrentPhase = Phase::WRITE_COMPLETE;
     }
 }
 
@@ -272,6 +276,7 @@ bool MapleBus::write(const MaplePacket& packet, bool autostartRead, uint64_t rea
             // Update flags before beginning to write
             mExpectingResponse = autostartRead;
             mResponseTimeoutUs = readTimeoutUs;
+            mWriteIsrCnt = 0;
             mCurrentPhase = Phase::WRITE_IN_PROGRESS;
 
             if (autostartRead)

@@ -46,7 +46,9 @@ out y, 1 side MASK_AB
 jmp !y, clock_a_data_b_zero side MASK_AB
 jmp first_clock_a_data_b_one side MASK_AB
 
-
+; Special reentry point when artificial delays need to be added
+reentry_point:
+out x, 32 side MASK_AB
 
 ; send out packet data
 ; x scratch register contains how many bits left to send
@@ -82,6 +84,9 @@ nop side MASK_B [SINGLE_PHASE_TICKS - 1]
 jmp x-- clock_a_data_b side 0 [SINGLE_PHASE_TICKS - 1]
 ; Else: fall through to end sequence
 
+
+; Allow caller to go to reentry point if needed
+irq wait 0 rel side MASK_A
 
 
 ; send out the end sequence

@@ -139,6 +139,8 @@ class MapleBus : public MapleBusInterface
         uint64_t mLastReceivedWordTimeUs;
         //! The last sampled read word transfer count
         uint32_t mLastReadTransferCount;
+        //! Number of times write ISR was called
+        uint32_t mWriteIsrCnt;
 };
 
 std::shared_ptr<MapleBusInterface> create_maple_bus(uint32_t pinA, int32_t dirPin, bool dirOutHigh);
