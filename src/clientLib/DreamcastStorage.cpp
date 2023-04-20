@@ -86,8 +86,8 @@ bool client::DreamcastStorage::format()
         }
     }
     memset(systemBlock, 0x55, 4 * WORD_SIZE);
-    systemBlock[4] = flipWordBytes(0x01FFFFFF);
-    systemBlock[5] = flipWordBytes(0xFF000000);
+    // systemBlock[4] = flipWordBytes(0x01FFFFFF);
+    // systemBlock[5] = flipWordBytes(0xFF000000);
     // Date/time markers
     systemBlock[12] = flipWordBytes(0x19990909);
     systemBlock[13] = flipWordBytes(0x00001000);
@@ -163,7 +163,7 @@ bool client::DreamcastStorage::handlePacket(const MaplePacket& in, MaplePacket& 
                     reinterpret_cast<const uint32_t*>(mem) + MEDIA_INFO_WORD_OFFSET;
                 uint32_t payload[7] = {mFunctionCode};
                 setDefaultMediaInfo(&payload[1]);
-                payload[4] = (payload[4] & 0xFFFF0000) | (flipWordBytes(storageMediaInfo[3]) & 0x0000FFFF);
+                payload[4] = (payload[4] & 0xFFFF0000);
                 payload[5] = flipWordBytes(storageMediaInfo[4]);
 
                 out.setPayload(payload, 7);

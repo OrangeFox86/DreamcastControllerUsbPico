@@ -226,10 +226,15 @@ void DreamcastPeripheral::shutdown()
 
 void DreamcastPeripheral::setDevInfoFunctionDefinitions()
 {
+    // Reset function definitions
+    mDevInfo[1] = 0;
+    mDevInfo[2] = 0;
+    mDevInfo[3] = 0;
+
     // Set the function definitions
     uint8_t pt = 1;
     uint32_t mask = 0x80000000;
-    for (; mask > 0; mask >>= 1)
+    for (; mask > 0 && pt < 4; mask >>= 1)
     {
         if ((mask & mDevInfo[0]) > 0)
         {

@@ -3,6 +3,9 @@
 #include <assert.h>
 #include <stdio.h>
 
+#include "pico/stdlib.h"
+#include "pico/platform.h"
+
 namespace client
 {
 
@@ -199,7 +202,7 @@ void DreamcastMainPeripheral::task(uint64_t currentTimeUs)
                 mPacketOut.frame.recipientAddr = mLastSender;
                 mPacketOut.frame.senderAddr = getAddress();
                 mPacketOut.updateFrameLength();
-                (void)mBus->write(mPacketOut, false);
+                (void)mBus->write(mPacketOut, true);
             }
             else
             {
@@ -260,7 +263,8 @@ void DreamcastMainPeripheral::task(uint64_t currentTimeUs)
             {
                 mPacketSent = true;
                 mLastPacketOut = mPacketOut;
-                (void)mBus->write(mPacketOut, false);
+                sleep_us(200);
+                (void)mBus->write(mPacketOut, true);
             }
             else
             {

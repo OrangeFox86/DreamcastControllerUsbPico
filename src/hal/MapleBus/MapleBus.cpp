@@ -185,6 +185,7 @@ inline void MapleBus::writeIsr()
 
     // Stop write which transitions pins to input with pull-up
     mSmOut.stop();
+    mSmIn.start();
 
     // Output to dir pin that we are in input mode
     if (mDirPin >= 0)
@@ -192,18 +193,10 @@ inline void MapleBus::writeIsr()
         gpio_put(mDirPin, !mDirOutHigh);
     }
 
-    if (mExpectingResponse)
-    {
-        // Transition to read - start waiting for start sequence
-        mSmIn.start();
-        mProcKillTime = time_us_64() + MAPLE_RESPONSE_TIMEOUT_US;
-        mCurrentPhase = Phase::WAITING_FOR_READ_START;
-    }
-    else
-    {
-        // Nothing more to do
-        mCurrentPhase = Phase::WRITE_COMPLETE;
-    }
+    // Transition to read - start waiting for start sequence
+
+    mProcKillTime = time_us_64() + 1000000;
+    mCurrentPhase = Phase::WAITING_FOR_READ_START;
 }
 
 bool MapleBus::writeInit()
