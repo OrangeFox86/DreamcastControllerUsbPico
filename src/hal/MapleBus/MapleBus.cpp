@@ -115,8 +115,7 @@ MapleBus::MapleBus(uint32_t pinA, int32_t dirPin, bool dirOutHigh) :
     mExpectingResponse(false),
     mProcKillTime(0xFFFFFFFFFFFFFFFFULL),
     mLastReceivedWordTimeUs(0),
-    mLastReadTransferCount(0),
-    mWriteIsrCnt(0)
+    mLastReadTransferCount(0)
 {
     mapleWriteIsr[mSmOut.mSmIdx] = this;
     mapleReadIsr[mSmIn.mSmIdx] = this;
@@ -184,36 +183,33 @@ inline void MapleBus::writeIsr()
 {
     // This ISR gets called from write PIO once writing is about to complete and when completed
 
-    if (++mWriteIsrCnt > 1)
+    // Pause write which transitions pins to input with pull-up
+    mSmOut.stop(!mExpectingResponse);
+
+    // Output to dir pin that we are in input mode
+    if (mDirPin >= 0)
     {
-        // Pause write which transitions pins to input with pull-up
-        mSmOut.stop(!mExpectingResponse);
+        gpio_put(mDirPin, !mDirOutHigh);
+    }
 
-        // Output to dir pin that we are in input mode
-        if (mDirPin >= 0)
+    if (mExpectingResponse)
+    {
+        // Transition to read - start waiting for start sequence
+        mSmIn.start();
+        if (mResponseTimeoutUs == NO_TIMEOUT)
         {
-            gpio_put(mDirPin, !mDirOutHigh);
-        }
-
-        if (mExpectingResponse)
-        {
-            // Transition to read - start waiting for start sequence
-            mSmIn.start();
-            if (mResponseTimeoutUs == NO_TIMEOUT)
-            {
-                mProcKillTime = std::numeric_limits<uint64_t>::max();
-            }
-            else
-            {
-                mProcKillTime = time_us_64() + mResponseTimeoutUs;
-            }
-            mCurrentPhase = Phase::WAITING_FOR_READ_START;
+            mProcKillTime = std::numeric_limits<uint64_t>::max();
         }
         else
         {
-            // Nothing more to do
-            mCurrentPhase = Phase::WRITE_COMPLETE;
+            mProcKillTime = time_us_64() + mResponseTimeoutUs;
         }
+        mCurrentPhase = Phase::WAITING_FOR_READ_START;
+    }
+    else
+    {
+        // Nothing more to do
+        mCurrentPhase = Phase::WRITE_COMPLETE;
     }
 }
 
@@ -268,15 +264,15 @@ bool MapleBus::write(const MaplePacket& packet, bool autostartRead, uint64_t rea
         uint8_t len = packet.payload.size();
         wordCpy(&mWriteBuffer[2], packet.payload.data(), len);
         crc8(&mWriteBuffer[2], len, crc);
-        // Last byte is the CRC
-        mWriteBuffer[len + 2] = crc;
+        // CRC followed by program offset to jump directly to end_sequence
+        uint8_t prg = mSmOut.mProgram.mProgramOffset + maple_out_offset_end_sequence;
+        mWriteBuffer[len + 2] = crc | (prg << 8);
 
         if (writeInit())
         {
             // Update flags before beginning to write
             mExpectingResponse = autostartRead;
             mResponseTimeoutUs = readTimeoutUs;
-            mWriteIsrCnt = 0;
             mCurrentPhase = Phase::WRITE_IN_PROGRESS;
 
             if (autostartRead)

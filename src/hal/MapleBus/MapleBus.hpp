@@ -121,8 +121,8 @@ class MapleBus : public MapleBusInterface
         //! The DMA channel used for reading by this bus
         const int mDmaReadChannel;
 
-        //! The output word buffer - 256 + 2 extra words for bit count and CRC
-        volatile uint32_t mWriteBuffer[258];
+        //! The output word buffer - 256 + 2 extra words for bit count and CRC + jmp address
+        volatile uint32_t mWriteBuffer[259];
         //! The input word buffer - 256 + 1 extra word for CRC + 1 for overflow
         volatile uint32_t mReadBuffer[258];
         //! Persistent storage for external use after processEvents call
@@ -139,8 +139,6 @@ class MapleBus : public MapleBusInterface
         uint64_t mLastReceivedWordTimeUs;
         //! The last sampled read word transfer count
         uint32_t mLastReadTransferCount;
-        //! Number of times write ISR was called
-        uint32_t mWriteIsrCnt;
 };
 
 std::shared_ptr<MapleBusInterface> create_maple_bus(uint32_t pinA, int32_t dirPin, bool dirOutHigh);
