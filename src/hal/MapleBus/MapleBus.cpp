@@ -183,33 +183,54 @@ inline void MapleBus::writeIsr()
 {
     // This ISR gets called from write PIO once writing is about to complete and when completed
 
-    // Pause write which transitions pins to input with pull-up
-    mSmOut.stop(!mExpectingResponse);
-
-    // Output to dir pin that we are in input mode
-    if (mDirPin >= 0)
+    if (dma_channel_hw_addr(mDmaWriteChannel)->transfer_count > 0)
     {
-        gpio_put(mDirPin, !mDirOutHigh);
-    }
-
-    if (mExpectingResponse)
-    {
-        // Transition to read - start waiting for start sequence
-        mSmIn.start();
-        if (mResponseTimeoutUs == NO_TIMEOUT)
-        {
-            mProcKillTime = std::numeric_limits<uint64_t>::max();
-        }
-        else
-        {
-            mProcKillTime = time_us_64() + mResponseTimeoutUs;
-        }
-        mCurrentPhase = Phase::WAITING_FOR_READ_START;
+        // More data left to write
+        // Add artificial delay then let it continue
+        sleep_us(100);
     }
     else
     {
-        // Nothing more to do
-        mCurrentPhase = Phase::WRITE_COMPLETE;
+        // Pause write which transitions pins to input with pull-up
+        mSmOut.stop(!mExpectingResponse);
+
+        if (mExpectingResponse)
+        {
+            // Transition to read - start waiting for start sequence
+            mSmIn.start();
+
+            // Output to dir pin that we are in input mode
+            if (mDirPin >= 0)
+            {
+                gpio_put(mDirPin, !mDirOutHigh);
+            }
+
+            // Soft stop was done on state machine, so ensure pull-up is re-enabled
+            gpio_set_pulls(mPinB, true, false);
+
+            if (mResponseTimeoutUs == NO_TIMEOUT)
+            {
+                mProcKillTime = std::numeric_limits<uint64_t>::max();
+            }
+            else
+            {
+                mProcKillTime = time_us_64() + mResponseTimeoutUs;
+            }
+
+            mCurrentPhase = Phase::WAITING_FOR_READ_START;
+        }
+        else
+        {
+            // Output to dir pin that we are in input mode
+            if (mDirPin >= 0)
+            {
+                gpio_put(mDirPin, !mDirOutHigh);
+            }
+
+            // Nothing more to do
+            mCurrentPhase = Phase::WRITE_COMPLETE;
+        }
+
     }
 }
 
@@ -357,7 +378,7 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
         while (!pio_sm_is_rx_fifo_empty(mSmIn.mProgram.mPio, mSmIn.mSmIdx)
                && time_us_64() < timeoutTime);
 
-        // transfer_count is decrements down to 0, so compute the inverse to get number of words
+        // transfer_count decrements down to 0, so compute the inverse to get number of words
         uint32_t dmaWordsRead = (sizeof(mReadBuffer) / sizeof(mReadBuffer[0]))
                                 - dma_channel_hw_addr(mDmaReadChannel)->transfer_count;
 
