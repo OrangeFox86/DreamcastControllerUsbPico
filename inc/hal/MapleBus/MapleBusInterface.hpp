@@ -11,20 +11,6 @@
 class MapleBusInterface
 {
     public:
-        //! For client mode operation, it is necessary to model delays between chunks of tx data
-        struct DelayDefinition
-        {
-            //! Number of consecutive words to transmit in first chunk
-            uint8_t firstWordChunk;
-            //! Number of microseconds to delay after first chunk
-            uint8_t firstChunkDelayUs;
-            //! Number of consecutive words to transmit in each subsequent chunk
-            uint8_t secondWordChunk;
-            //! Number of microseconds to delay after each subsequent chunk
-            uint8_t secondChunkDelayUs;
-        };
-
-    public:
         //! Enumerates the phase in the state machine
         enum class Phase : uint8_t
         {
@@ -94,8 +80,7 @@ class MapleBusInterface
         //! @returns true iff the bus was "open" and send has started
         virtual bool write(const MaplePacket& packet,
                            bool autostartRead,
-                           uint64_t readTimeoutUs=MAPLE_RESPONSE_TIMEOUT_US,
-                           DelayDefinition delayDefinition={255, 0, 0, 0}) = 0;
+                           uint64_t readTimeoutUs=MAPLE_RESPONSE_TIMEOUT_US) = 0;
 
         //! Begins waiting for input
         //! @post processEvents() must periodically be called to check status

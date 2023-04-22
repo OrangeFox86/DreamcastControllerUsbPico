@@ -73,33 +73,6 @@ void maple_read_isr1(void)
 }
 }
 
-// Since channel_config_set_bswap() is called for write DMA, it's necessary to swap endianness
-// of each 16-bit program word
-#define SWAP_U16_BYTES(u16) (uint16_t)(((u16) << 8) | ((u16) >> 8))
-const uint16_t MapleBus::END_SEQUENCE_PROGRAM[maple_out_end_seq_offset_size] = {
-    SWAP_U16_BYTES(maple_out_end_seq_program_instructions[0]),
-    SWAP_U16_BYTES(maple_out_end_seq_program_instructions[1]),
-    SWAP_U16_BYTES(maple_out_end_seq_program_instructions[2]),
-    SWAP_U16_BYTES(maple_out_end_seq_program_instructions[3]),
-    SWAP_U16_BYTES(maple_out_end_seq_program_instructions[4]),
-    SWAP_U16_BYTES(maple_out_end_seq_program_instructions[5]),
-    // Replace address in jmp instruction to address of out_done
-    SWAP_U16_BYTES((maple_out_end_seq_program_instructions[6]
-        | (MapleOutStateMachine::getMapleOutProgram().mProgramOffset + maple_out_offset_out_done)))
-};
-
-#if (maple_out_end_seq_offset_size != 7)
-#error "The above assumes 7 instructions in end seq program"
-#endif
-
-// Byte 1: 1 to jmp to data_alignment_loop once
-// Byte 2: 0 to exit data_alignment_loop
-// Bytes 3 & 4: jmp to reentry_point
-const uint32_t MapleBus::REENTRY_INSTRUCTION =
-    (1) | ((SWAP_U16_BYTES(MapleOutStateMachine::getMapleOutProgram().mProgramOffset + maple_out_offset_reentry_point)) << 16);
-
-const uint32_t MapleBus::NS_PER_LOOP = MAPLE_NS_PER_BIT * 2 / 3;
-
 void MapleBus::initIsrs()
 {
     uint outIdx = pio_get_index(MAPLE_OUT_PIO);
@@ -272,8 +245,7 @@ bool MapleBus::lineCheck()
 
 bool MapleBus::write(const MaplePacket& packet,
                      bool autostartRead,
-                     uint64_t readTimeoutUs,
-                     DelayDefinition delayDefinition)
+                     uint64_t readTimeoutUs)
 {
     bool rv = false;
 
@@ -283,91 +255,24 @@ bool MapleBus::write(const MaplePacket& packet,
         dma_channel_abort(mDmaWriteChannel);
         dma_channel_abort(mDmaReadChannel);
 
-        uint32_t extraTimeUs = 0;
-        uint32_t len = 0;
-        uint32_t frameWord = packet.getFrameWord();
-
         // Compute CRC
         uint8_t crc = 0;
+        uint32_t frameWord = packet.getFrameWord();
         crc8(frameWord, crc);
         crc8(packet.payload.data(), packet.payload.size(), crc);
 
-        if (delayDefinition.firstChunkDelayUs == 0 || delayDefinition.firstWordChunk >= (packet.payload.size() + 1))
-        {
-            // First 32 bits sent to the state machine is how many bits to output.
-            // Since channel_config_set_bswap is set to make the packet bytes the right order, these
-            // bytes need to be flipped so the PIO state machine can work with it correctly.
-            mWriteBuffer[len++] = flipWordBytes(packet.getNumTotalBits());
-            // Load the frame word and start computing the crc
-            mWriteBuffer[len++] = frameWord;
-            // Load the rest of the packet
-            wordCpy(&mWriteBuffer[len], packet.payload.data(), packet.payload.size());
-            len += packet.payload.size();
-            // CRC plus end sequence program injection
-            // Byte 0: CRC
-            // Byte 1: must be 0 to move past data_alignment_loop
-            // Bytes 2 & 3: first program command
-            mWriteBuffer[len++] = crc | (END_SEQUENCE_PROGRAM[0] << 16);
-            // Next 3 words hold the rest of the end sequence instructions
-            mWriteBuffer[len++] = (END_SEQUENCE_PROGRAM[1]) | (END_SEQUENCE_PROGRAM[2] << 16);
-            mWriteBuffer[len++] = (END_SEQUENCE_PROGRAM[3]) | (END_SEQUENCE_PROGRAM[4] << 16);
-            mWriteBuffer[len++] = (END_SEQUENCE_PROGRAM[5]) | (END_SEQUENCE_PROGRAM[6] << 16);
-        }
-        else
-        {
-            assert(delayDefinition.firstWordChunk > 0);
-            assert(delayDefinition.secondWordChunk > 0);
-
-            uint16_t delay1NumLoops = delayDefinition.firstChunkDelayUs * 1000 / NS_PER_LOOP;
-            uint16_t delay2NumLoops = delayDefinition.secondChunkDelayUs * 1000 / NS_PER_LOOP;
-            uint32_t copiedPayloadWords = 0;
-            bool firstDelay = true;
-
-            // First chunk
-            mWriteBuffer[len++] = flipWordBytes(delayDefinition.firstWordChunk * 32);
-            mWriteBuffer[len++] = frameWord;
-            --delayDefinition.firstWordChunk;
-            wordCpy(&mWriteBuffer[len], packet.payload.data(), delayDefinition.firstWordChunk);
-            len += delayDefinition.firstWordChunk;
-            copiedPayloadWords += delayDefinition.firstWordChunk;
-
-            // Following chunks
-            while (copiedPayloadWords < packet.payload.size())
-            {
-                uint32_t remainingWords = packet.payload.size() - copiedPayloadWords;
-                uint32_t chunkWords = remainingWords > delayDefinition.secondWordChunk
-                                      ? delayDefinition.secondWordChunk
-                                      : remainingWords;
-                bool sendCrc = (remainingWords == chunkWords);
-                uint16_t numBits = chunkWords * 32;
-                if (sendCrc)
-                {
-                    numBits += 8;
-                }
-                uint16_t numLoops = delay2NumLoops;
-                uint8_t delayUs = delayDefinition.firstChunkDelayUs;
-                if (firstDelay)
-                {
-                    numLoops = delay1NumLoops;
-                    delayUs = delayDefinition.secondChunkDelayUs;
-                    firstDelay = false;
-                }
-
-                mWriteBuffer[len++] = REENTRY_INSTRUCTION;
-                mWriteBuffer[len++] = SWAP_U16_BYTES(numLoops) | (SWAP_U16_BYTES(numBits) << 16);
-                wordCpy(&mWriteBuffer[len], packet.payload.data() + copiedPayloadWords, chunkWords);
-                len += chunkWords;
-                copiedPayloadWords += chunkWords;
-                extraTimeUs += (delayUs + 1);
-            }
-
-            // CRC and end sequence
-            mWriteBuffer[len++] = crc | (END_SEQUENCE_PROGRAM[0] << 16);
-            // Next 3 words hold the rest of the end sequence instructions
-            mWriteBuffer[len++] = (END_SEQUENCE_PROGRAM[1]) | (END_SEQUENCE_PROGRAM[2] << 16);
-            mWriteBuffer[len++] = (END_SEQUENCE_PROGRAM[3]) | (END_SEQUENCE_PROGRAM[4] << 16);
-            mWriteBuffer[len++] = (END_SEQUENCE_PROGRAM[5]) | (END_SEQUENCE_PROGRAM[6] << 16);
-        }
+        // First 32 bits sent to the state machine is how many bits to output.
+        // Since channel_config_set_bswap is set to make the packet bytes the right order, these
+        // bytes need to be flipped so the PIO state machine can work with it correctly.
+        uint32_t len = 0;
+        mWriteBuffer[len++] = flipWordBytes(packet.getNumTotalBits());
+        // Load the frame word and start computing the crc
+        mWriteBuffer[len++] = frameWord;
+        // Load the rest of the packet
+        wordCpy(&mWriteBuffer[len], packet.payload.data(), packet.payload.size());
+        len += packet.payload.size();
+        // Last byte is the CRC
+        mWriteBuffer[len++] = crc;
 
         if (lineCheck())
         {
@@ -404,7 +309,7 @@ bool MapleBus::write(const MaplePacket& packet,
             // Multiply by the extra percentage
             totalWriteTimeNs *= (1 + (MAPLE_WRITE_TIMEOUT_EXTRA_PERCENT / 100.0));
             // And then compute the time which the write process should complete
-            mProcKillTime = time_us_64() + INT_DIVIDE_CEILING(totalWriteTimeNs, 1000) + extraTimeUs;
+            mProcKillTime = time_us_64() + INT_DIVIDE_CEILING(totalWriteTimeNs, 1000);
 
             rv = true;
         }

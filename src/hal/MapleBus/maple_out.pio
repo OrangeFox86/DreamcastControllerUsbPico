@@ -1,10 +1,11 @@
-
 ; maple_out notes:
 ; - It is up to the system to ensure open line before activating this (no overcurrent protection)
 ; - Since bytes are shifted out "to the left" in order to shift out the most significant bit of each
 ;   byte first, the most significant byte comes out first too. This means byte order will need to be
 ;   swapped before feeding into this.
 
+.program maple_out
+.side_set 2 opt
 
 .define public MASK_A 0x1
 .define public MASK_B 0x2
@@ -16,14 +17,10 @@
 .define public DOUBLE_PHASE_TICKS 4
 .define public SINGLE_PHASE_TICKS (DOUBLE_PHASE_TICKS / 2)
 
-
-.program maple_out
-.origin 0
-.side_set 2 opt
-
 maple_out_start:
 
 ; Stalls until first word; first word is how many bits this will send
+; The following must be true about x: (x - 8) % 32 == 0 && x >= 40
 out x, 32 side MASK_AB
 
 
@@ -48,16 +45,6 @@ jmp !y, clock_a_data_b_zero side MASK_AB
 jmp first_clock_a_data_b_one side MASK_AB
 
 
-; Special reentry point when artificial delays need to be added
-; y must be loaded with how many double phase clock ticks to delay for
-; x must be loaded with how many bits to send
-; Delay before sending more data
-PUBLIC reentry_point:
-out y, 16 side MASK_A
-delay_loop:
-jmp y-- delay_loop side MASK_A [DOUBLE_PHASE_TICKS - 1]
-out x, 16 side MASK_A
-jmp x-- clock_a_data_b
 
 ; send out packet data
 ; x scratch register contains how many bits left to send
@@ -71,12 +58,12 @@ clock_a_data_b_one:
 nop side MASK_AB [SINGLE_PHASE_TICKS - 1]
 first_clock_a_data_b_one:
 jmp x-- clock_b_data_a side MASK_B [SINGLE_PHASE_TICKS - 1]
-; jmp data_complete ; should never reach here anyway (saves an instruction)
+; jmp end_sequence ; should never reach here anyway (saves an instruction)
 
 clock_a_data_b_zero:
 nop side MASK_A [SINGLE_PHASE_TICKS - 1]
 jmp x-- clock_b_data_a side 0 [SINGLE_PHASE_TICKS - 1] ; just need to decrement x
-; jmp data_complete ; should never reach here anyway (saves an instruction)
+; jmp end_sequence ; should never reach here anyway (saves an instruction)
 
 clock_b_data_a:
 out y, 1 side MASK_B [SINGLE_PHASE_TICKS - 2]
@@ -86,49 +73,31 @@ jmp !y clock_b_data_a_zero
 clock_b_data_a_one:
 nop side MASK_AB [SINGLE_PHASE_TICKS - 1]
 jmp x-- clock_a_data_b side MASK_A [SINGLE_PHASE_TICKS - 1]
-jmp data_complete
+
+; using wrap as a free jmp command to end_sequence
+.wrap
 
 clock_b_data_a_zero:
 nop side MASK_B [SINGLE_PHASE_TICKS - 1]
-jmp x-- clock_a_data_b side 0 [SINGLE_PHASE_TICKS]
-; Else: fall through to data completion
+jmp x-- clock_a_data_b side 0 [SINGLE_PHASE_TICKS - 1]
+; Else: fall through to end sequence
 
-
-data_complete:
-
-; If CRC was outputted, there would be another 24 bits left
-; This would allow us to re-align to 16-bit boundary if needed by throwing out 1 byte
-; or throw out 2 bytes otherwise (keep looping until value of 0 is read)
-data_alignment_loop:
-out x, 8 side MASK_A
-jmp x-- data_alignment_loop
-
-; Program defined externally
-; This should be either the end sequence then jmp to out_done or jmp to reentry_point
 .wrap_target
-out EXEC, 16
-.wrap
+
+; send out the end sequence
+end_sequence:
+out y, 24 side MASK_A [SINGLE_PHASE_TICKS - 1] ; last word only has crc byte to send; purge last 24 bits
+nop side MASK_AB [DOUBLE_PHASE_TICKS - 1]
+nop side MASK_A [DOUBLE_PHASE_TICKS - 1]
+nop side 0 [DOUBLE_PHASE_TICKS - 1]
+nop side MASK_A [DOUBLE_PHASE_TICKS - 1]
+nop side 0 [DOUBLE_PHASE_TICKS - 1]
 
 ; Wait for IRQ to be handled before continuing
-PUBLIC out_done:
 irq wait 0 rel side MASK_A
 
-; Compile program in order to generate end sequence within "out EXEC, 16" lines in maple_out
-.program maple_out_end_seq
-.origin 0
-.side_set 2 opt
-
-; Note: an extra clock is used to load each instruction
-nop side MASK_AB [DOUBLE_PHASE_TICKS - 2]
-nop side MASK_A [DOUBLE_PHASE_TICKS - 2]
-nop side 0 [DOUBLE_PHASE_TICKS - 2]
-nop side MASK_A [DOUBLE_PHASE_TICKS - 2]
-nop side 0 [DOUBLE_PHASE_TICKS - 3]
-nop ; just for alignment
-jmp 0 ; Need to replace 0 with out_done manually
-
-; Label used just to expose number of above instructions
-PUBLIC size:
+; Allow the application to transition AB back HIGH when it's ready to "submit" the data.
+; See MapleOutStateMachine::stop()
 
 
 % c-sdk {
@@ -161,7 +130,7 @@ class MapleOutStateMachine
             sm_config_set_out_shift(&c, false, true, 32);
 
             sm_config_set_clkdiv(
-                &c, (sys_freq_khz * (ns_per_bit / 3 * 2)) / DOUBLE_PHASE_TICKS / 1000000.0);
+                &c, (sys_freq_khz * (ns_per_bit / 3 * 2)) / maple_out_DOUBLE_PHASE_TICKS / 1000000.0);
 
             // Load our configuration, and jump to the start of the program
             pio_sm_init(mProgram.mPio, mSmIdx, mProgram.mProgramOffset, &c);

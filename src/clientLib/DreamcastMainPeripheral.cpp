@@ -185,7 +185,6 @@ void DreamcastMainPeripheral::setPlayerIndex(uint8_t idx)
 void DreamcastMainPeripheral::task(uint64_t currentTimeUs)
 {
     MapleBusInterface::Status status = mBus->processEvents(currentTimeUs);
-    MapleBusInterface::DelayDefinition delayDefinition={4, 160, 4, 160};
 
     switch (status.phase)
     {
@@ -200,7 +199,7 @@ void DreamcastMainPeripheral::task(uint64_t currentTimeUs)
                 mPacketOut.frame.recipientAddr = mLastSender;
                 mPacketOut.frame.senderAddr = getAddress();
                 mPacketOut.updateFrameLength();
-                (void)mBus->write(mPacketOut, true, READ_TIMEOUT_US, delayDefinition);
+                (void)mBus->write(mPacketOut, true, READ_TIMEOUT_US);
             }
             else
             {
@@ -261,7 +260,7 @@ void DreamcastMainPeripheral::task(uint64_t currentTimeUs)
             {
                 mPacketSent = true;
                 mLastPacketOut = mPacketOut;
-                (void)mBus->write(mPacketOut, true, READ_TIMEOUT_US, delayDefinition);
+                (void)mBus->write(mPacketOut, true, READ_TIMEOUT_US);
             }
             else
             {
