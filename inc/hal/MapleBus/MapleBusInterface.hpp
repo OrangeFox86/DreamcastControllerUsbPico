@@ -73,11 +73,14 @@ class MapleBusInterface
         virtual ~MapleBusInterface() {}
 
         //! Writes a packet to the maple bus
+        //! @post processEvents() must periodically be called to check status
         //! @param[in] packet  The packet to send (sender address will be overloaded)
-        //! @param[in] expectResponse  Set to true in order to start receive after send is complete
+        //! @param[in] autostartRead  Set to true in order to start receive after send is complete
+        //! @param[in] readTimeoutUs  When autostartRead is true, the read timeout to set
         //! @returns true iff the bus was "open" and send has started
         virtual bool write(const MaplePacket& packet,
-                           bool expectResponse) = 0;
+                           bool autostartRead,
+                           uint64_t readTimeoutUs=MAPLE_RESPONSE_TIMEOUT_US) = 0;
 
         //! Begins waiting for input
         //! @post processEvents() must periodically be called to check status

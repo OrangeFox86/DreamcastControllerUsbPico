@@ -183,30 +183,48 @@ inline void MapleBus::writeIsr()
 {
     // This ISR gets called from write PIO once writing has completed
 
-    // Stop write which transitions pins to input with pull-up
-    mSmOut.stop();
-
-    // Output to dir pin that we are in input mode
-    if (mDirPin >= 0)
-    {
-        gpio_put(mDirPin, !mDirOutHigh);
-    }
+    // Pause write which transitions pins to input with pull-up
+    mSmOut.stop(!mExpectingResponse);
 
     if (mExpectingResponse)
     {
         // Transition to read - start waiting for start sequence
         mSmIn.start();
-        mProcKillTime = time_us_64() + MAPLE_RESPONSE_TIMEOUT_US;
+
+        // Output to dir pin that we are in input mode
+        if (mDirPin >= 0)
+        {
+            gpio_put(mDirPin, !mDirOutHigh);
+        }
+
+        // Soft stop was done on state machine, so ensure pull-up is re-enabled
+        gpio_set_pulls(mPinB, true, false);
+
+        if (mResponseTimeoutUs == NO_TIMEOUT)
+        {
+            mProcKillTime = std::numeric_limits<uint64_t>::max();
+        }
+        else
+        {
+            mProcKillTime = time_us_64() + mResponseTimeoutUs;
+        }
+
         mCurrentPhase = Phase::WAITING_FOR_READ_START;
     }
     else
     {
+        // Output to dir pin that we are in input mode
+        if (mDirPin >= 0)
+        {
+            gpio_put(mDirPin, !mDirOutHigh);
+        }
+
         // Nothing more to do
         mCurrentPhase = Phase::WRITE_COMPLETE;
     }
 }
 
-bool MapleBus::writeInit()
+bool MapleBus::lineCheck()
 {
 #if (MAPLE_OPEN_LINE_CHECK_TIME_US > 0)
     const uint64_t targetTime = time_us_64() + MAPLE_OPEN_LINE_CHECK_TIME_US + 1;
@@ -222,21 +240,12 @@ bool MapleBus::writeInit()
     } while (time_us_64() < targetTime);
 #endif
 
-    // Output to dir pin that we are in output mode
-    if (mDirPin >= 0)
-    {
-        gpio_put(mDirPin, mDirOutHigh);
-        // There will be enough of a delay between now and when data lines on microcontroller
-        // transition to output
-    }
-
-    mSmOut.start();
-
     return true;
 }
 
 bool MapleBus::write(const MaplePacket& packet,
-                     bool expectResponse)
+                     bool autostartRead,
+                     uint64_t readTimeoutUs)
 {
     bool rv = false;
 
@@ -246,37 +255,55 @@ bool MapleBus::write(const MaplePacket& packet,
         dma_channel_abort(mDmaWriteChannel);
         dma_channel_abort(mDmaReadChannel);
 
+        // Compute CRC
+        uint8_t crc = 0;
+        uint32_t frameWord = packet.getFrameWord();
+        crc8(frameWord, crc);
+        crc8(packet.payload.data(), packet.payload.size(), crc);
+
         // First 32 bits sent to the state machine is how many bits to output.
         // Since channel_config_set_bswap is set to make the packet bytes the right order, these
         // bytes need to be flipped so the PIO state machine can work with it correctly.
-        mWriteBuffer[0] = flipWordBytes(packet.getNumTotalBits());
+        uint32_t len = 0;
+        mWriteBuffer[len++] = flipWordBytes(packet.getNumTotalBits());
         // Load the frame word and start computing the crc
-        mWriteBuffer[1] = packet.getFrameWord();
-        uint8_t crc = 0;
-        crc8(mWriteBuffer[1], crc);
+        mWriteBuffer[len++] = frameWord;
         // Load the rest of the packet
-        uint8_t len = packet.payload.size();
-        wordCpy(&mWriteBuffer[2], packet.payload.data(), len);
-        crc8(&mWriteBuffer[2], len, crc);
+        wordCpy(&mWriteBuffer[len], packet.payload.data(), packet.payload.size());
+        len += packet.payload.size();
         // Last byte is the CRC
-        mWriteBuffer[len + 2] = crc;
+        mWriteBuffer[len++] = crc;
 
-        if (writeInit())
+        if (lineCheck())
         {
             // Update flags before beginning to write
-            mExpectingResponse = expectResponse;
+            mExpectingResponse = autostartRead;
+            mResponseTimeoutUs = readTimeoutUs;
             mCurrentPhase = Phase::WRITE_IN_PROGRESS;
 
-            if (expectResponse)
+            if (autostartRead)
             {
                 // Start read DMA (won't start filling until mSmIn.start() is called)
                 mLastReadTransferCount = sizeof(mReadBuffer) / sizeof(mReadBuffer[0]);
                 dma_channel_transfer_to_buffer_now(
                     mDmaReadChannel, mReadBuffer, mLastReadTransferCount);
+                // Prestart the input state machine to save time during transition
+                mSmIn.prestart();
+            }
+
+            // Start the state machine which will stall until DMA is filled
+            mSmOut.start();
+
+            // Output to dir pin that we are in output mode
+            if (mDirPin >= 0)
+            {
+                gpio_put(mDirPin, mDirOutHigh);
+                // There will be enough of a delay between now and when data lines on microcontroller
+                // transition to output
             }
 
             // Start writing
-            dma_channel_transfer_from_buffer_now(mDmaWriteChannel, mWriteBuffer, len + 3);
+            dma_channel_transfer_from_buffer_now(mDmaWriteChannel, mWriteBuffer, len);
 
             uint32_t totalWriteTimeNs = packet.getTxTimeNs();
             // Multiply by the extra percentage
@@ -307,7 +334,7 @@ bool MapleBus::startRead(uint64_t readTimeoutUs)
             mDmaReadChannel, mReadBuffer, mLastReadTransferCount);
 
         // Setup state
-        if (readTimeoutUs == std::numeric_limits<uint64_t>::max())
+        if (readTimeoutUs == NO_TIMEOUT)
         {
             mProcKillTime = std::numeric_limits<uint64_t>::max();
         }
@@ -347,7 +374,7 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
         while (!pio_sm_is_rx_fifo_empty(mSmIn.mProgram.mPio, mSmIn.mSmIdx)
                && time_us_64() < timeoutTime);
 
-        // transfer_count is decrements down to 0, so compute the inverse to get number of words
+        // transfer_count decrements down to 0, so compute the inverse to get number of words
         uint32_t dmaWordsRead = (sizeof(mReadBuffer) / sizeof(mReadBuffer[0]))
                                 - dma_channel_hw_addr(mDmaReadChannel)->transfer_count;
 
@@ -449,7 +476,7 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
         {
             // Stopping both out and in just in case there was a race condition (state machine could
             // have *just* transitioned to read as we were processing this timeout)
-            mSmOut.stop();
+            mSmOut.stop(false);
             mSmIn.stop();
             // Output to dir pin that we are in input mode
             if (mDirPin >= 0)

@@ -1,4 +1,3 @@
-
 ; maple_out notes:
 ; - It is up to the system to ensure open line before activating this (no overcurrent protection)
 ; - Since bytes are shifted out "to the left" in order to shift out the most significant bit of each
@@ -18,7 +17,6 @@
 .define public DOUBLE_PHASE_TICKS 4
 .define public SINGLE_PHASE_TICKS (DOUBLE_PHASE_TICKS / 2)
 
-.wrap_target
 maple_out_start:
 
 ; Stalls until first word; first word is how many bits this will send
@@ -75,14 +73,16 @@ jmp !y clock_b_data_a_zero
 clock_b_data_a_one:
 nop side MASK_AB [SINGLE_PHASE_TICKS - 1]
 jmp x-- clock_a_data_b side MASK_A [SINGLE_PHASE_TICKS - 1]
-jmp end_sequence ; extra tick added here which can't be helped
+
+; using wrap as a free jmp command to end_sequence
+.wrap
 
 clock_b_data_a_zero:
 nop side MASK_B [SINGLE_PHASE_TICKS - 1]
 jmp x-- clock_a_data_b side 0 [SINGLE_PHASE_TICKS - 1]
 ; Else: fall through to end sequence
 
-
+.wrap_target
 
 ; send out the end sequence
 end_sequence:
@@ -99,7 +99,6 @@ irq wait 0 rel side MASK_A
 ; Allow the application to transition AB back HIGH when it's ready to "submit" the data.
 ; See MapleOutStateMachine::stop()
 
-.wrap
 
 % c-sdk {
 #include "hardware/gpio.h"
@@ -153,18 +152,25 @@ class MapleOutStateMachine
             pio_sm_set_enabled(mProgram.mPio, mSmIdx, true);
         }
 
-        inline void stop() const
+        inline void stop(bool hardstop) const
         {
             pio_sm_set_enabled(mProgram.mPio, mSmIdx, false);
-            // Reset the pins' function to standard I/O, transitioning back HIGH before setting to input
-            gpio_set_mask(mMaskAB);
-            gpio_set_dir_out_masked(mMaskAB);
+            if (hardstop)
+            {
+                // Reset the pins' function to standard I/O, transitioning back HIGH before setting to input
+                gpio_set_mask(mMaskAB);
+                gpio_set_dir_out_masked(mMaskAB);
+            }
+            else
+            {
+                // Allow pull-up to continue to keep B low
+                gpio_set_pulls(mPinB, false, true);
+            }
             gpio_set_function(mPinB, GPIO_FUNC_SIO);
             gpio_set_function(mPinA, GPIO_FUNC_SIO);
             gpio_set_dir_in_masked(mMaskAB);
         }
 
-    private:
         inline static const PioProgram& getMapleOutProgram()
         {
             static const PioProgram program(MAPLE_OUT_PIO, &maple_out_program);

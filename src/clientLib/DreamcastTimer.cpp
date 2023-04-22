@@ -102,7 +102,7 @@ void DreamcastTimer::reset()
 
 uint32_t DreamcastTimer::getFunctionDefinition()
 {
-    return 0x000F4100;
+    return 0x7E7E3F40;
 }
 
 DreamcastTimer::DateTime DreamcastTimer::getCurrentDateTime()

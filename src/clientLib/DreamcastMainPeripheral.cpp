@@ -199,7 +199,7 @@ void DreamcastMainPeripheral::task(uint64_t currentTimeUs)
                 mPacketOut.frame.recipientAddr = mLastSender;
                 mPacketOut.frame.senderAddr = getAddress();
                 mPacketOut.updateFrameLength();
-                (void)mBus->write(mPacketOut, false);
+                (void)mBus->write(mPacketOut, true, READ_TIMEOUT_US);
             }
             else
             {
@@ -260,7 +260,7 @@ void DreamcastMainPeripheral::task(uint64_t currentTimeUs)
             {
                 mPacketSent = true;
                 mLastPacketOut = mPacketOut;
-                (void)mBus->write(mPacketOut, false);
+                (void)mBus->write(mPacketOut, true, READ_TIMEOUT_US);
             }
             else
             {
