@@ -181,7 +181,7 @@ inline void MapleBus::readIsr()
 
 inline void MapleBus::writeIsr()
 {
-    // This ISR gets called from write PIO once writing is about to complete and when completed
+    // This ISR gets called from write PIO once writing has completed
 
     // Pause write which transitions pins to input with pull-up
     mSmOut.stop(!mExpectingResponse);
