@@ -53,10 +53,11 @@ jmp first_clock_a_data_b_one side MASK_AB
 ; x must be loaded with how many bits to send
 ; Delay before sending more data
 PUBLIC reentry_point:
-out y, 32 side MASK_A
-out x, 32 side MASK_A
+out y, 16 side MASK_A
 delay_loop:
 jmp y-- delay_loop side MASK_A [DOUBLE_PHASE_TICKS - 1]
+out x, 16 side MASK_A
+jmp x-- clock_a_data_b
 
 ; send out packet data
 ; x scratch register contains how many bits left to send
@@ -122,7 +123,8 @@ nop side MASK_AB [DOUBLE_PHASE_TICKS - 2]
 nop side MASK_A [DOUBLE_PHASE_TICKS - 2]
 nop side 0 [DOUBLE_PHASE_TICKS - 2]
 nop side MASK_A [DOUBLE_PHASE_TICKS - 2]
-nop side 0 [DOUBLE_PHASE_TICKS - 2]
+nop side 0 [DOUBLE_PHASE_TICKS - 3]
+nop ; just for alignment
 jmp 0 ; Need to replace 0 with out_done manually
 
 ; Label used just to expose number of above instructions

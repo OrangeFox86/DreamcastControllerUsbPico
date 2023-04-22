@@ -33,7 +33,8 @@ class MapleBus : public MapleBusInterface
         //! @returns true iff the bus was "open" and send has started
         bool write(const MaplePacket& packet,
                    bool autostartRead,
-                   uint64_t readTimeoutUs=MAPLE_RESPONSE_TIMEOUT_US);
+                   uint64_t readTimeoutUs=MAPLE_RESPONSE_TIMEOUT_US,
+                   DelayDefinition delayDefinition={255, 0, 0});
 
         //! Begins waiting for input
         //! @post processEvents() must periodically be called to check status
@@ -100,6 +101,10 @@ class MapleBus : public MapleBusInterface
     private:
         //! Program to inject into FIFO to output end sequence
         static const uint16_t END_SEQUENCE_PROGRAM[maple_out_end_seq_offset_size];
+        //! The word to load in order to jump back to reentry
+        static const uint32_t REENTRY_INSTRUCTION;
+        //! Nanoseconds for each delay_loop
+        static const uint32_t NS_PER_LOOP;
         //! Pin A GPIO index for this bus
         const uint32_t mPinA;
         //! Pin B GPIO index for this bus
@@ -123,8 +128,8 @@ class MapleBus : public MapleBusInterface
         //! The DMA channel used for reading by this bus
         const int mDmaReadChannel;
 
-        //! The output word buffer - 256 + 5 extra words for bit count, CRC, and PIO code injection
-        volatile uint32_t mWriteBuffer[261];
+        //! The output word buffer - 256 + extra words for bit count, CRC, and PIO code injection
+        volatile uint32_t mWriteBuffer[512];
         //! The input word buffer - 256 + 1 extra word for CRC + 1 for overflow
         volatile uint32_t mReadBuffer[258];
         //! Persistent storage for external use after processEvents call

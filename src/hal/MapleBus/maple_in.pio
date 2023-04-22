@@ -124,6 +124,9 @@ class MapleInStateMachine
             pio_sm_restart(mProgram.mPio, mSmIdx);
             pio_sm_clkdiv_restart(mProgram.mPio, mSmIdx);
             pio_sm_exec(mProgram.mPio, mSmIdx, pio_encode_jmp(mProgram.mProgramOffset));
+            // Pin direction starts as input
+            pio_sm_set_consecutive_pindirs(mProgram.mPio, mSmIdx, mPinA, 2, false);
+
             mPrestarted = true;
         }
 
@@ -135,8 +138,6 @@ class MapleInStateMachine
             }
             mPrestarted = false;
 
-            // Pin direction starts as input
-            pio_sm_set_consecutive_pindirs(mProgram.mPio, mSmIdx, mPinA, 2, false);
             // Set this pin's GPIO function (connect PIO to the pad)
             pio_gpio_init(mProgram.mPio, mPinA);
             pio_gpio_init(mProgram.mPio, mPinB);
