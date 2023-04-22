@@ -73,6 +73,24 @@ void maple_read_isr1(void)
 }
 }
 
+// Since channel_config_set_bswap() is called for write DMA, it's necessary to swap endianness
+// of each 16-bit program word
+#define SWAP_U16_BYTES(u16) (uint16_t)((u16 << 8) | (u16 >> 8))
+const uint16_t MapleBus::END_SEQUENCE_PROGRAM[maple_out_end_seq_offset_size] = {
+    SWAP_U16_BYTES(maple_out_end_seq_program_instructions[0]),
+    SWAP_U16_BYTES(maple_out_end_seq_program_instructions[1]),
+    SWAP_U16_BYTES(maple_out_end_seq_program_instructions[2]),
+    SWAP_U16_BYTES(maple_out_end_seq_program_instructions[3]),
+    SWAP_U16_BYTES(maple_out_end_seq_program_instructions[4]),
+    // Replace address in jmp instruction to address of out_done
+    SWAP_U16_BYTES((maple_out_end_seq_program_instructions[5]
+        | (MapleOutStateMachine::getMapleOutProgram().mProgramOffset + maple_out_offset_out_done)))
+};
+
+#if (maple_out_end_seq_offset_size != 6)
+#error "The above assumes 6 instructions in end seq program"
+#endif
+
 void MapleBus::initIsrs()
 {
     uint outIdx = pio_get_index(MAPLE_OUT_PIO);
@@ -183,58 +201,48 @@ inline void MapleBus::writeIsr()
 {
     // This ISR gets called from write PIO once writing is about to complete and when completed
 
-    if (dma_channel_hw_addr(mDmaWriteChannel)->transfer_count > 0)
-    {
-        // More data left to write
-        // Add artificial delay then let it continue
-        sleep_us(100);
-    }
-    else
-    {
-        // Pause write which transitions pins to input with pull-up
-        mSmOut.stop(!mExpectingResponse);
+    // Pause write which transitions pins to input with pull-up
+    mSmOut.stop(!mExpectingResponse);
 
-        if (mExpectingResponse)
+    if (mExpectingResponse)
+    {
+        // Transition to read - start waiting for start sequence
+        mSmIn.start();
+
+        // Output to dir pin that we are in input mode
+        if (mDirPin >= 0)
         {
-            // Transition to read - start waiting for start sequence
-            mSmIn.start();
+            gpio_put(mDirPin, !mDirOutHigh);
+        }
 
-            // Output to dir pin that we are in input mode
-            if (mDirPin >= 0)
-            {
-                gpio_put(mDirPin, !mDirOutHigh);
-            }
+        // Soft stop was done on state machine, so ensure pull-up is re-enabled
+        gpio_set_pulls(mPinB, true, false);
 
-            // Soft stop was done on state machine, so ensure pull-up is re-enabled
-            gpio_set_pulls(mPinB, true, false);
-
-            if (mResponseTimeoutUs == NO_TIMEOUT)
-            {
-                mProcKillTime = std::numeric_limits<uint64_t>::max();
-            }
-            else
-            {
-                mProcKillTime = time_us_64() + mResponseTimeoutUs;
-            }
-
-            mCurrentPhase = Phase::WAITING_FOR_READ_START;
+        if (mResponseTimeoutUs == NO_TIMEOUT)
+        {
+            mProcKillTime = std::numeric_limits<uint64_t>::max();
         }
         else
         {
-            // Output to dir pin that we are in input mode
-            if (mDirPin >= 0)
-            {
-                gpio_put(mDirPin, !mDirOutHigh);
-            }
-
-            // Nothing more to do
-            mCurrentPhase = Phase::WRITE_COMPLETE;
+            mProcKillTime = time_us_64() + mResponseTimeoutUs;
         }
 
+        mCurrentPhase = Phase::WAITING_FOR_READ_START;
+    }
+    else
+    {
+        // Output to dir pin that we are in input mode
+        if (mDirPin >= 0)
+        {
+            gpio_put(mDirPin, !mDirOutHigh);
+        }
+
+        // Nothing more to do
+        mCurrentPhase = Phase::WRITE_COMPLETE;
     }
 }
 
-bool MapleBus::writeInit()
+bool MapleBus::lineCheck()
 {
 #if (MAPLE_OPEN_LINE_CHECK_TIME_US > 0)
     const uint64_t targetTime = time_us_64() + MAPLE_OPEN_LINE_CHECK_TIME_US + 1;
@@ -249,16 +257,6 @@ bool MapleBus::writeInit()
         }
     } while (time_us_64() < targetTime);
 #endif
-
-    // Output to dir pin that we are in output mode
-    if (mDirPin >= 0)
-    {
-        gpio_put(mDirPin, mDirOutHigh);
-        // There will be enough of a delay between now and when data lines on microcontroller
-        // transition to output
-    }
-
-    mSmOut.start();
 
     return true;
 }
@@ -285,11 +283,13 @@ bool MapleBus::write(const MaplePacket& packet, bool autostartRead, uint64_t rea
         uint8_t len = packet.payload.size();
         wordCpy(&mWriteBuffer[2], packet.payload.data(), len);
         crc8(&mWriteBuffer[2], len, crc);
-        // CRC followed by program offset to jump directly to end_sequence
-        uint8_t prg = mSmOut.mProgram.mProgramOffset + maple_out_offset_end_sequence;
-        mWriteBuffer[len + 2] = crc | (prg << 8);
+        // CRC plus end sequence program injection
+        mWriteBuffer[len + 2] = crc | (END_SEQUENCE_PROGRAM[0] << 16);
+        mWriteBuffer[len + 3] = (END_SEQUENCE_PROGRAM[1]) | (END_SEQUENCE_PROGRAM[2] << 16);
+        mWriteBuffer[len + 4] = (END_SEQUENCE_PROGRAM[3]) | (END_SEQUENCE_PROGRAM[4] << 16);
+        mWriteBuffer[len + 5] = END_SEQUENCE_PROGRAM[5];
 
-        if (writeInit())
+        if (lineCheck())
         {
             // Update flags before beginning to write
             mExpectingResponse = autostartRead;
@@ -306,8 +306,19 @@ bool MapleBus::write(const MaplePacket& packet, bool autostartRead, uint64_t rea
                 mSmIn.prestart();
             }
 
+            // Start the state machine which will stall until DMA is filled
+            mSmOut.start();
+
+            // Output to dir pin that we are in output mode
+            if (mDirPin >= 0)
+            {
+                gpio_put(mDirPin, mDirOutHigh);
+                // There will be enough of a delay between now and when data lines on microcontroller
+                // transition to output
+            }
+
             // Start writing
-            dma_channel_transfer_from_buffer_now(mDmaWriteChannel, mWriteBuffer, len + 3);
+            dma_channel_transfer_from_buffer_now(mDmaWriteChannel, mWriteBuffer, len + 6);
 
             uint32_t totalWriteTimeNs = packet.getTxTimeNs();
             // Multiply by the extra percentage

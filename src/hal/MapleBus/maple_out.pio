@@ -5,8 +5,6 @@
 ;   byte first, the most significant byte comes out first too. This means byte order will need to be
 ;   swapped before feeding into this.
 
-.program maple_out
-.side_set 2 opt
 
 .define public MASK_A 0x1
 .define public MASK_B 0x2
@@ -18,10 +16,14 @@
 .define public DOUBLE_PHASE_TICKS 4
 .define public SINGLE_PHASE_TICKS (DOUBLE_PHASE_TICKS / 2)
 
+
+.program maple_out
+.origin 0
+.side_set 2 opt
+
 maple_out_start:
 
 ; Stalls until first word; first word is how many bits this will send
-; The following must be true about x: (x - 8) % 32 == 0 && x >= 40
 out x, 32 side MASK_AB
 
 
@@ -45,10 +47,16 @@ out y, 1 side MASK_AB
 jmp !y, clock_a_data_b_zero side MASK_AB
 jmp first_clock_a_data_b_one side MASK_AB
 
-.wrap_target
+
 ; Special reentry point when artificial delays need to be added
+; y must be loaded with how many double phase clock ticks to delay for
+; x must be loaded with how many bits to send
+; Delay before sending more data
 PUBLIC reentry_point:
-out x, 32 side MASK_AB
+out y, 32 side MASK_A
+out x, 32 side MASK_A
+delay_loop:
+jmp y-- delay_loop side MASK_A [DOUBLE_PHASE_TICKS - 1]
 
 ; send out packet data
 ; x scratch register contains how many bits left to send
@@ -86,31 +94,40 @@ jmp x-- clock_a_data_b side 0 [SINGLE_PHASE_TICKS]
 
 
 data_complete:
-; This address should be end_sequence if it was the last set of data
-; This address should be out_done if more data needs to be loaded before going to reentry_point
-out PC, 8 side MASK_A [SINGLE_PHASE_TICKS - 1]
 
+; If CRC was outputted, there would be another 24 bits left
+; This would allow us to re-align to 16-bit boundary if needed by throwing out 1 byte
+; or throw out 2 bytes otherwise (keep looping until value of 0 is read)
+data_alignment_loop:
+out x, 8 side MASK_A
+jmp x-- data_alignment_loop
 
-; send out the end sequence
-PUBLIC end_sequence:
-nop side MASK_AB [DOUBLE_PHASE_TICKS - 1]
-nop side MASK_A [DOUBLE_PHASE_TICKS - 1]
-nop side 0 [DOUBLE_PHASE_TICKS - 1]
-nop side MASK_A [DOUBLE_PHASE_TICKS - 1]
-nop side 0 [DOUBLE_PHASE_TICKS - 1]
+; Program defined externally
+; This should be either the end sequence then jmp to out_done or jmp to reentry_point
+.wrap_target
+out EXEC, 16
+.wrap
 
 ; Wait for IRQ to be handled before continuing
 PUBLIC out_done:
 irq wait 0 rel side MASK_A
 
-; Allow the application to transition AB back HIGH when it's ready to "submit" the data.
-; See MapleOutStateMachine::stop()
-; OR allow the program to go to reentry_point after an artificial delay
+; Compile program in order to generate end sequence within "out EXEC, 16" lines in maple_out
+.program maple_out_end_seq
+.origin 0
+.side_set 2 opt
 
-; Throw out 24 bits before wrapping since only 8 were taken for "out pc"
-out y, 24
+; Note: an extra clock is used to load each instruction
+nop side MASK_AB [DOUBLE_PHASE_TICKS - 2]
+nop side MASK_A [DOUBLE_PHASE_TICKS - 2]
+nop side 0 [DOUBLE_PHASE_TICKS - 2]
+nop side MASK_A [DOUBLE_PHASE_TICKS - 2]
+nop side 0 [DOUBLE_PHASE_TICKS - 2]
+jmp 0 ; Need to replace 0 with out_done manually
 
-.wrap
+; Label used just to expose number of above instructions
+PUBLIC size:
+
 
 % c-sdk {
 #include "hardware/gpio.h"
@@ -142,7 +159,7 @@ class MapleOutStateMachine
             sm_config_set_out_shift(&c, false, true, 32);
 
             sm_config_set_clkdiv(
-                &c, (sys_freq_khz * (ns_per_bit / 3 * 2)) / maple_out_DOUBLE_PHASE_TICKS / 1000000.0);
+                &c, (sys_freq_khz * (ns_per_bit / 3 * 2)) / DOUBLE_PHASE_TICKS / 1000000.0);
 
             // Load our configuration, and jump to the start of the program
             pio_sm_init(mProgram.mPio, mSmIdx, mProgram.mProgramOffset, &c);
@@ -183,7 +200,6 @@ class MapleOutStateMachine
             gpio_set_dir_in_masked(mMaskAB);
         }
 
-    private:
         inline static const PioProgram& getMapleOutProgram()
         {
             static const PioProgram program(MAPLE_OUT_PIO, &maple_out_program);

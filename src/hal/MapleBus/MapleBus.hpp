@@ -63,8 +63,8 @@ class MapleBus : public MapleBusInterface
         inline bool isBusy() { return mCurrentPhase != Phase::IDLE; }
 
     private:
-        //! Ensures that the bus is open and starts the write PIO state machine.
-        bool writeInit();
+        //! Ensures that the bus is open
+        bool lineCheck();
 
         //! Adds bytes to a CRC
         //! @param[in] source  Source array to read from
@@ -98,6 +98,8 @@ class MapleBus : public MapleBusInterface
         static const uint64_t NO_TIMEOUT = std::numeric_limits<uint64_t>::max();
 
     private:
+        //! Program to inject into FIFO to output end sequence
+        static const uint16_t END_SEQUENCE_PROGRAM[maple_out_end_seq_offset_size];
         //! Pin A GPIO index for this bus
         const uint32_t mPinA;
         //! Pin B GPIO index for this bus
@@ -121,8 +123,8 @@ class MapleBus : public MapleBusInterface
         //! The DMA channel used for reading by this bus
         const int mDmaReadChannel;
 
-        //! The output word buffer - 256 + 2 extra words for bit count and CRC + jmp address
-        volatile uint32_t mWriteBuffer[259];
+        //! The output word buffer - 256 + 5 extra words for bit count, CRC, and PIO code injection
+        volatile uint32_t mWriteBuffer[261];
         //! The input word buffer - 256 + 1 extra word for CRC + 1 for overflow
         volatile uint32_t mReadBuffer[258];
         //! Persistent storage for external use after processEvents call
