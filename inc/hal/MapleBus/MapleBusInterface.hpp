@@ -16,10 +16,12 @@ class MapleBusInterface
         {
             //! Number of consecutive words to transmit in first chunk
             uint8_t firstWordChunk;
+            //! Number of microseconds to delay after first chunk
+            uint8_t firstChunkDelayUs;
             //! Number of consecutive words to transmit in each subsequent chunk
             uint8_t secondWordChunk;
-            //! Number of microseconds to delay between each chunk
-            uint16_t delayUs;
+            //! Number of microseconds to delay after each subsequent chunk
+            uint8_t secondChunkDelayUs;
         };
 
     public:
@@ -93,7 +95,7 @@ class MapleBusInterface
         virtual bool write(const MaplePacket& packet,
                            bool autostartRead,
                            uint64_t readTimeoutUs=MAPLE_RESPONSE_TIMEOUT_US,
-                           DelayDefinition delayDefinition={255, 0, 0}) = 0;
+                           DelayDefinition delayDefinition={255, 0, 0, 0}) = 0;
 
         //! Begins waiting for input
         //! @post processEvents() must periodically be called to check status

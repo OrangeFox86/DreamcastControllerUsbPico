@@ -292,7 +292,7 @@ bool MapleBus::write(const MaplePacket& packet,
         crc8(frameWord, crc);
         crc8(packet.payload.data(), packet.payload.size(), crc);
 
-        if (delayDefinition.delayUs == 0 || delayDefinition.firstWordChunk >= (packet.payload.size() + 1))
+        if (delayDefinition.firstChunkDelayUs == 0 || delayDefinition.firstWordChunk >= (packet.payload.size() + 1))
         {
             // First 32 bits sent to the state machine is how many bits to output.
             // Since channel_config_set_bswap is set to make the packet bytes the right order, these
@@ -318,8 +318,10 @@ bool MapleBus::write(const MaplePacket& packet,
             assert(delayDefinition.firstWordChunk > 0);
             assert(delayDefinition.secondWordChunk > 0);
 
-            uint16_t numLoops = delayDefinition.delayUs * 1000 / NS_PER_LOOP;
+            uint16_t delay1NumLoops = delayDefinition.firstChunkDelayUs * 1000 / NS_PER_LOOP;
+            uint16_t delay2NumLoops = delayDefinition.secondChunkDelayUs * 1000 / NS_PER_LOOP;
             uint32_t copiedPayloadWords = 0;
+            bool firstDelay = true;
 
             // First chunk
             mWriteBuffer[len++] = flipWordBytes(delayDefinition.firstWordChunk * 32);
@@ -342,13 +344,21 @@ bool MapleBus::write(const MaplePacket& packet,
                 {
                     numBits += 8;
                 }
+                uint16_t numLoops = delay2NumLoops;
+                uint8_t delayUs = delayDefinition.firstChunkDelayUs;
+                if (firstDelay)
+                {
+                    numLoops = delay1NumLoops;
+                    delayUs = delayDefinition.secondChunkDelayUs;
+                    firstDelay = false;
+                }
 
                 mWriteBuffer[len++] = REENTRY_INSTRUCTION;
                 mWriteBuffer[len++] = SWAP_U16_BYTES(numLoops) | (SWAP_U16_BYTES(numBits) << 16);
                 wordCpy(&mWriteBuffer[len], packet.payload.data() + copiedPayloadWords, chunkWords);
                 len += chunkWords;
                 copiedPayloadWords += chunkWords;
-                extraTimeUs += (delayDefinition.delayUs + 1);
+                extraTimeUs += (delayUs + 1);
             }
 
             // CRC and end sequence
