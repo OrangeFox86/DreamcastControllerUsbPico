@@ -28,11 +28,7 @@ Luckily, the RP2040 comes with 2 PIO blocks each with 4 separate state machines.
 
 Host mode allows you to connect up to 4 Dreamcast controllers to a PC over USB.
 
-This should be implemented at your own risk! The schematic below provides no protection against static discharge, and the fault protection through fuses should not be completely relied upon. I haven't run into issues in my testing, but there is still risk of damage to your PC USB ports, Pico, Dreamcast peripherals, or Dreamcast.
-
-The Dreamcast uses 36-ohm resistors and small fuses in series between the 8 chip I/O and the 8 controller port I/O. This is only done as a failsafe in case of hardware or software malfunction. In my implementation, I have decided to use lower value, 10-ohm resistors because some resistance is built into the Pico's outputs already. There is some weirdness with plugging in a VMU without a battery installed which gets worse with higher resistor values. I'm also using littelfuse 1/16-amp quick burning fuses, and none of them have blown during my tests. They're mostly optional, but I'd suggest using higher value resistors if they are omitted as a safety measure. Anything higher than 100-ohm starts to cause communication errors though due to capacitances on the I/O.
-
-This is generally the setup I have been testing with:
+This should be implemented at your own risk! There is risk of damage to your PC USB ports, Pico, Dreamcast peripherals, or Dreamcast if circuitry is improperly handled, and I am not liable for any damage that may occur due to use of the following schematic or firmware (see [LICENSE.md](LICENSE.md)).
 
 <p align="center">
   <img src="images/schematic.png?raw=true" alt="Schematic"/>
@@ -48,7 +44,7 @@ For reference, the following is the pinout for the Dreamcast controller port. Ta
 
 Client mode emulates a single controller for use with a Dreamcast. This was added in as an extra feature for this project mainly to demonstrate that the MapleBus library may be used in either direction.
 
-This should be implemented at your own risk! The schematic below provides no protection against static discharge nor provides any fault protection. I haven't run into issues in my testing, but there is still risk of damage to your PC USB ports, Pico, Dreamcast peripherals, or Dreamcast.
+This should be implemented at your own risk! There is risk of damage to your PC USB ports, Pico, Dreamcast peripherals, or Dreamcast if circuitry is improperly handled, and I am not liable for any damage that may occur due to use of the following schematic or firmware (see [LICENSE.md](LICENSE.md)).
 
 <p align="center">
   <img src="images/client-schematic.png?raw=true" alt="Client-Schematic"/>
