@@ -8,5 +8,5 @@
 class MockClock : public ClockInterface
 {
     public:
-        MOCK_METHOD(uint64_t, getTimeUs, (), (override));
+        MOCK_METHOD(uint64_t, getTimeUs, (), (const, override));
 };

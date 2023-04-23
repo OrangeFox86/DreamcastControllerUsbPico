@@ -9,14 +9,21 @@
 class MockMapleBus : public MapleBusInterface
 {
     public:
+        virtual bool write(const MaplePacket& packet,
+                           bool autostartRead,
+                           uint64_t readTimeoutUs=MAPLE_RESPONSE_TIMEOUT_US) override
+        {
+            return mockWrite(packet, autostartRead, readTimeoutUs);
+        }
+
         MOCK_METHOD(
             bool,
-            write,
+            mockWrite,
             (
                 const MaplePacket& packet,
-                bool expectResponse
-            ),
-            (override)
+                bool expectResponse,
+                uint64_t readTimeoutUs
+            )
         );
 
         MOCK_METHOD(Status, processEvents, (uint64_t currentTimeUs), (override));
