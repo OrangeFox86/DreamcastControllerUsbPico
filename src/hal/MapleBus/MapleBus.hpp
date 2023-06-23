@@ -66,6 +66,10 @@ class MapleBus : public MapleBusInterface
         //! Ensures that the bus is open
         bool lineCheck();
 
+        //! Set direction
+        //! @param[in] output  True for output from this device or false for input to this device
+        void setDirection(bool output);
+
         //! Adds bytes to a CRC
         //! @param[in] source  Source array to read from
         //! @param[in] len  Number of words in source

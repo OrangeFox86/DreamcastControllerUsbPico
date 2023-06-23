@@ -166,9 +166,9 @@ class MapleOutStateMachine
                 // Allow pull-up to continue to keep B low
                 gpio_set_pulls(mPinB, false, true);
             }
+            gpio_set_dir_in_masked(mMaskAB);
             gpio_set_function(mPinB, GPIO_FUNC_SIO);
             gpio_set_function(mPinA, GPIO_FUNC_SIO);
-            gpio_set_dir_in_masked(mMaskAB);
         }
 
         inline static const PioProgram& getMapleOutProgram()

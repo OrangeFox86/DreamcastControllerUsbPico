@@ -124,7 +124,7 @@ MapleBus::MapleBus(uint32_t pinA, int32_t dirPin, bool dirOutHigh) :
     {
         // Initialize directional pin and set as input
         gpio_init(mDirPin);
-        gpio_put(mDirPin, !mDirOutHigh);
+        setDirection(false);
         gpio_set_dir(mDirPin, true);
     }
 
@@ -191,11 +191,8 @@ inline void MapleBus::writeIsr()
         // Transition to read - start waiting for start sequence
         mSmIn.start();
 
-        // Output to dir pin that we are in input mode
-        if (mDirPin >= 0)
-        {
-            gpio_put(mDirPin, !mDirOutHigh);
-        }
+        // Switch to input mode
+        setDirection(false);
 
         // Soft stop was done on state machine, so ensure pull-up is re-enabled
         gpio_set_pulls(mPinB, true, false);
@@ -213,11 +210,8 @@ inline void MapleBus::writeIsr()
     }
     else
     {
-        // Output to dir pin that we are in input mode
-        if (mDirPin >= 0)
-        {
-            gpio_put(mDirPin, !mDirOutHigh);
-        }
+        // Switch to input mode
+        setDirection(false);
 
         // Nothing more to do
         mCurrentPhase = Phase::WRITE_COMPLETE;
@@ -241,6 +235,23 @@ bool MapleBus::lineCheck()
 #endif
 
     return true;
+}
+
+void MapleBus::setDirection(bool output)
+{
+    if (!output)
+    {
+        // About to switch to input - ensure GPIO are input FIRST!
+        gpio_set_dir_in_masked(mMaskAB);
+        gpio_set_function(mPinB, GPIO_FUNC_SIO);
+        gpio_set_function(mPinA, GPIO_FUNC_SIO);
+    }
+
+    // Output to dir pin that we are in input mode
+    if (mDirPin >= 0)
+    {
+        gpio_put(mDirPin, mDirOutHigh ^ !output);
+    }
 }
 
 bool MapleBus::write(const MaplePacket& packet,
@@ -294,13 +305,10 @@ bool MapleBus::write(const MaplePacket& packet,
             // Start the state machine which will stall until DMA is filled
             mSmOut.start();
 
-            // Output to dir pin that we are in output mode
-            if (mDirPin >= 0)
-            {
-                gpio_put(mDirPin, mDirOutHigh);
-                // There will be enough of a delay between now and when data lines on microcontroller
-                // transition to output
-            }
+            // Switch to output mode
+            setDirection(true);
+            // There will be enough of a delay between now and when data lines on microcontroller
+            // transition to output
 
             // Start writing
             dma_channel_transfer_from_buffer_now(mDmaWriteChannel, mWriteBuffer, len);
@@ -344,11 +352,8 @@ bool MapleBus::startRead(uint64_t readTimeoutUs)
         }
         mCurrentPhase = Phase::WAITING_FOR_READ_START;
 
-        // Output to dir pin that we are in input mode
-        if (mDirPin >= 0)
-        {
-            gpio_put(mDirPin, !mDirOutHigh);
-        }
+        // Switch to input mode
+        setDirection(false);
 
         // Start reading
         mSmIn.start();
@@ -478,11 +483,9 @@ MapleBusInterface::Status MapleBus::processEvents(uint64_t currentTimeUs)
             // have *just* transitioned to read as we were processing this timeout)
             mSmOut.stop(false);
             mSmIn.stop();
-            // Output to dir pin that we are in input mode
-            if (mDirPin >= 0)
-            {
-                gpio_put(mDirPin, !mDirOutHigh);
-            }
+            // Switch to input mode
+            setDirection(false);
+
             status.phase = Phase::WRITE_FAILED;
             status.failureReason = FailureReason::TIMEOUT;
             mCurrentPhase = Phase::IDLE;
