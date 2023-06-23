@@ -150,9 +150,9 @@ class MapleInStateMachine
             pio_sm_set_enabled(mProgram.mPio, mSmIdx, false);
 
             // Reset the pins' function to standard I/O with pullups
+            gpio_set_dir_in_masked(mMaskAB);
             gpio_set_function(mPinA, GPIO_FUNC_SIO);
             gpio_set_function(mPinB, GPIO_FUNC_SIO);
-            gpio_set_dir_in_masked(mMaskAB);
         }
 
     private:
