@@ -20,9 +20,12 @@ PassiveBuzzer::PassiveBuzzer(uint32_t gpio,
     mBaseFreqHz(baseFreqHz),
     mDivider(),
     mCurrentAlarm(0),
+    mAlarmExpired(false),
+    mAlarmCoreNum(0),
     mWorkingPriority(0),
     mWorkingJob(),
-    mBuzzJobs()
+    mBuzzJobs(),
+    mCallback(nullptr)
 {
     gpio_init(mGpio);
     gpio_put(mGpio, false);
@@ -58,6 +61,11 @@ void PassiveBuzzer::setDefaultPriority(uint32_t priority)
 {
     assert(priority <= mBuzzJobs.size());
     mDefaultPriority = priority;
+}
+
+void PassiveBuzzer::setCallback(BuzzCompleteFn callback)
+{
+    mCallback = callback;
 }
 
 void PassiveBuzzer::setBaseFreq(double baseFreqHz)
@@ -111,7 +119,7 @@ void PassiveBuzzer::stopAll()
     }
 }
 
-void PassiveBuzzer::buzz(BuzzProfile buzzProfile)
+bool PassiveBuzzer::buzz(BuzzProfile buzzProfile)
 {
     uint16_t wrap = std::ceil(mBaseFreqHz / buzzProfile.frequency) - 1;
     RawBuzzProfile rawBuzzProfile = {
@@ -120,10 +128,10 @@ void PassiveBuzzer::buzz(BuzzProfile buzzProfile)
         .highCount = static_cast<uint16_t>(wrap * buzzProfile.dutyCycle),
         .seconds = buzzProfile.seconds
     };
-    buzzRaw(rawBuzzProfile);
+    return buzzRaw(rawBuzzProfile);
 }
 
-void PassiveBuzzer::buzzRaw(RawBuzzProfile rawBuzzProfile)
+bool PassiveBuzzer::buzzRaw(RawBuzzProfile rawBuzzProfile)
 {
     if (rawBuzzProfile.priority == 0)
     {
@@ -135,52 +143,41 @@ void PassiveBuzzer::buzzRaw(RawBuzzProfile rawBuzzProfile)
     if (rawBuzzProfile.seconds == 0)
     {
         // Do nothing
-        return;
+        return true;
     }
 
     BuzzJob job = {
         .wrapCount = rawBuzzProfile.wrapCount,
-        .highCount = rawBuzzProfile.highCount
+        .highCount = rawBuzzProfile.highCount,
+        .endTimeUs = toJobEndTime(rawBuzzProfile.seconds)
     };
+
+    if (mAlarmExpired && mAlarmCoreNum == get_core_num())
+    {
+        // Called within callback context - enqueue and exit
+        enqueueJob(rawBuzzProfile.priority, job, true);
+        return true;
+    }
 
     // For simplicity, disable all interrupts so that an alarm cannot interrupt while queueing
     uint32_t interruptStatus = save_and_disable_interrupts();
-
-    // Set the buzz time from now
-    if (rawBuzzProfile.seconds < 0)
-    {
-        // Infinite
-        job.endTimeUs = UINT64_MAX;
-    }
-    else
-    {
-        job.endTimeUs = time_us_64() + (rawBuzzProfile.seconds * 1000000);
-    }
 
     if (mWorkingPriority > 0)
     {
         if (mWorkingPriority <= rawBuzzProfile.priority)
         {
-            // Currently working on higher priority item; queue the job and exit
-            std::list<BuzzJob>& priorityList = mBuzzJobs[rawBuzzProfile.priority - 1];
-            if (priorityList.size() < MAX_ITEMS_PER_PRIORITY)
-            {
-                priorityList.push_back(job);
-            }
+            // Currently working on higher priority item or item currently stopping
+            // Queue the job and exit
+            bool enqueued = enqueueJob(rawBuzzProfile.priority, job, true);
 
             // All done here
             restore_interrupts(interruptStatus);
-            return;
+            return enqueued;
         }
         else
         {
-            // Enqueue the working job to allow the current job to run
-            std::list<BuzzJob>& priorityList = mBuzzJobs[mWorkingPriority - 1];
-            while (priorityList.size() >= MAX_ITEMS_PER_PRIORITY)
-            {
-                priorityList.pop_back();
-            }
-            priorityList.push_front(mWorkingJob);
+            // Enqueue the working job (in front) to allow the current job to run
+            (void)enqueueJob(mWorkingPriority, mWorkingJob, false); // This shouldn't fail
 
             if (mCurrentAlarm != 0)
             {
@@ -194,10 +191,10 @@ void PassiveBuzzer::buzzRaw(RawBuzzProfile rawBuzzProfile)
     // Done with critical section
     restore_interrupts(interruptStatus);
 
-    runJob(job, rawBuzzProfile.priority, true);
+    return runJob(rawBuzzProfile.priority, job, true);
 }
 
-bool PassiveBuzzer::runJob(BuzzJob job, uint32_t priority, bool startAlarm)
+bool PassiveBuzzer::runJob(uint32_t priority, BuzzJob job, bool startAlarm)
 {
     // Start this job
     mWorkingPriority = priority;
@@ -225,6 +222,56 @@ bool PassiveBuzzer::runJob(BuzzJob job, uint32_t priority, bool startAlarm)
     return true;
 }
 
+uint64_t PassiveBuzzer::toJobEndTime(double seconds)
+{
+    if (seconds < 0)
+    {
+        // Infinite
+        return UINT64_MAX;
+    }
+    else
+    {
+        return (time_us_64() + (seconds * 1000000));
+    }
+}
+
+bool PassiveBuzzer::enqueueJob(uint32_t priority, const BuzzJob& job, bool pushBack)
+{
+    std::list<BuzzJob>& priorityList = mBuzzJobs[priority - 1];
+    if (pushBack)
+    {
+        // Only add job if there is room
+        if (priorityList.size() >= MAX_ITEMS_PER_PRIORITY)
+        {
+            // See if stale jobs can be popped
+            uint64_t currentTimeUs = time_us_64();
+            while (priorityList.size() >= MAX_ITEMS_PER_PRIORITY
+                && priorityList.front().endTimeUs <= currentTimeUs)
+            {
+                priorityList.pop_front();
+            }
+        }
+
+        if (priorityList.size() < MAX_ITEMS_PER_PRIORITY)
+        {
+            priorityList.push_back(job);
+            return true;
+        }
+    }
+    else
+    {
+        // Make room for the job before pushing to front
+        while (priorityList.size() >= MAX_ITEMS_PER_PRIORITY)
+        {
+            priorityList.pop_back();
+        }
+        priorityList.push_front(mWorkingJob);
+        return true;
+    }
+
+    return false;
+}
+
 uint64_t PassiveBuzzer::dequeueNextJob(uint64_t currentTime, bool startAlarm)
 {
     uint32_t priority = 1;
@@ -238,7 +285,7 @@ uint64_t PassiveBuzzer::dequeueNextJob(uint64_t currentTime, bool startAlarm)
             pIter->pop_front();
             if (currentTime < front.endTimeUs)
             {
-                if (runJob(front, priority, startAlarm))
+                if (runJob(priority, front, startAlarm))
                 {
                     if (front.endTimeUs == UINT64_MAX)
                     {
@@ -279,6 +326,15 @@ int64_t PassiveBuzzer::stopAlarmCallback(alarm_id_t id)
         return 0;
     }
 
+    // If the callback adds a new job, it must be queued instead of run
+    mAlarmExpired = true;
+    mAlarmCoreNum = get_core_num();
+
+    if (mCallback)
+    {
+        mCallback(this, mWorkingPriority, mWorkingJob);
+    }
+
     // Determine what the current time is
     uint64_t currentTime = 0;
     if (mWorkingPriority > 0)
@@ -297,6 +353,9 @@ int64_t PassiveBuzzer::stopAlarmCallback(alarm_id_t id)
         // Nothing more to do; alarm will be deleted on exit
         mCurrentAlarm = 0;
     }
+
+    mAlarmExpired = false;
+
     return val;
 }
 

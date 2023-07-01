@@ -26,7 +26,7 @@ public:
         double frequency = 1000.0;
         //! Duty cycle between 0.0 and 1.0
         double dutyCycle = 0.5;
-        //! Amount of time to buzz in seconds
+        //! Amount of time to buzz in seconds or negative for infinite
         double seconds = -1.0;
     };
 
@@ -39,11 +39,10 @@ public:
         uint16_t wrapCount = 546;
         //! Number of counts to keep signal high within a PWM cycle (must be less than wrapCount)
         uint16_t highCount = 273;
-        //! Amount of time to buzz in seconds
+        //! Amount of time to buzz in seconds or negative for infinite
         double seconds = -1;
     };
 
-private:
     //! Describes an internal buzz job
     struct BuzzJob
     {
@@ -54,6 +53,9 @@ private:
         //! Absolute time when this job is complete
         uint64_t endTimeUs;
     };
+
+    //! Callback definition, called when buzz alarm expires
+    typedef void (*BuzzCompleteFn)(PassiveBuzzer* passiveBuzzer, uint32_t priority, const BuzzJob& job);
 
 public:
     //! Constructor
@@ -77,6 +79,11 @@ public:
     //! Sets the default priority when 0 is given for priority (default is 1)
     void setDefaultPriority(uint32_t priority);
 
+    //! Sets the callback which is called when buzz job completes
+    //! @warning callback is executed within interrupt context
+    //! @param[in] callback  The callback to set
+    void setCallback(BuzzCompleteFn callback);
+
     //! Stops all jobs for the given priority
     //! @param[in] priority  The priority set to stop buzz jobs for
     void stop(uint32_t priority = 0);
@@ -86,11 +93,13 @@ public:
 
     //! Execute buzz using BuzzProfile
     //! @param[in] buzzProfile  The profile to execute
-    void buzz(BuzzProfile buzzProfile);
+    //! @returns true iff job was enqueued, executing, or seconds set to 0
+    bool buzz(BuzzProfile buzzProfile);
 
     //! Execute buzz using RawBuzzProfile
     //! @param[in] rawBuzzProfile  The profile to execute
-    void buzzRaw(RawBuzzProfile rawBuzzProfile);
+    //! @returns true iff job was enqueued, executing, or seconds set to 0
+    bool buzzRaw(RawBuzzProfile rawBuzzProfile);
 
 private:
     //! Updates the base PWM frequency to use
@@ -99,11 +108,24 @@ private:
     void setBaseFreq(double baseFreqHz);
 
     //! Immediately executes a job without any checks
-    //! @param[in] job  The job to execute
     //! @param[in] priority  The priority of the job
+    //! @param[in] job  The job to execute
     //! @param[in] startAlarm  Set to true if alarm should be started when necessary
     //! @returns true iff job was successfully started
-    bool runJob(BuzzJob job, uint32_t priority, bool startAlarm);
+    bool runJob(uint32_t priority, BuzzJob job, bool startAlarm);
+
+    //! Computes the job's end time based on given number of seconds
+    //! @param[in] seconds  Amount of time to buzz in seconds or negative for infinite
+    //! @returns absolute time when job is complete
+    uint64_t toJobEndTime(double seconds);
+
+    //! Enqueue job
+    //! @param[in] priority  The priority of the job
+    //! @param[in] job  The job to execute
+    //! @param[in] pushBack  Set to true to push back or false to push front
+    //! @returns true if the job was queued
+    //! @returns false if the queue was full and job could not be added
+    bool enqueueJob(uint32_t priority, const BuzzJob& job, bool pushBack);
 
     //! Dequeues and runs the next available job
     //! @param[in] currentTime  The current time in microseconds
@@ -152,10 +174,16 @@ private:
     double mDivider;
     //! The current alarm being executed or 0 if no alarm running
     alarm_id_t mCurrentAlarm;
+    //! Set to true while alarm callback is being processed
+    bool mAlarmExpired;
+    //! The core number executed in alarm stop context
+    uint32_t mAlarmCoreNum;
     //! Priority of mWorkingJob or 0 if not currently working on a job
     uint32_t mWorkingPriority;
     //! When mWorkingPriority is not 0, the job that is currently executing on the buzzer
     BuzzJob mWorkingJob;
     //! The queued buzzer jobs, sorted first by priority then order in which they were added
     std::vector<std::list<BuzzJob>> mBuzzJobs;
+    //! Callback function called when buzz job completes
+    BuzzCompleteFn mCallback;
 };
