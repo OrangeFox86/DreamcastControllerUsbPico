@@ -9,6 +9,7 @@ target_link_libraries(hal-System
   PUBLIC
     pico_stdlib
     hardware_flash
+    hardware_pwm
 )
 target_compile_options(hal-System PRIVATE
   -Wall
