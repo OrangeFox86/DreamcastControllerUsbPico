@@ -126,7 +126,8 @@ bool PassiveBuzzer::buzz(BuzzProfile buzzProfile)
         .priority = buzzProfile.priority,
         .wrapCount = wrap,
         .highCount = static_cast<uint16_t>(wrap * buzzProfile.dutyCycle),
-        .seconds = buzzProfile.seconds
+        .seconds = buzzProfile.seconds,
+        .blocking = buzzProfile.blocking
     };
     return buzzRaw(rawBuzzProfile);
 }
@@ -154,8 +155,26 @@ bool PassiveBuzzer::buzzRaw(RawBuzzProfile rawBuzzProfile)
 
     if (mAlarmExpired && mAlarmCoreNum == get_core_num())
     {
+        assert(mWorkingPriority > 0);
+        assert(mCurrentAlarm > 0);
+
         // Called within callback context - enqueue and exit
         enqueueJob(rawBuzzProfile.priority, job, true);
+        return true;
+    }
+    else if (rawBuzzProfile.blocking)
+    {
+        // Stop everything
+        stopAll();
+
+        // Execute in line
+        pwm_set_wrap(mPwmSlice, rawBuzzProfile.wrapCount);
+        pwm_set_chan_level(mPwmSlice, mPwmChan, rawBuzzProfile.highCount);
+        sleep_ms(rawBuzzProfile.seconds * 1000);
+        // Setting channel level to 0 silences PWM
+        pwm_set_chan_level(mPwmSlice, mPwmChan, 0);
+
+        // Done
         return true;
     }
 
@@ -176,15 +195,9 @@ bool PassiveBuzzer::buzzRaw(RawBuzzProfile rawBuzzProfile)
         }
         else
         {
-            // Enqueue the working job (in front) to allow the current job to run
+            // Enqueue the working job (in front) to allow the given job to run
             (void)enqueueJob(mWorkingPriority, mWorkingJob, false); // This shouldn't fail
-
-            if (mCurrentAlarm != 0)
-            {
-                cancel_alarm(mCurrentAlarm);
-            }
-            mCurrentAlarm = 0;
-            mWorkingPriority = 0;
+            cancelCurrentJob();
         }
     }
 
@@ -200,6 +213,7 @@ bool PassiveBuzzer::runJob(uint32_t priority, BuzzJob job, bool startAlarm)
     mWorkingPriority = priority;
     mWorkingJob = job;
 
+    pwm_set_chan_level(mPwmSlice, mPwmChan, 0);
     pwm_set_wrap(mPwmSlice, mWorkingJob.wrapCount);
     pwm_set_chan_level(mPwmSlice, mPwmChan, mWorkingJob.highCount);
 
@@ -306,7 +320,7 @@ uint64_t PassiveBuzzer::dequeueNextJob(uint64_t currentTime, bool startAlarm)
     return 0;
 }
 
-void PassiveBuzzer::goIdle()
+void PassiveBuzzer::cancelCurrentJob()
 {
     if (mCurrentAlarm != 0)
     {
@@ -314,6 +328,11 @@ void PassiveBuzzer::goIdle()
     }
     mCurrentAlarm = 0;
     mWorkingPriority = 0;
+}
+
+void PassiveBuzzer::goIdle()
+{
+    cancelCurrentJob();
     // Setting channel level to 0 silences PWM
     pwm_set_chan_level(mPwmSlice, mPwmChan, 0);
 }
@@ -335,6 +354,8 @@ int64_t PassiveBuzzer::stopAlarmCallback(alarm_id_t id)
         mCallback(this, mWorkingPriority, mWorkingJob);
     }
 
+    mAlarmExpired = false;
+
     // Determine what the current time is
     uint64_t currentTime = 0;
     if (mWorkingPriority > 0)
@@ -353,8 +374,6 @@ int64_t PassiveBuzzer::stopAlarmCallback(alarm_id_t id)
         // Nothing more to do; alarm will be deleted on exit
         mCurrentAlarm = 0;
     }
-
-    mAlarmExpired = false;
 
     return val;
 }

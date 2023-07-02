@@ -28,6 +28,10 @@ public:
         double dutyCycle = 0.5;
         //! Amount of time to buzz in seconds or negative for infinite
         double seconds = -1.0;
+        //! Set to true in order to block until tone is complete
+        //! When true, seconds must be positive and buzz cannot be executed within callback context.
+        //! All currently executing jobs will be canceled.
+        bool blocking = false;
     };
 
     //! Describes a buzz using PWM values which are dependent on the base frequency
@@ -41,6 +45,10 @@ public:
         uint16_t highCount = 273;
         //! Amount of time to buzz in seconds or negative for infinite
         double seconds = -1;
+        //! Set to true in order to block until tone is complete
+        //! When true, seconds must be positive and buzz cannot be executed within callback context.
+        //! All currently executing jobs will be canceled.
+        bool blocking = false;
     };
 
     //! Describes an internal buzz job
@@ -133,6 +141,9 @@ private:
     //! @returns the number of microseconds from currentTime that the dequeued job should be stopped
     //! @returns 0 if dequeued job should never be stopped or if no job was dequeued
     uint64_t dequeueNextJob(uint64_t currentTime, bool startAlarm);
+
+    //! Cancels the current job and alarm
+    void cancelCurrentJob();
 
     //! Cancels current job and alarm, and then the buzzer is silenced
     void goIdle();
