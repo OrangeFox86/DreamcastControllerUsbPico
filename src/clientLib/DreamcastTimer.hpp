@@ -43,7 +43,7 @@ public:
     typedef void (*SetTimeFn)(const SetTime& setTime);
 
     //! Callback function definition which is executed when the host sets PWM data for audible
-    //! alarm. Alarm is based on the frequency around 922590 Hz (measured).
+    //! alarm. Alarm is based on the frequency about 1000000 Hz (measured).
     //! @param[in] width  Number of counts until the waveform repeats
     //! @param[in] down  Number of counts signal is low (will be less than or equal to width)
     typedef void (*SetPwmFn)(uint8_t width, uint8_t down);

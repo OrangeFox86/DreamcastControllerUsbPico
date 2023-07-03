@@ -31,7 +31,7 @@
 
 #define BUZZER_PIN 21
 
-PassiveBuzzer buzzer(BUZZER_PIN, 2, CPU_FREQ_KHZ * 1000, 922590.0);
+PassiveBuzzer buzzer(BUZZER_PIN, 2, CPU_FREQ_KHZ * 1000, 1000000.0);
 
 void hid_set_controller(client::DreamcastController* ctrlr);
 
