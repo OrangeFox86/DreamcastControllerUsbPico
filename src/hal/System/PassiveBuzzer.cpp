@@ -149,16 +149,21 @@ bool PassiveBuzzer::buzzRaw(RawBuzzProfile rawBuzzProfile)
 
     BuzzJob job = {
         .wrapCount = rawBuzzProfile.wrapCount,
-        .highCount = rawBuzzProfile.highCount,
-        .endTimeUs = toJobEndTime(rawBuzzProfile.seconds)
+        .highCount = rawBuzzProfile.highCount
+        // .endTimeUs to be computed later
     };
 
     if (mAlarmExpired && mAlarmCoreNum == get_core_num())
     {
+        // buzz() was called within callback context
+        // The callback should still be in the process of clearing out the current job
         assert(mWorkingPriority > 0);
         assert(mCurrentAlarm > 0);
 
-        // Called within callback context - enqueue and exit
+        // Compute end time from the completed job's end time
+        job.endTimeUs = toJobEndTime(mWorkingJob.endTimeUs, rawBuzzProfile.seconds);
+
+        // Enqueue and exit
         enqueueJob(rawBuzzProfile.priority, job, true);
         return true;
     }
@@ -168,6 +173,7 @@ bool PassiveBuzzer::buzzRaw(RawBuzzProfile rawBuzzProfile)
         stopAll();
 
         // Execute in line
+        pwm_set_chan_level(mPwmSlice, mPwmChan, 0);
         pwm_set_wrap(mPwmSlice, rawBuzzProfile.wrapCount);
         pwm_set_chan_level(mPwmSlice, mPwmChan, rawBuzzProfile.highCount);
         sleep_ms(rawBuzzProfile.seconds * 1000);
@@ -180,6 +186,9 @@ bool PassiveBuzzer::buzzRaw(RawBuzzProfile rawBuzzProfile)
 
     // For simplicity, disable all interrupts so that an alarm cannot interrupt while queueing
     uint32_t interruptStatus = save_and_disable_interrupts();
+
+    // Compute end time from now
+    job.endTimeUs = toJobEndTime(rawBuzzProfile.seconds);
 
     if (mWorkingPriority > 0)
     {
@@ -238,6 +247,11 @@ bool PassiveBuzzer::runJob(uint32_t priority, BuzzJob job, bool startAlarm)
 
 uint64_t PassiveBuzzer::toJobEndTime(double seconds)
 {
+    return toJobEndTime(time_us_64(), seconds);
+}
+
+uint64_t PassiveBuzzer::toJobEndTime(uint64_t currentTimeUs, double seconds)
+{
     if (seconds < 0)
     {
         // Infinite
@@ -245,7 +259,7 @@ uint64_t PassiveBuzzer::toJobEndTime(double seconds)
     }
     else
     {
-        return (time_us_64() + (seconds * 1000000));
+        return (currentTimeUs + (seconds * 1000000));
     }
 }
 
@@ -346,8 +360,8 @@ int64_t PassiveBuzzer::stopAlarmCallback(alarm_id_t id)
     }
 
     // If the callback adds a new job, it must be queued instead of run
-    mAlarmExpired = true;
     mAlarmCoreNum = get_core_num();
+    mAlarmExpired = true;
 
     if (mCallback)
     {

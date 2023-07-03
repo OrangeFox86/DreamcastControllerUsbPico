@@ -127,6 +127,12 @@ private:
     //! @returns absolute time when job is complete
     uint64_t toJobEndTime(double seconds);
 
+    //! Computes the job's end time based on current time and given number of seconds
+    //! @param[in] currentTimeUs  Current time to use
+    //! @param[in] seconds  Amount of time to buzz in seconds or negative for infinite
+    //! @returns absolute time when job is complete
+    uint64_t toJobEndTime(uint64_t currentTimeUs, double seconds);
+
     //! Enqueue job
     //! @param[in] priority  The priority of the job
     //! @param[in] job  The job to execute
