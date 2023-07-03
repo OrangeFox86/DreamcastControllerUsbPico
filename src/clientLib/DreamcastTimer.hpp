@@ -38,10 +38,18 @@ public:
         DateTime dateTime;
     };
 
+    //! Callback function definition which is executed when host sets time of the timer
+    //! @param[in] setTime  The time given by the host
     typedef void (*SetTimeFn)(const SetTime& setTime);
 
+    //! Callback function definition which is executed when the host sets PWM data for audible
+    //! alarm. Alarm is based on the frequency around 922590 Hz (measured).
+    //! @param[in] width  Number of counts until the waveform repeats
+    //! @param[in] down  Number of counts signal is low (will be less than or equal to width)
+    typedef void (*SetPwmFn)(uint8_t width, uint8_t down);
+
 public:
-    DreamcastTimer(const ClockInterface& clock, SetTimeFn setTimeFn);
+    DreamcastTimer(const ClockInterface& clock, SetTimeFn setTimeFn, SetPwmFn setPwmFn);
 
     //! Handle packet meant for this peripheral function
     //! @param[in] in  The packet read from the Maple Bus
@@ -60,6 +68,7 @@ public:
 private:
     const ClockInterface& mClock;
     const SetTimeFn mSetTimeFn;
+    const SetPwmFn mSetPwmFn;
     SetTime mSetTime;
 };
 }

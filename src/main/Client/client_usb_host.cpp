@@ -12,6 +12,7 @@
 #include "NonVolatilePicoSystemMemory.hpp"
 
 #include "hal/System/LockGuard.hpp"
+#include "PassiveBuzzer.hpp"
 #include "hal/MapleBus/MapleBusInterface.hpp"
 #include "hal/Usb/host_usb_interface.hpp"
 #include "GamepadHost.hpp"
@@ -28,6 +29,10 @@
 #include <memory>
 #include <algorithm>
 
+#define BUZZER_PIN 21
+
+PassiveBuzzer buzzer(BUZZER_PIN, 2, CPU_FREQ_KHZ * 1000, 922590.0);
+
 void hid_set_controller(client::DreamcastController* ctrlr);
 
 void screenCb(const uint32_t* screen, uint32_t len)
@@ -38,6 +43,19 @@ void screenCb(const uint32_t* screen, uint32_t len)
 void setTimeCb(const client::DreamcastTimer::SetTime& setTime)
 {
     // TODO: Fill in
+}
+
+void setPwmFn(uint8_t width, uint8_t down)
+{
+    if (width == 0 || down == 0)
+    {
+        buzzer.stop(2);
+    }
+    else
+    {
+        buzzer.stop(2);
+        buzzer.buzzRaw({.priority=2, .wrapCount=width, .highCount=(width-down)});
+    }
 }
 
 std::shared_ptr<NonVolatilePicoSystemMemory> mem =
@@ -63,6 +81,9 @@ void core1()
 void core0()
 {
     set_sys_clock_khz(CPU_FREQ_KHZ, true);
+
+    // Startup tone
+    buzzer.buzz({.priority=1, .frequency=2732.0, .seconds=1.0});
 
     // Create the bus for client-mode operation
     std::shared_ptr<MapleBusInterface> bus = create_maple_bus(P1_BUS_START_PIN, P1_DIR_PIN, DIR_OUT_HIGH);
@@ -100,7 +121,7 @@ void core0()
     subPeripheral1->addFunction(dreamcastScreen);
     Clock clock;
     std::shared_ptr<client::DreamcastTimer> dreamcastTimer =
-        std::make_shared<client::DreamcastTimer>(clock, setTimeCb);
+        std::make_shared<client::DreamcastTimer>(clock, setTimeCb, setPwmFn);
     subPeripheral1->addFunction(dreamcastTimer);
 
     mainPeripheral.addSubPeripheral(subPeripheral1);
