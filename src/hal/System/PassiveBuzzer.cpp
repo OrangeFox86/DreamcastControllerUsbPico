@@ -7,7 +7,7 @@
 #include <cmath>
 
 // Somewhat arbitrary, but this will allow for handling all audible frequencies
-const double PassiveBuzzer::DEFAULT_BASE_FREQUENCY = 32768.0 / 6.0 * 100.0;
+const double PassiveBuzzer::DEFAULT_BASE_FREQUENCY = 500000.0;
 
 PassiveBuzzer::PassiveBuzzer(uint32_t gpio,
                              uint32_t maxPriority,
