@@ -4,10 +4,11 @@
 
 namespace client
 {
-DreamcastTimer::DreamcastTimer(const ClockInterface& clock, SetTimeFn setTimeFn) :
+DreamcastTimer::DreamcastTimer(const ClockInterface& clock, SetTimeFn setTimeFn, SetPwmFn setPwmFn) :
     DreamcastPeripheralFunction(DEVICE_FN_TIMER),
     mClock(clock),
     mSetTimeFn(setTimeFn),
+    mSetPwmFn(setPwmFn),
     mSetTime{
         .baseTime = 0,
         .dateTime = {
@@ -79,9 +80,17 @@ bool DreamcastTimer::handlePacket(const MaplePacket& in, MaplePacket& out)
 
         case COMMAND_SET_CONDITION:
         {
-            // Ignore and acknowledge
-            out.frame.command = COMMAND_RESPONSE_ACK;
-            return true;
+            if (in.payload.size() >= 2)
+            {
+                if (mSetPwmFn)
+                {
+                    uint8_t width = (in.payload[1] >> 24) & 0xFF;
+                    uint8_t down = (in.payload[1] >> 16) & 0xFF;
+                    mSetPwmFn(width, down);
+                }
+                out.frame.command = COMMAND_RESPONSE_ACK;
+                return true;
+            }
         }
         break;
 
@@ -97,7 +106,11 @@ bool DreamcastTimer::handlePacket(const MaplePacket& in, MaplePacket& out)
 
 void DreamcastTimer::reset()
 {
-    // Do nothing
+    if (mSetPwmFn)
+    {
+        // Alarm is shut off on reset
+        mSetPwmFn(0, 0);
+    }
 }
 
 uint32_t DreamcastTimer::getFunctionDefinition()
