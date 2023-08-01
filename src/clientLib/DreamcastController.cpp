@@ -28,7 +28,107 @@ DreamcastController::DreamcastController(EnabledControls enabledControls) :
     mEnabledControls(enabledControls),
     mConditionSamples(0)
 {
+    updateConditionMasks();
     setCondition(NEUTRAL_CONTROLLER_CONDITION);
+}
+
+void DreamcastController::setEnabledControls(EnabledControls enabledControls)
+{
+    mEnabledControls = enabledControls;
+    updateConditionMasks();
+}
+
+void DreamcastController::updateConditionMasks()
+{
+    controller_condition_t andCondition;
+    memset(&andCondition, 0xFF, sizeof(andCondition));
+    controller_condition_t orCondition;
+    memset(&orCondition, 0, sizeof(orCondition));
+
+    if (!mEnabledControls.enA)
+    {
+        orCondition.a = 1;
+    }
+
+    if (!mEnabledControls.enB)
+    {
+        orCondition.b = 1;
+    }
+
+    if (!mEnabledControls.enC)
+    {
+        orCondition.c = 1;
+    }
+
+    if (!mEnabledControls.enD)
+    {
+        orCondition.d = 1;
+    }
+
+    if (!mEnabledControls.enL)
+    {
+        andCondition.l = 0;
+    }
+
+    if (!mEnabledControls.enLeftA)
+    {
+        andCondition.lAnalogLR = 0x80;
+        andCondition.lAnalogUD = 0x80;
+        orCondition.lAnalogLR = 0x80;
+        orCondition.lAnalogUD = 0x80;
+    }
+
+    if (!mEnabledControls.enLeftD)
+    {
+        orCondition.up = 1;
+        orCondition.down = 1;
+        orCondition.left = 1;
+        orCondition.right = 1;
+    }
+
+    if (!mEnabledControls.enR)
+    {
+        andCondition.r = 0;
+    }
+
+    if (!mEnabledControls.enRightA)
+    {
+        andCondition.rAnalogLR = 0x80;
+        andCondition.rAnalogUD = 0x80;
+        orCondition.rAnalogLR = 0x80;
+        orCondition.rAnalogUD = 0x80;
+    }
+
+    if (!mEnabledControls.enRightD)
+    {
+        orCondition.upb = 1;
+        orCondition.downb = 1;
+        orCondition.leftb = 1;
+        orCondition.rightb = 1;
+    }
+
+    if (!mEnabledControls.enStart)
+    {
+        orCondition.start = 1;
+    }
+
+    if (!mEnabledControls.enX)
+    {
+        orCondition.x = 1;
+    }
+
+    if (!mEnabledControls.enY)
+    {
+        orCondition.y = 1;
+    }
+
+    if (!mEnabledControls.enZ)
+    {
+        orCondition.z = 1;
+    }
+
+    memcpy(mConditionAndMask, &andCondition, sizeof(mConditionAndMask));
+    memcpy(mConditionOrMask, &orCondition, sizeof(mConditionOrMask));
 }
 
 bool DreamcastController::handlePacket(const MaplePacket& in, MaplePacket& out)
@@ -51,7 +151,6 @@ void DreamcastController::reset()
 
 uint32_t DreamcastController::getFunctionDefinition()
 {
-    // This is mostly a guess
     return (
         (mEnabledControls.enLeftD  ? 0x000000F0 : 0) |
         (mEnabledControls.enRightD ? 0x0000F000 : 0) |
@@ -72,7 +171,13 @@ uint32_t DreamcastController::getFunctionDefinition()
 
 void DreamcastController::setCondition(controller_condition_t condition)
 {
-    memcpy(mCondition, &condition, sizeof(mCondition));
+    uint32_t newCondition[2];
+    memcpy(newCondition, &condition, sizeof(newCondition));
+
+    for (uint32_t i = 0; i < 2; ++i)
+    {
+        mCondition[i] = (newCondition[i] & mConditionAndMask[i]) | mConditionOrMask[i];
+    }
 }
 
 void DreamcastController::setControls(const Controls& controls)
