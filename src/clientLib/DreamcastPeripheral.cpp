@@ -140,6 +140,8 @@ bool DreamcastPeripheral::handlePacket(const MaplePacket& in, MaplePacket& out)
             case COMMAND_DEVICE_INFO_REQUEST:
             {
                 out.frame.command = COMMAND_RESPONSE_DEVICE_INFO;
+                // Device info is refreshed now in case it changed
+                setDevInfoFunctionDefinitions();
                 out.setPayload(mDevInfo, 28);
                 status = true;
             }
@@ -148,6 +150,8 @@ bool DreamcastPeripheral::handlePacket(const MaplePacket& in, MaplePacket& out)
             case COMMAND_EXT_DEVICE_INFO_REQUEST:
             {
                 out.frame.command = COMMAND_RESPONSE_EXT_DEVICE_INFO;
+                // Device info is refreshed now in case it changed
+                setDevInfoFunctionDefinitions();
                 out.setPayload(mDevInfo, 48);
                 status = true;
             }
@@ -226,20 +230,19 @@ void DreamcastPeripheral::shutdown()
 
 void DreamcastPeripheral::setDevInfoFunctionDefinitions()
 {
-    // Reset function definitions (in support of removeFunction)
-    mDevInfo[1] = 0;
-    mDevInfo[2] = 0;
-    mDevInfo[3] = 0;
-
     // Set the function definitions
+    // Maps are sorted by key, and the function definition of the peripheral with largest function
+    // code must go into slot 1. Thus reverse_iterator is used to iterate through mDevices.
     uint8_t pt = 1;
-    uint32_t mask = 0x80000000;
-    for (; mask > 0 && pt < 4; mask >>= 1)
+    for (auto iter = mDevices.rbegin(); iter != mDevices.rend() && pt <= MAX_NUMBER_OF_FUNCTIONS; ++iter)
     {
-        if ((mask & mDevInfo[0]) > 0)
-        {
-            mDevInfo[pt++] = mDevices[mask]->getFunctionDefinition();
-        }
+        mDevInfo[pt++] = iter->second->getFunctionDefinition();
+    }
+
+    // Reset the rest of the function definitions
+    while (pt <= MAX_NUMBER_OF_FUNCTIONS)
+    {
+        mDevInfo[pt++] = 0;
     }
 }
 
@@ -247,7 +250,7 @@ void DreamcastPeripheral::addFunction(std::shared_ptr<DreamcastPeripheralFunctio
 {
     mDevices.insert(std::make_pair(fn->getFunctionCode(), fn));
     // No more than 3 functions may be added
-    assert(mDevices.size() <= 3);
+    assert(mDevices.size() <= MAX_NUMBER_OF_FUNCTIONS);
     // Accumulate the function codes into the device info array
     mDevInfo[0] |= fn->getFunctionCode();
     // Refresh the function definitions in device info

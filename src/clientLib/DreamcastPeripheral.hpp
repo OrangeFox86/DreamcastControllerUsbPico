@@ -80,6 +80,8 @@ private:
 public:
     static const uint8_t PLAYER_ID_ADDR_MASK = 0xC0;
     static const uint8_t PLAYER_ID_BIT_SHIFT = 6;
+    //! Maximum allowed functions in a Dreamcast peripheral (due to device info message limitations)
+    static const uint8_t MAX_NUMBER_OF_FUNCTIONS = 3;
     //! Address (mask) of this peripheral
     const uint8_t mAddr;
 
