@@ -24,13 +24,16 @@ DreamcastMainPeripheral::DreamcastMainPeripheral(std::shared_ptr<MapleBusInterfa
                         standbyCurrentmA,
                         maxCurrentmA),
     mBus(bus),
+    mIsConnectionAllowed(true),
     mPlayerIndex(0),
     mSubPeripherals(),
     mLastSender(0),
     mPacketOut(),
     mLastPacketOut(),
     mPacketSent(false),
-    mPacketIn()
+    mPacketIn(),
+    mPlayerIndexChangedCb(nullptr),
+    mReadCount(0)
 {
     mPacketOut.reservePayload(256);
     mLastPacketOut.reservePayload(256);
@@ -53,6 +56,7 @@ DreamcastMainPeripheral::DreamcastMainPeripheral(std::shared_ptr<MapleBusInterfa
                         standbyCurrentmA,
                         maxCurrentmA),
     mBus(bus),
+    mIsConnectionAllowed(true),
     mPlayerIndex(-1),
     mSubPeripherals(),
     mLastSender(0),
@@ -60,7 +64,8 @@ DreamcastMainPeripheral::DreamcastMainPeripheral(std::shared_ptr<MapleBusInterfa
     mLastPacketOut(),
     mPacketSent(false),
     mPacketIn(),
-    mPlayerIndexChangedCb(nullptr)
+    mPlayerIndexChangedCb(nullptr),
+    mReadCount(0)
 {
     mPacketOut.reservePayload(256);
     mLastPacketOut.reservePayload(256);
@@ -109,14 +114,21 @@ bool DreamcastMainPeripheral::dispensePacket(const MaplePacket& in, MaplePacket&
     if (rawRecipientAddr == mAddr)
     {
         // This is for me
-        handled = true;
-        valid = handlePacket(in, out);
+        ++mReadCount;
+        if (mIsConnectionAllowed)
+        {
+            handled = true;
+            valid = handlePacket(in, out);
+        }
     }
     else if (mSubPeripherals.find(rawRecipientAddr) != mSubPeripherals.end())
     {
         // This is for one of my sub-peripherals
-        handled = true;
-        valid = mSubPeripherals[rawRecipientAddr]->handlePacket(in, out);
+        if (mIsConnectionAllowed)
+        {
+            handled = true;
+            valid = mSubPeripherals[rawRecipientAddr]->handlePacket(in, out);
+        }
     }
     // else: not handled
 

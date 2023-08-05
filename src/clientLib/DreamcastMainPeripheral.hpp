@@ -68,6 +68,21 @@ public:
     //! @param[in] fn  Callback function pointer
     void setPlayerIndexChangedCb(PlayerIndexChangedFn fn);
 
+    //! @returns number of times something has been read on the bus, destined to this peripheral
+    inline uint32_t getReadCount() { return mReadCount; }
+
+    //! Resets the read count
+    inline void resetReadCount() { mReadCount = 0; }
+
+    //! Allows bus communication to be processed
+    inline void allowConnection() { mIsConnectionAllowed = true; }
+
+    //! Disallows bus communication to be processed
+    inline void disallowConnection() { mIsConnectionAllowed = false; }
+
+    //! @returns true iff currently allowing communication on bus
+    inline bool isConnectionAllowed() { return mIsConnectionAllowed; }
+
 private:
     //! Set player index received from interface
     void setPlayerIndex(uint8_t idx);
@@ -79,6 +94,8 @@ public:
 private:
     //! The bus this main peripheral is connected to
     const std::shared_ptr<MapleBusInterface> mBus;
+    //! True when peripheral reacts to communication on bus (default: true)
+    bool mIsConnectionAllowed;
     //! The current player index detected [0,3] or -1 if not set
     int16_t mPlayerIndex;
     //! All of the sub-peripherals attached to this main peripheral
@@ -95,6 +112,8 @@ private:
     MaplePacket mPacketIn;
     //! Callback for player index changed event
     PlayerIndexChangedFn mPlayerIndexChangedCb;
+    //! Number of times something has been read on the bus, destined to this peripheral
+    uint32_t mReadCount;
 };
 
 }

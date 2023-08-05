@@ -37,6 +37,9 @@ public:
     DreamcastController(EnabledControls enabledControls);
 
     //! Sets what controls are enabled
+    //! @note After this is called and if the peripheral that this function belongs to is connected,
+    //!       it must be forcibly disconnected then reconnected in order to get the host to
+    //!       re-request this information.
     //! @param[in] enabledControls  The controls to tell the host that are enabled
     void setEnabledControls(EnabledControls enabledControls);
 
