@@ -6,10 +6,7 @@
 // Going in reverse order because the host seems to usually enumerate the highest value first
 enum {
     // Gamepads
-    ITF_NUM_GAMEPAD4 = 0,
-    ITF_NUM_GAMEPAD3,
-    ITF_NUM_GAMEPAD2,
-    ITF_NUM_GAMEPAD1,
+    ITF_NUM_GAMEPAD1 = 0,
     // For mass storage device
     ITF_NUM_MSC,
 

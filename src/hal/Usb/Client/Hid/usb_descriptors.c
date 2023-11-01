@@ -73,21 +73,6 @@ uint8_t const desc_hid_report1[] =
     TUD_HID_REPORT_DESC_GAMEPAD()
 };
 
-uint8_t const desc_hid_report2[] =
-{
-    TUD_HID_REPORT_DESC_GAMEPAD()
-};
-
-uint8_t const desc_hid_report3[] =
-{
-    TUD_HID_REPORT_DESC_GAMEPAD()
-};
-
-uint8_t const desc_hid_report4[] =
-{
-    TUD_HID_REPORT_DESC_GAMEPAD()
-};
-
 // Invoked when received GET HID REPORT DESCRIPTOR
 // Application return pointer to descriptor
 // Descriptor contents must exist long enough for transfer to complete
@@ -97,12 +82,6 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
     {
         case ITF_NUM_GAMEPAD1:
             return desc_hid_report1;
-        case ITF_NUM_GAMEPAD2:
-            return desc_hid_report2;
-        case ITF_NUM_GAMEPAD3:
-            return desc_hid_report3;
-        case ITF_NUM_GAMEPAD4:
-            return desc_hid_report4;
         default:
             return NULL;
     }
@@ -122,9 +101,6 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
 
 // Endpoint definitions (must all be unique)
 #define EPIN_GAMEPAD1   (0x84)
-#define EPIN_GAMEPAD2   (0x83)
-#define EPIN_GAMEPAD3   (0x82)
-#define EPIN_GAMEPAD4   (0x81)
 #define EPOUT_MSC       (0x05)
 #define EPIN_MSC        (0x85)
 #define EPIN_CDC_NOTIF  (0x86)
@@ -141,18 +117,6 @@ uint8_t const desc_configuration[] =
     // *************************************************************************
     // * Gamepad Descriptors                                                   *
     // *************************************************************************
-
-    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval ms
-    TUD_HID_DESCRIPTOR(ITF_NUM_GAMEPAD4, 7, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report4),
-                                EPIN_GAMEPAD4, GAMEPAD_REPORT_SIZE, 1),
-
-    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval ms
-    TUD_HID_DESCRIPTOR(ITF_NUM_GAMEPAD3, 6, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report3),
-                                EPIN_GAMEPAD3, GAMEPAD_REPORT_SIZE, 1),
-
-    // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval ms
-    TUD_HID_DESCRIPTOR(ITF_NUM_GAMEPAD2, 5, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report2),
-                                EPIN_GAMEPAD2, GAMEPAD_REPORT_SIZE, 1),
 
     // Interface number, string index, protocol, report descriptor len, EP In address, size & polling interval ms
     TUD_HID_DESCRIPTOR(ITF_NUM_GAMEPAD1, 4, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report1),
@@ -196,10 +160,10 @@ char const *string_desc_arr[] =
     "OrangeFox86",               // 1: Manufacturer
     "Dreamcast Controller USB",  // 2: Product
     NULL,                        // 3: Serial (special case; get pico serial)
-    "P1",                        // 4: Gamepad 1
-    "P2",                        // 5: Gamepad 2
-    "P3",                        // 6: Gamepad 3
-    "P4",                        // 7: Gamepad 4
+    "Dreamcast Controller",                        // 4: Gamepad 1
+    "Dreamcast Controller",                        // 5: Gamepad 2
+    "Dreamcast Controller",                        // 6: Gamepad 3
+    "Dreamcast Controller",                        // 7: Gamepad 4
     "MSC",                       // 8: Mass Storage Class
     "CDC",                       // 9: Communication Device Class
 };

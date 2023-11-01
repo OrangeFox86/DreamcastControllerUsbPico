@@ -16,31 +16,19 @@
 #include "cdc.hpp"
 
 UsbGamepad usbGamepads[NUMBER_OF_GAMEPADS] = {
-  UsbGamepad(ITF_NUM_GAMEPAD1),
-  UsbGamepad(ITF_NUM_GAMEPAD2),
-  UsbGamepad(ITF_NUM_GAMEPAD3),
-  UsbGamepad(ITF_NUM_GAMEPAD4)
+  UsbGamepad(ITF_NUM_GAMEPAD1)
 };
 
 UsbGamepadDreamcastControllerObserver usbGamepadDreamcastControllerObservers[NUMBER_OF_GAMEPADS] = {
-  UsbGamepadDreamcastControllerObserver(usbGamepads[0]),
-  UsbGamepadDreamcastControllerObserver(usbGamepads[1]),
-  UsbGamepadDreamcastControllerObserver(usbGamepads[2]),
-  UsbGamepadDreamcastControllerObserver(usbGamepads[3])
+  UsbGamepadDreamcastControllerObserver(usbGamepads[0])
 };
 
 UsbControllerDevice* devices[NUMBER_OF_GAMEPADS] = {
-  &usbGamepads[0],
-  &usbGamepads[1],
-  &usbGamepads[2],
-  &usbGamepads[3]
+  &usbGamepads[0]
 };
 
 DreamcastControllerObserver* observers[NUMBER_OF_GAMEPADS] = {
-  &usbGamepadDreamcastControllerObservers[0],
-  &usbGamepadDreamcastControllerObservers[1],
-  &usbGamepadDreamcastControllerObservers[2],
-  &usbGamepadDreamcastControllerObservers[3]
+  &usbGamepadDreamcastControllerObservers[0]
 };
 
 DreamcastControllerObserver** get_usb_controller_observers()
