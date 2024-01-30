@@ -23,7 +23,13 @@ class MapleBus : public MapleBusInterface
         //! @param[in] pinA  GPIO index for pin A. The very next GPIO will be designated as pin B.
         //! @param[in] dirPin  GPIO pin which selects direction (-1 to disable)
         //! @param[in] dirOutHigh  True if dirPin should be high on write; false for low on write
-        MapleBus(uint32_t pinA, int32_t dirPin = -1, bool dirOutHigh = true);
+        //! @param[in] lightgunOutputPin  Pin number for lightgun output (-1 to disable)
+        //! @param[in] lightgunAssertHigh  True for HIGH; false for LOW when asserting lightgun
+        MapleBus(uint32_t pinA,
+                 int32_t dirPin = -1,
+                 bool dirOutHigh = true,
+                 int lightgunOutputPin = -1,
+                 bool lightgunAssertHigh = true);
 
         //! Writes a packet to the maple bus
         //! @post processEvents() must periodically be called to check status
@@ -70,6 +76,10 @@ class MapleBus : public MapleBusInterface
         //! @param[in] output  True for output from this device or false for input to this device
         void setDirection(bool output);
 
+        //! Set lightgun assertion
+        //! @param[in] assert  True to assert output; false to release
+        void setLightgun(bool assert);
+
         //! Adds bytes to a CRC
         //! @param[in] source  Source array to read from
         //! @param[in] len  Number of words in source
@@ -110,6 +120,10 @@ class MapleBus : public MapleBusInterface
         const int32_t mDirPin;
         //! True to set dir pin high on write and low on read; false for opposite
         const bool mDirOutHigh;
+        //! Lightgun output pin or -1 if not defined
+        const int32_t mLightgunOutputPin;
+        //! True to set dir pin high on write and low on read; false for opposite
+        const bool mLightgunAssertHigh;
         //! Pin A GPIO mask for this bus
         const uint32_t mMaskA;
         //! Pin B GPIO mask for this bus
