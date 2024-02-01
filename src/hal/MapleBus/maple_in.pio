@@ -177,7 +177,7 @@ class MapleInStateMachine
         inline uint8_t isLightgunIrq()
         {
             // This is an "irq wait" instruction, so program should be stalled there when ISR checks
-            return (pio_sm_get_pc(mProgram.mPio, mSmIdx) == maple_in_offset_lightgun_irq);
+            return (pio_sm_get_pc(mProgram.mPio, mSmIdx) == (mProgram.mProgramOffset + maple_in_offset_lightgun_irq + 1));
         }
 
     private:
