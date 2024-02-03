@@ -140,6 +140,9 @@ MapleBus::MapleBus(
     {
         // Initialize directional pin and set as input
         gpio_init(lightgunOutputPin);
+        gpio_init(lightgunOutputPin + 1);
+        gpio_set_pulls(lightgunOutputPin + 1, false, true);
+        gpio_set_dir(lightgunOutputPin + 1, false);
         setLightgun(false);
         gpio_set_dir(lightgunOutputPin, true);
     }
@@ -196,12 +199,12 @@ inline void MapleBus::readIsr()
             {
                 // TODO: handle more precise timing and settable position
                 // This should be about middle
-                busy_wait_us_32(8340);
+                while ((time_us_32() - entryTime32) < 8340);
                 if (!gpio_get(mPinA))
                 {
                     setLightgun(true);
                     // About 100 nanoseconds
-                    asm volatile("nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop");
+                    //asm volatile("nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop");
                     setLightgun(false);
                 }
             }
@@ -311,9 +314,19 @@ void MapleBus::setDirection(bool output)
 
 void MapleBus::setLightgun(bool assert)
 {
-    if (mLightgunOutputPin >= 0)
+    //if (mLightgunOutputPin >= 0)
     {
+        // TODO: This takes way too long to complete
+        if (!assert)
+        {
+            gpio_put(mLightgunOutputPin + 1, true);
+            gpio_set_dir(mLightgunOutputPin + 1, true);
+        }
+
         gpio_put(mLightgunOutputPin, mLightgunAssertHigh ^ !assert);
+
+        gpio_set_dir(mLightgunOutputPin + 1, false);
+        gpio_set_pulls(mLightgunOutputPin + 1, false, true);
     }
 }
 

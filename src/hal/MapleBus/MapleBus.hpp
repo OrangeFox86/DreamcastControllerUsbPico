@@ -28,8 +28,8 @@ class MapleBus : public MapleBusInterface
         MapleBus(uint32_t pinA,
                  int32_t dirPin = -1,
                  bool dirOutHigh = true,
-                 int lightgunOutputPin = -1,
-                 bool lightgunAssertHigh = true);
+                 int lightgunOutputPin = 2,
+                 bool lightgunAssertHigh = false);
 
         //! Writes a packet to the maple bus
         //! @post processEvents() must periodically be called to check status
