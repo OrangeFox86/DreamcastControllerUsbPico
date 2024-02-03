@@ -96,16 +96,24 @@ void MapleBus::initIsrs()
     pio_set_irq1_source_enabled(MAPLE_IN_PIO, pis_interrupt3, true);
 }
 
-MapleBus::MapleBus(uint32_t pinA, int32_t dirPin, bool dirOutHigh) :
+MapleBus::MapleBus(
+    uint32_t pinA,
+    int32_t dirPin,
+    bool dirOutHigh,
+    int lightgunOutputPin,
+    bool lightgunAssertHigh
+) :
     mPinA(pinA),
     mPinB(pinA + 1),
     mDirPin(dirPin),
     mDirOutHigh(dirOutHigh),
+    mLightgunOutputPin(lightgunOutputPin),
+    mLightgunAssertHigh(lightgunAssertHigh),
     mMaskA(1 << mPinA),
     mMaskB(1 << mPinB),
     mMaskAB(mMaskA | mMaskB),
     mSmOut(CPU_FREQ_KHZ, MAPLE_NS_PER_BIT, mPinA),
-    mSmIn(mPinA),
+    mSmIn(mPinA, lightgunOutputPin >= 0),
     mDmaWriteChannel(dma_claim_unused_channel(true)),
     mDmaReadChannel(dma_claim_unused_channel(true)),
     mWriteBuffer(),
@@ -126,6 +134,17 @@ MapleBus::MapleBus(uint32_t pinA, int32_t dirPin, bool dirOutHigh) :
         gpio_init(mDirPin);
         setDirection(false);
         gpio_set_dir(mDirPin, true);
+    }
+
+    if (lightgunOutputPin >= 0)
+    {
+        // Initialize directional pin and set as input
+        gpio_init(lightgunOutputPin);
+        gpio_init(lightgunOutputPin + 1);
+        gpio_set_pulls(lightgunOutputPin + 1, false, true);
+        gpio_set_dir(lightgunOutputPin + 1, false);
+        setLightgun(false);
+        gpio_set_dir(lightgunOutputPin, true);
     }
 
     // This only needs to be called once but no issue calling it for each
@@ -162,21 +181,60 @@ MapleBus::MapleBus(uint32_t pinA, int32_t dirPin, bool dirOutHigh) :
 
 inline void MapleBus::readIsr()
 {
-    // This ISR gets called from read PIO twice within a read cycle:
-    // - The first time tells us that start sequence was received
-    // - The second time tells us that end sequence was received after completion
+    uint32_t entryTime32 = time_us_32();
 
-    if (mCurrentPhase == Phase::WAITING_FOR_READ_START)
+    if (mSmIn.isLightgunIrq())
     {
-        mCurrentPhase = Phase::READ_IN_PROGRESS;
-        mLastReceivedWordTimeUs = time_us_64();
+        if (mLightgunOutputPin >= 0)
+        {
+            // Take control of pins
+            gpio_set_dir_in_masked(mMaskAB);
+            gpio_set_function(mPinA, GPIO_FUNC_SIO);
+            gpio_set_function(mPinB, GPIO_FUNC_SIO);
+
+            // Wait until A is low or 5 microseconds pass
+            while (gpio_get(mPinA) && (time_us_32() - entryTime32) < 5);
+
+            if (!gpio_get(mPinA))
+            {
+                // TODO: handle more precise timing and settable position
+                // This should be about middle
+                while ((time_us_32() - entryTime32) < 8340);
+                if (!gpio_get(mPinA))
+                {
+                    setLightgun(true);
+                    // About 100 nanoseconds
+                    //asm volatile("nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop");
+                    setLightgun(false);
+                }
+            }
+
+            // Give control of pins back to the PIO
+            pio_gpio_init(mSmIn.mProgram.mPio, mPinA);
+            pio_gpio_init(mSmIn.mProgram.mPio, mPinB);
+        }
+
+        // Continue the program
+        mCurrentPhase = Phase::WAITING_FOR_READ_START;
     }
-    else if (mCurrentPhase == Phase::READ_IN_PROGRESS)
+    else
     {
-        mSmIn.stop();
-        mCurrentPhase = Phase::READ_COMPLETE;
+        // This ISR gets called from read PIO twice within a data read cycle:
+        // - The first time tells us that start sequence was received
+        // - The second time tells us that end sequence was received after completion
+
+        if (mCurrentPhase == Phase::WAITING_FOR_READ_START)
+        {
+            mCurrentPhase = Phase::READ_IN_PROGRESS;
+            mLastReceivedWordTimeUs = time_us_64();
+        }
+        else if (mCurrentPhase == Phase::READ_IN_PROGRESS)
+        {
+            mSmIn.stop();
+            mCurrentPhase = Phase::READ_COMPLETE;
+        }
+        // else: shouldn't have reached here
     }
-    // else: shouldn't have reached here
 }
 
 inline void MapleBus::writeIsr()
@@ -251,6 +309,24 @@ void MapleBus::setDirection(bool output)
     if (mDirPin >= 0)
     {
         gpio_put(mDirPin, mDirOutHigh ^ !output);
+    }
+}
+
+void MapleBus::setLightgun(bool assert)
+{
+    //if (mLightgunOutputPin >= 0)
+    {
+        // TODO: This takes way too long to complete
+        if (!assert)
+        {
+            gpio_put(mLightgunOutputPin + 1, true);
+            gpio_set_dir(mLightgunOutputPin + 1, true);
+        }
+
+        gpio_put(mLightgunOutputPin, mLightgunAssertHigh ^ !assert);
+
+        gpio_set_dir(mLightgunOutputPin + 1, false);
+        gpio_set_pulls(mLightgunOutputPin + 1, false, true);
     }
 }
 
