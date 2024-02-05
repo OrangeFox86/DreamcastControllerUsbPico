@@ -4,23 +4,15 @@
 #include "configuration.h"
 
 // Going in reverse order because the host seems to usually enumerate the highest value first
-enum {
-    // Gamepads
-    ITF_NUM_GAMEPAD4 = 0,
-    ITF_NUM_GAMEPAD3,
-    ITF_NUM_GAMEPAD2,
-    ITF_NUM_GAMEPAD1,
-    // For mass storage device
-    ITF_NUM_MSC,
+#define ITF_NUM_GAMEPAD(numGamepads, idx) (numGamepads - idx - 1)
 
-#if USB_CDC_ENABLED
-    ITF_NUM_CDC,
-    ITF_NUM_CDC_DATA,
-#endif
+#define NUMBER_OF_GAMEPADS (4)
 
-    ITF_COUNT
-};
+// For mass storage device
+#define ITF_NUM_MSC(numGamepads) (numGamepads)
 
-#define NUMBER_OF_GAMEPADS (ITF_NUM_GAMEPAD1 + 1)
+#define ITF_NUM_CDC(numGamepads) (numGamepads + 1)
+#define ITF_NUM_CDC_DATA(numGamepads) (numGamepads + 2)
+#define ITF_COUNT(numGamepads) (numGamepads + 3)
 
 #endif // __USB_DESCRITORS_H__

@@ -4,10 +4,10 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 file(GLOB COMMON_SRC "${CMAKE_CURRENT_SOURCE_DIR}/common/*.c*")
 
-add_executable(client-usb-host "${CMAKE_CURRENT_SOURCE_DIR}/client_usb_host.cpp" "${COMMON_SRC}")
-pico_add_extra_outputs(client-usb-host)
-pico_set_binary_type(client-usb-host copy_to_ram)
-target_link_libraries(client-usb-host
+add_executable(client-with-usb-host "${CMAKE_CURRENT_SOURCE_DIR}/client_usb_host.cpp" "${COMMON_SRC}")
+pico_add_extra_outputs(client-with-usb-host)
+pico_set_binary_type(client-with-usb-host copy_to_ram)
+target_link_libraries(client-with-usb-host
   PRIVATE
     pico_multicore
     hal-MapleBus
@@ -16,13 +16,13 @@ target_link_libraries(client-usb-host
     clientLib
     pico_stdlib
 )
-target_compile_options(client-usb-host PRIVATE
+target_compile_options(client-with-usb-host PRIVATE
   -Wall
   #-Werror
   -O3
 )
 
-target_include_directories(client-usb-host
+target_include_directories(client-with-usb-host
   PRIVATE
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/client>"

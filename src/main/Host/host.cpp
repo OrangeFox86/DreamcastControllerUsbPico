@@ -17,6 +17,7 @@
 #include "hal/MapleBus/MapleBusInterface.hpp"
 #include "hal/Usb/usb_interface.hpp"
 #include "hal/Usb/TtyParser.hpp"
+#include "hal/Usb/client_usb_interface.hpp"
 
 #include <memory>
 #include <algorithm>
@@ -92,6 +93,8 @@ void core1()
 int main()
 {
     set_sys_clock_khz(CPU_FREQ_KHZ, true);
+
+    set_usb_descriptor_number_of_gamepads(SELECTED_NUMBER_OF_DEVICES);
 
 #if SHOW_DEBUG_MESSAGES
     stdio_uart_init();

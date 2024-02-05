@@ -106,6 +106,11 @@ class UsbGamepad : public UsbControllerDevice
     //! @param[in] reqlen  The length of buffer
     uint16_t getReport(uint8_t *buffer, uint16_t reqlen) final;
 
+    inline void setInterfaceId(uint8_t id)
+    {
+      interfaceId = id;
+    }
+
   protected:
     //! @returns the hat value based on current dpad state
     uint8_t getHatValue();
@@ -128,7 +133,7 @@ class UsbGamepad : public UsbControllerDevice
     static const int8_t ANALOG_PRESSED_TOL = 5;
 
   private:
-    const uint8_t interfaceId;
+    uint8_t interfaceId;
     //! The report ID to use when sending keys to host
     const uint8_t reportId;
     //! Current left analog states (x,y,z)

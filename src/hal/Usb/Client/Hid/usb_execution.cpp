@@ -2,6 +2,7 @@
 #include "UsbGamepadDreamcastControllerObserver.hpp"
 #include "UsbGamepad.h"
 #include "configuration.h"
+#include "hal/Usb/client_usb_interface.hpp"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -16,10 +17,10 @@
 #include "cdc.hpp"
 
 UsbGamepad usbGamepads[NUMBER_OF_GAMEPADS] = {
-  UsbGamepad(ITF_NUM_GAMEPAD1),
-  UsbGamepad(ITF_NUM_GAMEPAD2),
-  UsbGamepad(ITF_NUM_GAMEPAD3),
-  UsbGamepad(ITF_NUM_GAMEPAD4)
+  UsbGamepad(ITF_NUM_GAMEPAD(NUMBER_OF_GAMEPADS, 0)),
+  UsbGamepad(ITF_NUM_GAMEPAD(NUMBER_OF_GAMEPADS, 1)),
+  UsbGamepad(ITF_NUM_GAMEPAD(NUMBER_OF_GAMEPADS, 2)),
+  UsbGamepad(ITF_NUM_GAMEPAD(NUMBER_OF_GAMEPADS, 3))
 };
 
 UsbGamepadDreamcastControllerObserver usbGamepadDreamcastControllerObservers[NUMBER_OF_GAMEPADS] = {
@@ -50,7 +51,16 @@ DreamcastControllerObserver** get_usb_controller_observers()
 
 uint32_t get_num_usb_controllers()
 {
-  return NUMBER_OF_GAMEPADS;
+  uint8_t installedGamepads = get_usb_descriptor_number_of_gamepads();
+
+  if (installedGamepads <= NUMBER_OF_GAMEPADS)
+  {
+    return installedGamepads;
+  }
+  else
+  {
+    return NUMBER_OF_GAMEPADS;
+  }
 }
 
 bool usbEnabled = false;
@@ -129,7 +139,20 @@ void usb_init(
   MutexInterface* mscMutex,
   MutexInterface* cdcStdioMutex)
 {
-  set_usb_devices(devices, sizeof(devices) / sizeof(devices[1]));
+  uint32_t numDevices = get_num_usb_controllers();
+
+  for (uint32_t i = 0; i < numDevices; ++i)
+  {
+    usbGamepads[i].setInterfaceId(ITF_NUM_GAMEPAD(numDevices, i));
+  }
+
+  uint32_t max = sizeof(devices) / sizeof(devices[1]);
+  if (numDevices > max)
+  {
+    numDevices = max;
+  }
+  set_usb_devices(devices, numDevices);
+  
   board_init();
   tusb_init();
   msc_init(mscMutex);
