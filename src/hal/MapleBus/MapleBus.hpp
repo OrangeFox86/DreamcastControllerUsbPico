@@ -76,9 +76,8 @@ class MapleBus : public MapleBusInterface
         //! @param[in] output  True for output from this device or false for input to this device
         void setDirection(bool output);
 
-        //! Set lightgun assertion
-        //! @param[in] assert  True to assert output; false to release
-        void setLightgun(bool assert);
+        //! Send the lightgun sample now
+        bool sendLightgunSample(uint32_t systickStart, uint32_t systickEnd);
 
         //! Adds bytes to a CRC
         //! @param[in] source  Source array to read from
@@ -122,6 +121,9 @@ class MapleBus : public MapleBusInterface
         const bool mDirOutHigh;
         //! Lightgun output pin or -1 if not defined
         const int32_t mLightgunOutputPin;
+        const uint32_t mLightgunOutputMask;
+        const uint32_t mLightgunAssertionMask;
+
         //! True to set dir pin high on write and low on read; false for opposite
         const bool mLightgunAssertHigh;
         //! Pin A GPIO mask for this bus

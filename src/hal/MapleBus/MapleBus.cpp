@@ -3,11 +3,26 @@
 #include "hardware/structs/systick.h"
 #include "hardware/regs/m0plus.h"
 #include "hardware/irq.h"
+#include "hardware/structs/systick.h"
 #include "configuration.h"
 #include "maple_in.pio.h"
 #include "maple_out.pio.h"
 #include "string.h"
 #include "utils.h"
+
+// From datasheet
+#define SYST_CSR_CLKSOURCE_MASK 0x00000004 // 1 for processor; 0 for external
+#define SYST_CSR_TICKINT_MASK   0x00000002 // 1 enables isr_systick; 0 disables
+#define SYST_CSR_ENABLE_MASK    0x00000001 // 1 enables counter; 0 disables
+
+// Nominal systick reload value
+#define SYSTICK_RELOAD_VALUE 0x00FFFFFF
+
+#define SYSTICK_REF_TARGET_US(reference, durationUs) static_cast<uint32_t>(reference - (durationUs * (CPU_FREQ_KHZ / 1000)))
+#define SYSTICK_REF_TARGET_NS(reference, durationNs) SYSTICK_REF_TARGET_US(reference, (durationNs / 1000.0))
+
+#define SYSTICK_TARGET_US(durationUs) SYSTICK_REF_TARGET_US(SYSTICK_RELOAD_VALUE, durationUs)
+#define SYSTICK_TARGET_NS(durationNs) SYSTICK_REF_TARGET_NS(SYSTICK_RELOAD_VALUE, durationNs)
 
 std::shared_ptr<MapleBusInterface> create_maple_bus(uint32_t pinA, int32_t dirPin, bool dirOutHigh)
 {
@@ -108,6 +123,8 @@ MapleBus::MapleBus(
     mDirPin(dirPin),
     mDirOutHigh(dirOutHigh),
     mLightgunOutputPin(lightgunOutputPin),
+    mLightgunOutputMask(1 << lightgunOutputPin),
+    mLightgunAssertionMask(1 << (lightgunOutputPin + 1)),
     mLightgunAssertHigh(lightgunAssertHigh),
     mMaskA(1 << mPinA),
     mMaskB(1 << mPinB),
@@ -141,10 +158,13 @@ MapleBus::MapleBus(
         // Initialize directional pin and set as input
         gpio_init(lightgunOutputPin);
         gpio_init(lightgunOutputPin + 1);
-        gpio_set_pulls(lightgunOutputPin + 1, false, true);
-        gpio_set_dir(lightgunOutputPin + 1, false);
-        setLightgun(false);
+        gpio_put(lightgunOutputPin + 1, false);
+        gpio_set_dir(lightgunOutputPin + 1, true);
+        gpio_put(mLightgunOutputPin, !mLightgunAssertHigh);
         gpio_set_dir(lightgunOutputPin, true);
+        // Need to use systick for lightgun timing
+        systick_hw->csr = (SYST_CSR_CLKSOURCE_MASK | SYST_CSR_ENABLE_MASK);
+        systick_hw->rvr = SYSTICK_RELOAD_VALUE;
     }
 
     // This only needs to be called once but no issue calling it for each
@@ -181,10 +201,11 @@ MapleBus::MapleBus(
 
 inline void MapleBus::readIsr()
 {
-    uint32_t entryTime32 = time_us_32();
-
     if (mSmIn.isLightgunIrq())
     {
+        // Reset the systick counter
+        systick_hw->cvr = 0;
+
         if (mLightgunOutputPin >= 0)
         {
             // Take control of pins
@@ -193,19 +214,26 @@ inline void MapleBus::readIsr()
             gpio_set_function(mPinB, GPIO_FUNC_SIO);
 
             // Wait until A is low or 5 microseconds pass
-            while (gpio_get(mPinA) && (time_us_32() - entryTime32) < 5);
+            uint32_t target = SYSTICK_TARGET_US(5);
+            while(systick_hw->cvr > target);
 
             if (!gpio_get(mPinA))
             {
-                // TODO: handle more precise timing and settable position
-                // This should be about middle
-                while ((time_us_32() - entryTime32) < 8340);
-                if (!gpio_get(mPinA))
+                uint32_t systickTimes[] = {
+                    SYSTICK_TARGET_US(8340), // About middle of screen
+                    SYSTICK_TARGET_US(8403.556), // 2 lines down
+                    SYSTICK_TARGET_US(25023.350), // 1 line down
+                    SYSTICK_TARGET_US(25086.906) // 3 lines down
+                };
+
+                for (uint32_t i = 0; i < (sizeof(systickTimes) / sizeof(systickTimes[1])); ++i)
                 {
-                    setLightgun(true);
-                    // About 100 nanoseconds
-                    //asm volatile("nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop \n nop");
-                    setLightgun(false);
+                    // About 4 pixel width
+                    if (!sendLightgunSample(systickTimes[i],
+                        SYSTICK_REF_TARGET_NS(systickTimes[i], 400)))
+                    {
+                        break;
+                    }
                 }
             }
 
@@ -312,22 +340,38 @@ void MapleBus::setDirection(bool output)
     }
 }
 
-void MapleBus::setLightgun(bool assert)
+bool MapleBus::sendLightgunSample(uint32_t systickStart, uint32_t systickEnd)
 {
-    //if (mLightgunOutputPin >= 0)
+    // Up until about 25 cycles before, make sure A remains LOW
+    uint32_t systickPrestart = systickStart + 25;
+    while(systick_hw->cvr > systickPrestart)
     {
-        // TODO: This takes way too long to complete
-        if (!assert)
+        if (gpio_get(mPinA))
         {
-            gpio_put(mLightgunOutputPin + 1, true);
-            gpio_set_dir(mLightgunOutputPin + 1, true);
+            return false;
         }
-
-        gpio_put(mLightgunOutputPin, mLightgunAssertHigh ^ !assert);
-
-        gpio_set_dir(mLightgunOutputPin + 1, false);
-        gpio_set_pulls(mLightgunOutputPin + 1, false, true);
     }
+
+    if (mLightgunAssertHigh)
+    {
+        while(systick_hw->cvr > systickStart);
+        gpio_set_mask(mLightgunOutputMask);
+        while(systick_hw->cvr > systickEnd);
+        gpio_set_mask(mLightgunAssertionMask);
+        gpio_clr_mask(mLightgunOutputMask);
+    }
+    else
+    {
+        while(systick_hw->cvr > systickStart);
+        gpio_clr_mask(mLightgunOutputMask);
+        while(systick_hw->cvr > systickEnd);
+        gpio_set_mask(mLightgunAssertionMask);
+        gpio_set_mask(mLightgunOutputMask);
+    }
+
+    gpio_clr_mask(mLightgunAssertionMask);
+
+    return true;
 }
 
 bool MapleBus::write(const MaplePacket& packet,
