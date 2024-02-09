@@ -229,8 +229,9 @@ inline void MapleBus::readIsr()
                 for (uint32_t i = 0; i < (sizeof(systickTimes) / sizeof(systickTimes[1])); ++i)
                 {
                     // About 4 pixel width
-                    if (!sendLightgunSample(systickTimes[i],
-                        SYSTICK_REF_TARGET_NS(systickTimes[i], 400)))
+                    uint32_t systickStart = systickTimes[i];
+                    uint32_t systickEnd = SYSTICK_REF_TARGET_NS(systickTimes[i], 400);
+                    if (!sendLightgunSample(systickStart, systickEnd))
                     {
                         break;
                     }
@@ -342,8 +343,8 @@ void MapleBus::setDirection(bool output)
 
 bool MapleBus::sendLightgunSample(uint32_t systickStart, uint32_t systickEnd)
 {
-    // Up until about 25 cycles before, make sure A remains LOW
-    uint32_t systickPrestart = systickStart + 25;
+    // Up until about 50 cycles before, make sure A remains LOW
+    uint32_t systickPrestart = systickStart + 500;
     while(systick_hw->cvr > systickPrestart)
     {
         if (gpio_get(mPinA))
