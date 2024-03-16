@@ -1,6 +1,6 @@
 # DreamcastControllerUsbPico
 
-Dreamcast Controller to USB Gamepad Converter using Raspberry Pi Pico
+Maple Bus emulation platform for interfacing to a Dreamcast controller port (client mode) or from a Dreamcast peripheral (host mode)
 
 Update 3/16/2024: I let this project go a bit stale after running into a wall with HID gamepad support and not knowing where to take it from there. My personal goals have changed since I modified one of my Dreamcasts. I no longer care so much about interfacing a Dreamcast controller to USB. My focus has shifted towards creating peripherals to connect to a real Dreamcast - this library can go both ways :P
 
