@@ -4,6 +4,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 
 DreamcastStorage::DreamcastStorage(uint8_t addr,
                                    uint32_t fd,
