@@ -27,15 +27,13 @@ public:
     virtual void txComplete(std::shared_ptr<const MaplePacket> packet,
                             std::shared_ptr<const Transmission> tx) final
     {
-        printf("%lu: complete {", (long unsigned int)tx->transmissionId);
-        printf("%08lX", (long unsigned int)packet->frame.toWord());
-        for (std::vector<uint32_t>::const_iterator iter = packet->payload.begin();
-             iter != packet->payload.end();
-             ++iter)
+        char buffer[9];
+        snprintf(buffer, sizeof(buffer), "%08lX", (long unsigned int)packet->frame.toWord());
+        for (int i = 0; i < 8; i += 2)
         {
-            printf(" %08lX", (long unsigned int)*iter);
+            printf(" %c%c", buffer[i], buffer[i + 1]);
         }
-        printf("}\n");
+        printf("\n");
     }
 } echoTransmitter;
 
