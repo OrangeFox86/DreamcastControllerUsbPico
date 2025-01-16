@@ -1,8 +1,8 @@
 ## Note
 
 Changes in this fork:
-- Adjusted Maple write format for compatibility with Flycast
-- Disabled the echoing of Maple messages back to the serial port to optimize IO performance
+- Adjusted Maple write format for compatibility with Flycast - see https://github.com/flyinghead/flycast/pull/1810
+- Disabled the echoing of Maple messages back to the serial port
 - Changed build to host-1p version only
 
 Original Readme Follows
