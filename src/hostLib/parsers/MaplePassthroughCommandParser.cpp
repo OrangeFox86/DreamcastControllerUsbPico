@@ -27,15 +27,13 @@ public:
     virtual void txComplete(std::shared_ptr<const MaplePacket> packet,
                             std::shared_ptr<const Transmission> tx) final
     {
-        printf("%lu: complete {", (long unsigned int)tx->transmissionId);
-        printf("%08lX", (long unsigned int)packet->frame.toWord());
-        for (std::vector<uint32_t>::const_iterator iter = packet->payload.begin();
-             iter != packet->payload.end();
-             ++iter)
+        char buffer[9];
+        snprintf(buffer, sizeof(buffer), "%08lX", (long unsigned int)packet->frame.toWord());
+        for (int i = 0; i < 8; i += 2)
         {
-            printf(" %08lX", (long unsigned int)*iter);
+            printf(" %c%c", buffer[i], buffer[i + 1]);
         }
-        printf("}\n");
+        printf("\n");
     }
 } echoTransmitter;
 
@@ -119,19 +117,12 @@ void MaplePassthroughCommandParser::submit(const char* chars, uint32_t len)
 
             if (idx >= 0)
             {
-                uint32_t id = mSchedulers[idx]->add(
+                mSchedulers[idx]->add(
                     PrioritizedTxScheduler::EXTERNAL_TRANSMISSION_PRIORITY,
                     PrioritizedTxScheduler::TX_TIME_ASAP,
                     &echoTransmitter,
                     packet,
                     true);
-                std::vector<uint32_t>::iterator iter = words.begin();
-                printf("%lu: added {%08lX", (long unsigned int)id, (long unsigned int)*iter++);
-                for(; iter < words.end(); ++iter)
-                {
-                    printf(" %08lX", (long unsigned int)*iter);
-                }
-                printf("} -> [%li]\n", (long int)idx);
             }
             else
             {
