@@ -70,7 +70,7 @@ class UsbGamepad : public UsbControllerDevice
     //! Sets the analog trigger value (Z)
     //! @param[in] isLeft true for left, false for right
     //! @param[in] z Value between -128 and 127
-    void setAnalogTrigger(bool isLeft, int8_t z);
+    void setAnalogTrigger(bool isLeft, uint8_t z);
     //! @param[in] isLeft true for left, false for right
     //! @returns the current analog stick X value
     int8_t getAnalogThumbX(bool isLeft);
@@ -118,7 +118,7 @@ class UsbGamepad : public UsbControllerDevice
   private:
     //! @param[in] analog  The analog value to check
     //! @returns true if the given analog is considered "pressed"
-    inline bool isAnalogPressed(int8_t analog)
+    inline bool isAnalogPressed(int16_t analog)
     {
       return (analog > ANALOG_PRESSED_TOL || analog < -ANALOG_PRESSED_TOL);
     }
@@ -129,6 +129,10 @@ class UsbGamepad : public UsbControllerDevice
     static const int8_t MIN_ANALOG_VALUE = -128;
     //! Maximum analog value defined in USB HID descriptors
     static const int8_t MAX_ANALOG_VALUE = 127;
+    //! Minimum trigger value defined in USB HID descriptors
+    static const uint8_t MIN_TRIGGER_VALUE = 0;
+    //! Maximum trigger value defined in USB HID descriptors
+    static const uint8_t MAX_TRIGGER_VALUE = 127;
     //! Tolerance for when analog is considered "pressed" for status LED
     static const int8_t ANALOG_PRESSED_TOL = 5;
 
@@ -137,9 +141,9 @@ class UsbGamepad : public UsbControllerDevice
     //! The report ID to use when sending keys to host
     const uint8_t reportId;
     //! Current left analog states (x,y,z)
-    int8_t currentLeftAnalog[3];
+    int16_t currentLeftAnalog[3];
     //! Current right analog states (x,y,z)
-    int8_t currentRightAnalog[3];
+    int16_t currentRightAnalog[3];
     //! Current d-pad buttons
     bool currentDpad[DPAD_COUNT];
     //! Current button states
