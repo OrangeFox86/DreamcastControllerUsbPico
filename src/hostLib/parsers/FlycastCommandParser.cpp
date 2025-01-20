@@ -53,6 +53,12 @@ const char* FlycastCommandParser::getCommandChars()
 
 void FlycastCommandParser::submit(const char* chars, uint32_t len)
 {
+    if (len == 0)
+    {
+        // This shouldn't happen, but handle it regardless
+        return;
+    }
+
     bool valid = false;
     const char* const eol = chars + len;
     std::vector<uint32_t> words;
