@@ -20,9 +20,9 @@
 static const int8_t MIN_ANALOG_VALUE = -127;
 //! Maximum analog value defined in USB HID descriptors
 static const int8_t MAX_ANALOG_VALUE = 127;
-//! Minimum trigger value
+//! Minimum trigger value defined in USB HID descriptors
 static const int8_t MIN_TRIGGER_VALUE = 0;
-//! Maximum trigger value
+//! Maximum trigger value defined in USB HID descriptors
 static const int8_t MAX_TRIGGER_VALUE = MAX_ANALOG_VALUE;
 
 #endif // __USB_DESCRITORS_H__
