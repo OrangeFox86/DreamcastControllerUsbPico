@@ -74,7 +74,7 @@ void UsbGamepad::setAnalogThumbY(bool isLeft, int8_t y)
   buttonsUpdated = buttonsUpdated || (y != lastY);
 }
 
-void UsbGamepad::setAnalogTrigger(bool isLeft, uint8_t z)
+void UsbGamepad::setAnalogTrigger(bool isLeft, int8_t z)
 {
   z = limit_value(z, MIN_TRIGGER_VALUE, MAX_TRIGGER_VALUE);
   int8_t lastZ = 0;
@@ -235,27 +235,15 @@ bool UsbGamepad::send(bool force)
   }
 }
 
-typedef struct TU_ATTR_PACKED
-{
-  int8_t  x;         ///< Delta x  movement of left analog-stick
-  int8_t  y;         ///< Delta y  movement of left analog-stick
-  uint8_t z;         ///< Delta z  movement of right analog-joystick
-  uint8_t rz;        ///< Delta Rz movement of right analog-joystick
-  int8_t  rx;        ///< Delta Rx movement of analog left trigger
-  int8_t  ry;        ///< Delta Ry movement of analog right trigger
-  uint8_t hat;       ///< Buttons mask for currently pressed buttons in the DPad/hat
-  uint32_t buttons;  ///< Buttons mask for currently pressed buttons
-}dc_hid_gamepad_report_t;
-
 uint8_t UsbGamepad::getReportSize()
 {
-  return sizeof(dc_hid_gamepad_report_t);
+  return sizeof(hid_gamepad_report_t);
 }
 
 uint16_t UsbGamepad::getReport(uint8_t *buffer, uint16_t reqlen)
 {
   // Build the report
-  dc_hid_gamepad_report_t report;
+  hid_gamepad_report_t report;
   report.x = currentLeftAnalog[0];
   report.y = currentLeftAnalog[1];
   report.z = currentLeftAnalog[2];
