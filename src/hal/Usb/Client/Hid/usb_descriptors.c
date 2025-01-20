@@ -55,31 +55,17 @@ uint8_t get_usb_descriptor_number_of_gamepads()
   HID_COLLECTION ( HID_COLLECTION_APPLICATION )                 ,\
     /* Report ID if any */\
     __VA_ARGS__ \
-    /* 8 bit X, Y (min -128, max 127 ) */ \
+    /* 8 bit X, Y, Z, Rz, Rx, Ry (min -128, max 127 ) */ \
     HID_USAGE_PAGE     ( HID_USAGE_PAGE_DESKTOP                 ) ,\
     HID_USAGE          ( HID_USAGE_DESKTOP_X                    ) ,\
     HID_USAGE          ( HID_USAGE_DESKTOP_Y                    ) ,\
-    HID_LOGICAL_MIN    ( 0x80                                   ) ,\
-    HID_LOGICAL_MAX    ( 0x7f                                   ) ,\
-    HID_REPORT_COUNT   ( 2                                      ) ,\
-    HID_REPORT_SIZE    ( 8                                      ) ,\
-    HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
-    /* 8 bit Z, Rz (min 0, max 127 ) */ \
-    HID_USAGE_PAGE     ( HID_USAGE_PAGE_DESKTOP                 ) ,\
     HID_USAGE          ( HID_USAGE_DESKTOP_Z                    ) ,\
     HID_USAGE          ( HID_USAGE_DESKTOP_RZ                   ) ,\
-    HID_LOGICAL_MIN    ( 0x00                                   ) ,\
-    HID_LOGICAL_MAX    ( 0x7f                                   ) ,\
-    HID_REPORT_COUNT   ( 2                                      ) ,\
-    HID_REPORT_SIZE    ( 8                                      ) ,\
-    HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
-    /* 8 bit Rx, Ry (min -128, max 127 ) */ \
-    HID_USAGE_PAGE     ( HID_USAGE_PAGE_DESKTOP                 ) ,\
     HID_USAGE          ( HID_USAGE_DESKTOP_RX                   ) ,\
     HID_USAGE          ( HID_USAGE_DESKTOP_RY                   ) ,\
     HID_LOGICAL_MIN    ( 0x80                                   ) ,\
     HID_LOGICAL_MAX    ( 0x7f                                   ) ,\
-    HID_REPORT_COUNT   ( 2                                      ) ,\
+    HID_REPORT_COUNT   ( 6                                      ) ,\
     HID_REPORT_SIZE    ( 8                                      ) ,\
     HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
     /* 8 bit DPad/Hat Button Map  */ \
