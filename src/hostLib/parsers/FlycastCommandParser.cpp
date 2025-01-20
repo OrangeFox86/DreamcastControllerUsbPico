@@ -1,10 +1,10 @@
-#include "MaplePassthroughCommandParser.hpp"
+#include "FlycastCommandParser.hpp"
 #include "hal/MapleBus/MaplePacket.hpp"
 
 #include <stdio.h>
 
 // Simple definition of a transmitter which just echos status and received data
-class EchoTransmitter : public Transmitter
+class FlycastEchoTransmitter : public Transmitter
 {
 public:
     virtual void txStarted(std::shared_ptr<const Transmission> tx) final
@@ -27,19 +27,17 @@ public:
     virtual void txComplete(std::shared_ptr<const MaplePacket> packet,
                             std::shared_ptr<const Transmission> tx) final
     {
-        printf("%lu: complete {", (long unsigned int)tx->transmissionId);
-        printf("%08lX", (long unsigned int)packet->frame.toWord());
-        for (std::vector<uint32_t>::const_iterator iter = packet->payload.begin();
-             iter != packet->payload.end();
-             ++iter)
+        char buffer[9];
+        snprintf(buffer, sizeof(buffer), "%08lX", (long unsigned int)packet->frame.toWord());
+        for (int i = 0; i < 8; i += 2)
         {
-            printf(" %08lX", (long unsigned int)*iter);
+            printf(" %c%c", buffer[i], buffer[i + 1]);
         }
-        printf("}\n");
+        printf("\n");
     }
-} echoTransmitter;
+} flycastEchoTransmitter;
 
-MaplePassthroughCommandParser::MaplePassthroughCommandParser(std::shared_ptr<PrioritizedTxScheduler>* schedulers,
+FlycastCommandParser::FlycastCommandParser(std::shared_ptr<PrioritizedTxScheduler>* schedulers,
                                                              const uint8_t* senderAddresses,
                                                              uint32_t numSenders) :
     mSchedulers(schedulers),
@@ -47,18 +45,18 @@ MaplePassthroughCommandParser::MaplePassthroughCommandParser(std::shared_ptr<Pri
     mNumSenders(numSenders)
 {}
 
-const char* MaplePassthroughCommandParser::getCommandChars()
+const char* FlycastCommandParser::getCommandChars()
 {
-    // Anything beginning with a hex character should be considered a passthrough command
-    return "0123456789ABCDEFabcdef";
+    // X is reserved for command from flycast emulator
+    return "X";
 }
 
-void MaplePassthroughCommandParser::submit(const char* chars, uint32_t len)
+void FlycastCommandParser::submit(const char* chars, uint32_t len)
 {
     bool valid = false;
     const char* const eol = chars + len;
     std::vector<uint32_t> words;
-    const char* iter = chars;
+    const char* iter = chars + 1; // Skip past 'X' (implied)
     while(iter < eol)
     {
         uint32_t word = 0;
@@ -119,19 +117,12 @@ void MaplePassthroughCommandParser::submit(const char* chars, uint32_t len)
 
             if (idx >= 0)
             {
-                uint32_t id = mSchedulers[idx]->add(
+                mSchedulers[idx]->add(
                     PrioritizedTxScheduler::EXTERNAL_TRANSMISSION_PRIORITY,
                     PrioritizedTxScheduler::TX_TIME_ASAP,
-                    &echoTransmitter,
+                    &flycastEchoTransmitter,
                     packet,
                     true);
-                std::vector<uint32_t>::iterator iter = words.begin();
-                printf("%lu: added {%08lX", (long unsigned int)id, (long unsigned int)*iter++);
-                for(; iter < words.end(); ++iter)
-                {
-                    printf(" %08lX", (long unsigned int)*iter);
-                }
-                printf("} -> [%li]\n", (long int)idx);
             }
             else
             {
@@ -149,7 +140,7 @@ void MaplePassthroughCommandParser::submit(const char* chars, uint32_t len)
     }
 }
 
-void MaplePassthroughCommandParser::printHelp()
+void FlycastCommandParser::printHelp()
 {
-    printf("0-1 a-f A-F: the beginning of a hex value to send to maple bus without CRC\n");
+    printf("X<cmd>: cmd as ASCII hex value to send to maple bus without CRC\n");
 }
