@@ -2,7 +2,7 @@
 
 Maple Bus emulation platform for interfacing to a Dreamcast controller port (client mode) or from a Dreamcast peripheral (host mode)
 
-| Host Mode | Device Mode |
+| Host Mode | Client Mode |
 | -------- | ------- |
 | ![host mode](images/host_mode_sm.gif) | ![device mode](images/device_mode_sm.gif) |
 
@@ -46,7 +46,7 @@ For reference, the following is the pinout for the Dreamcast controller port. Ta
 
 ## Connecting the Hardware for Client Mode
 
-Client mode emulates a single controller for use with a Dreamcast. This was added in as an extra feature for this project mainly to demonstrate that the MapleBus library may be used in either direction.
+Client mode emulates a single controller for use with a Dreamcast. This was added in as an extra feature for this project mainly to demonstrate that the MapleBus library may be used in either direction. Currently this mode only supports a single DualShock4 controller plugged into the USB port at bootup (hot-plug not supported, micro-USB OTG cable required).
 
 This should be implemented at your own risk! There is risk of damage to your PC USB ports, Pico, Dreamcast peripherals, or Dreamcast if circuitry is improperly handled, and I am not liable for any damage that may occur due to use of the following schematic or firmware (see [LICENSE.md](LICENSE.md)).
 
