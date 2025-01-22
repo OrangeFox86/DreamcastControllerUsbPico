@@ -2,24 +2,9 @@
 
 Maple Bus emulation platform for interfacing to a Dreamcast controller port (client mode) or from a Dreamcast peripheral (host mode)
 
-Update 2024-03-16: I let this project go a bit stale after running into a wall with HID gamepad support and not knowing where to take it from there. My personal goals have changed since I modified one of my Dreamcasts. I no longer care so much about interfacing a Dreamcast controller to USB. My focus has shifted towards creating peripherals to connect to a real Dreamcast - this library can go both ways :P Feel free to reach out if you encounter any issues or want to help out.
-
-New goals for this project:
-- Client mode
-- Enable lightgun support (currently in progress)
-- Interface with multiple USB devices (currently only Dualshock 4 controller interface works)
-- Harden the USB host interface (hot-swap doesn't work at the moment)
-
-Original goals for this project:
-- Host mode
-- Detect and interact with the following:
-  - Controller
-  - VMU
-  - Jump pack
-- Setup USB HID Gamepad that supports vibration
-- Setup some other USB device for VMU access
-- Create whatever Linux/Windows drivers are necessary to communicate with all devices (probably will just use libusb)
-- Interface with emulator such as Redream for controller, jump pack, and VMU
+| Host Mode | Device Mode |
+| -------- | ------- |
+| ![host mode](images/host_mode_sm.gif) | ![device mode](images/device_mode_sm.gif) |
 
 Refer to the [releases](https://github.com/OrangeFox86/DreamcastControllerUsbPico/releases) page for current progress. Refer to the [issues](https://github.com/OrangeFox86/DreamcastControllerUsbPico/issues) tab for things left to be implemented and known bugs.
 
