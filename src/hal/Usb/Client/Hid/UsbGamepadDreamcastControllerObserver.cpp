@@ -26,8 +26,8 @@ void UsbGamepadDreamcastControllerObserver::setControllerCondition(const Control
     mUsbController.setDigitalPad(UsbGamepad::DPAD_LEFT, 0 == controllerCondition.left);
     mUsbController.setDigitalPad(UsbGamepad::DPAD_RIGHT, 0 == controllerCondition.right);
 
-    mUsbController.setAnalogTrigger(true, static_cast<int32_t>(controllerCondition.l) - 128);
-    mUsbController.setAnalogTrigger(false, static_cast<int32_t>(controllerCondition.r) - 128);
+    mUsbController.setAnalogTrigger(true, controllerCondition.l / 2);
+    mUsbController.setAnalogTrigger(false, controllerCondition.r / 2);
 
     mUsbController.setAnalogThumbX(true, static_cast<int32_t>(controllerCondition.lAnalogLR) - 128);
     mUsbController.setAnalogThumbY(true, static_cast<int32_t>(controllerCondition.lAnalogUD) - 128);

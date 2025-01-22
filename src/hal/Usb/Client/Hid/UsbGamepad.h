@@ -118,17 +118,12 @@ class UsbGamepad : public UsbControllerDevice
   private:
     //! @param[in] analog  The analog value to check
     //! @returns true if the given analog is considered "pressed"
-    inline bool isAnalogPressed(int8_t analog)
+    inline bool isAnalogPressed(int16_t analog)
     {
       return (analog > ANALOG_PRESSED_TOL || analog < -ANALOG_PRESSED_TOL);
     }
 
   public:
-    // TODO: Move these constants to descriptors that this header pulls from
-    //! Minumum analog value defined in USB HID descriptors
-    static const int8_t MIN_ANALOG_VALUE = -128;
-    //! Maximum analog value defined in USB HID descriptors
-    static const int8_t MAX_ANALOG_VALUE = 127;
     //! Tolerance for when analog is considered "pressed" for status LED
     static const int8_t ANALOG_PRESSED_TOL = 5;
 

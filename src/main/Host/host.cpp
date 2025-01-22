@@ -8,6 +8,7 @@
 #include "DreamcastMainNode.hpp"
 #include "PlayerData.hpp"
 #include "MaplePassthroughCommandParser.hpp"
+#include "FlycastCommandParser.hpp"
 
 #include "CriticalSectionMutex.hpp"
 #include "Mutex.hpp"
@@ -73,6 +74,9 @@ void core1()
     TtyParser* ttyParser = usb_cdc_create_parser(&ttyParserMutex, 'h');
     ttyParser->addCommandParser(
         std::make_shared<MaplePassthroughCommandParser>(
+            &schedulers[0], MAPLE_HOST_ADDRESSES, numDevices));
+    ttyParser->addCommandParser(
+        std::make_shared<FlycastCommandParser>(
             &schedulers[0], MAPLE_HOST_ADDRESSES, numDevices));
 
     while(true)
