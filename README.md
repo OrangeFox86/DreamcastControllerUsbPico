@@ -1,10 +1,10 @@
 # DreamcastControllerUsbPico
 
-Maple Bus emulation platform for interfacing to a Dreamcast controller port (client mode) or from a Dreamcast peripheral (host mode)
+Maple Bus emulation platform built upon the Raspberry Pi Pico for interfacing from a Dreamcast peripheral (host mode) or to a Dreamcast controller port (client mode)
 
 | Host Mode | Client Mode |
 | -------- | ------- |
-| ![host mode](images/host_mode_sm.gif) | ![device mode](images/device_mode_sm.gif) |
+| ![host mode](images/host_mode_sm.gif) | ![client mode](images/client_mode_sm.gif) |
 
 Refer to the [releases](https://github.com/OrangeFox86/DreamcastControllerUsbPico/releases) page for current progress. Refer to the [issues](https://github.com/OrangeFox86/DreamcastControllerUsbPico/issues) tab for things left to be implemented and known bugs.
 
