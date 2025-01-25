@@ -16,11 +16,11 @@ public:
     {
         if (writeFailed)
         {
-            printf("%lu: failed write\n", (long unsigned int)tx->transmissionId);
+            printf("*failed write\n");
         }
         else
         {
-            printf("%lu: failed read\n", (long unsigned int)tx->transmissionId);
+            printf("*failed read\n");
         }
     }
 
@@ -132,21 +132,21 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
             }
             else
             {
-                printf("0: failed invalid sender\n");
+                printf("*failed invalid sender\n");
             }
         }
         else
         {
-            printf("0: failed packet invalid\n");
+            printf("*failed packet invalid\n");
         }
     }
     else
     {
-        printf("0: failed missing data\n");
+        printf("*failed missing data\n");
     }
 }
 
 void FlycastCommandParser::printHelp()
 {
-    printf("X<cmd>: cmd as ASCII hex value to send to maple bus without CRC\n");
+    printf("X: commands from a flycast emulator\n");
 }
