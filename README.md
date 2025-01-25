@@ -6,6 +6,8 @@ Using a Raspberry Pi Pico, DreamcastControllerUsbPico enables USB interfacing wi
 | -------- | ------- |
 | ![host mode](images/host_mode_sm.gif) | ![client mode](images/client_mode_sm.gif) |
 
+This platform may easily be forked and adapted for other interfacing needs. Feel free to do so under the conditions of the supplied [LICENSE.md](LICENSE.md).
+
 Refer to the [releases](https://github.com/OrangeFox86/DreamcastControllerUsbPico/releases) page for current progress. Refer to the [issues](https://github.com/OrangeFox86/DreamcastControllerUsbPico/issues) tab for things left to be implemented and known bugs.
 
 ---
