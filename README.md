@@ -48,7 +48,7 @@ Select the appropriate isolation circuitry for your needs.
 
 ## Dreamcast Controller Pinout
 
-For reference, the following is the pinout for the Dreamcast controller port. Take note that many other sources found online refer to one of the ground pins as a connection sense, but the Dreamcast controller port module has both of these ground pins hard wired together. As such, this project doesn't rely on any such hardware sense line. Instead, the detection of a connected device is performed by polling the bus until a response is received, just as a real Dreamcast would.
+For reference, the following is the pinout for the Dreamcast controller port. Take note that many other sources found online refer to one of the ground pins as a connection sense, but the Dreamcast controller port module has both of these ground pins hard wired together. As such, this project's host mode operation doesn't rely on any such hardware sense line. Instead, the detection of a connected device is performed by polling the bus until a response is received, just as a real Dreamcast would.
 
 <p align="center">
   <img src="images/Dreamcast_Port.png?raw=true" alt="Dreamcast Port"/>
