@@ -12,13 +12,17 @@ Refer to the [releases](https://github.com/OrangeFox86/DreamcastControllerUsbPic
 
 ---
 
+# General Disclaimer
+
+Proceed at your own risk! I am not liable for any damage that may occur due to the use of any provided schematics, firmware, or any other recommendations made within this project (see [LICENSE.md](LICENSE.md)). There is risk of damage to any attached hardware (ex: USB port, Dreamcast peripheral, or Dreamcast) if circuitry is improperly handled.
+
+---
+
 # Quick Installation Guide
 
 ## Connecting the Hardware for Host Mode
 
 Host mode allows you to connect up to 4 Dreamcast controllers to a PC over USB.
-
-This should be implemented at your own risk! There is risk of damage to your PC USB ports, Pico, Dreamcast peripherals, or Dreamcast if circuitry is improperly handled, and I am not liable for any damage that may occur due to use of the following schematic or firmware (see [LICENSE.md](LICENSE.md)).
 
 <p align="center">
   <img src="images/schematic.png?raw=true" alt="Schematic"/>
@@ -29,8 +33,6 @@ Refer to the [Isolation Circuitry](#isolation-circuitry) and [Dreamcast Controll
 ## Connecting the Hardware for Client Mode
 
 Client mode emulates a single controller for use with a Dreamcast. This was added in as an extra feature for this project mainly to demonstrate that the MapleBus library may be used in either direction. Currently this mode only supports a single DualShock4 controller plugged into the USB port at bootup (hot-plug not supported, micro-USB OTG cable required).
-
-This should be implemented at your own risk! There is risk of damage to your PC USB ports, Pico, Dreamcast peripherals, or Dreamcast if circuitry is improperly handled, and I am not liable for any damage that may occur due to use of the following schematic or firmware (see [LICENSE.md](LICENSE.md)).
 
 <p align="center">
   <img src="images/client-schematic.png?raw=true" alt="Client-Schematic"/>
@@ -54,7 +56,7 @@ Select the highest tolerable resistance for each resistor (usually around 100 oh
 
 ![Isolation Circuity Option 2](images/Isolation_Circuitry_Option_2.png)
 
-This option completely isolates the Maple Bus I/O from the RP2040 at the expense of being more complex. Select a 2-bit bus transceiver which satisfies the following.
+This option completely isolates the Maple Bus I/O from the RP2040 at the expense of being more complex. I highly recommend this or something like this for any commercial application. Select a 2-bit bus transceiver which satisfies the following.
 - Must support at least 50 mA on each output
 - Must NOT have latched outputs
 
