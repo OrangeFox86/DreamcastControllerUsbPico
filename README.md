@@ -42,17 +42,17 @@ Refer to the [Isolation Circuitry](#isolation-circuitry) and [Dreamcast Controll
 
 Select the appropriate isolation circuitry for your needs.
 
-| Option 1 | Option 2 |
-| -------- | ------- |
-| ![Isolation Circuity Option 1](images/Isolation_Circuitry_Option_1.png) | ![Isolation Circuity Option 2](images/Isolation_Circuitry_Option_2.png) |
-
 ### Option 1
+
+![Isolation Circuity Option 1](images/Isolation_Circuitry_Option_1.png)
 
 Select the highest tolerable resistance for each resistor (usually around 100 ohms). WARNING This implementation is simple but has the following drawbacks.
 - There isn't a resistance low enough that the interface can tolerate and high enough that would prevent damage if more than one line (total) experienced a fault for an extended amount of time
 - The RP2040 doesn't have over-voltage tolerant inputs
 
 ### Option 2
+
+![Isolation Circuity Option 2](images/Isolation_Circuitry_Option_2.png)
 
 This option completely isolates the Maple Bus I/O from the RP2040 at the expense of being more complex. Select a 2-bit bus transceiver which satisfies the following.
 - Must support at least 50 mA on each output
