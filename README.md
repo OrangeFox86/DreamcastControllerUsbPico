@@ -48,9 +48,9 @@ Select the appropriate isolation circuitry for your needs.
 
 ![Isolation Circuity Option 1](images/Isolation_Circuitry_Option_1.png)
 
-Select the highest tolerable resistance for each resistor (usually around 100 ohms). WARNING This implementation is simple but has the following drawbacks.
-- There isn't a resistance low enough that the interface can tolerate and high enough that would prevent damage if more than one line (total) experienced a fault for an extended amount of time; in other words, you are putting a lot of trust in the software not to screw up!
-- The RP2040 doesn't have over-voltage tolerant inputs
+Select the highest tolerable resistance for each resistor (usually around 100 ohms). This implementation is simple but has the following drawbacks.
+- There isn't a resistance low enough which the interface can tolerate and high enough that would prevent damage to the RP2040 if more than one line (total) experienced a fault for an extended amount of time
+- The RP2040 doesn't have over-voltage tolerant inputs, so accidental shorting to the 5V line will cause damage
 - Hot-swapping should be avoided
 
 ### Option 2
@@ -61,9 +61,7 @@ This option completely isolates the Maple Bus I/O from the RP2040 at the expense
 - Must support at least 50 mA on each output
 - Must NOT have latched outputs
 
-The chip number 74LVC2T45DC made by Texas Instruments or Nexperia satisfies these requirements (found on digikey.com or mouser.com). These are normally packaged as SOP8, 0.5mm. Using this chip presents a challenge for most DIYers due to the small component leads, requiring specialized equipment such as a hot air solder reflow station or a fine-tipped soldering iron, microscope, and a steady hand. Adapters like the one depicted below are at least readily available online, simplifying connection to standard prototyping PCBs or breadboards.
-
-<img src="images/SOP_Adapter.jpg?raw=true" alt="drawing" width="242"/>
+The chip number `74LVC2T45DC` made by Texas Instruments or Nexperia satisfies these requirements (found on digikey.com or mouser.com).
 
 ## Dreamcast Controller Pinout
 
