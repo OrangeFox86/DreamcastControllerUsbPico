@@ -42,9 +42,10 @@ Refer to the [Isolation Circuitry](#isolation-circuitry) and [Dreamcast Controll
 
 Select the appropriate isolation circuitry for your needs.
 
-<p align="center">
-  <img src="images/Isolation_Circuitry.png?raw=true" alt="Isolation Circuitry"/>
-</p>
+| Option 1 | Option 2 |
+| -------- | ------- |
+| ![Isolation Circuity Option 1](images/Isolation_Circuitry_Option_1.png) | ![Isolation Circuity Option 2](images/Isolation_Circuitry_Option_2.png) |
+| <div style="width:300px;height:250px">- Select the highest tolerable resistance (usually around 100 ohms)<br>WARNING This implementation is simple but has drawbacks:<br>- There isn't a resistance low enough that the interface can tolerate and high enough that would prevent damage if more than one line (total) experienced a fault for an extended amount of time<br>- The RP2040 doesn't have over-voltage tolerant inputs</div> | <div style="width:300px;height:250px">- Great option to completely isolate Maple Bus I/O from the RP2040<br>- Select a bus transceiver which can support 50 mA on each output<br>- Bus transceiver must NOT have latched outputs<br>- Recommended: 74LVC2T45DC</div> |
 
 ## Dreamcast Controller Pinout
 
