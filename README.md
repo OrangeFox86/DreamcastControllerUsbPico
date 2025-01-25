@@ -49,8 +49,9 @@ Select the appropriate isolation circuitry for your needs.
 ![Isolation Circuity Option 1](images/Isolation_Circuitry_Option_1.png)
 
 Select the highest tolerable resistance for each resistor (usually around 100 ohms). WARNING This implementation is simple but has the following drawbacks.
-- There isn't a resistance low enough that the interface can tolerate and high enough that would prevent damage if more than one line (total) experienced a fault for an extended amount of time
+- There isn't a resistance low enough that the interface can tolerate and high enough that would prevent damage if more than one line (total) experienced a fault for an extended amount of time; in other words, you are putting a lot of trust in the software not to screw up!
 - The RP2040 doesn't have over-voltage tolerant inputs
+- Hot-swapping should be avoided
 
 ### Option 2
 
