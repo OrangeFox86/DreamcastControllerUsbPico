@@ -61,7 +61,10 @@ This option completely isolates the Maple Bus I/O from the RP2040 at the expense
 - Must support at least 50 mA on each output
 - Must NOT have latched outputs
 
-The chip number 74LVC2T45DC made by Texas Instruments or Nexperia satisfies these requirements.
+The chip number 74LVC2T45DC made by Texas Instruments or Nexperia satisfies these requirements. These are normally packaged as SOP8, 0.5mm.
+
+Working with this option presents a challenge for most DIYers due to the small component leads, requiring specialized equipment such as a hot air solder reflow station or a fine-tipped soldering iron and microscope. SOP8 or SOP10 adapters are at least readily available online, simplifying connection to standard prototyping PCBs or breadboards like depicted below.
+![SOP Adapter](images/SOP_Adapter.jpg)
 
 ## Dreamcast Controller Pinout
 
