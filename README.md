@@ -45,7 +45,20 @@ Select the appropriate isolation circuitry for your needs.
 | Option 1 | Option 2 |
 | -------- | ------- |
 | ![Isolation Circuity Option 1](images/Isolation_Circuitry_Option_1.png) | ![Isolation Circuity Option 2](images/Isolation_Circuitry_Option_2.png) |
-| <div style="width:300px;height:250px">- Select the highest tolerable resistance (usually around 100 ohms)<br>WARNING This implementation is simple but has drawbacks:<br>- There isn't a resistance low enough that the interface can tolerate and high enough that would prevent damage if more than one line (total) experienced a fault for an extended amount of time<br>- The RP2040 doesn't have over-voltage tolerant inputs</div> | <div style="width:300px;height:250px">- Great option to completely isolate Maple Bus I/O from the RP2040<br>- Select a bus transceiver which can support 50 mA on each output<br>- Bus transceiver must NOT have latched outputs<br>- Recommended: 74LVC2T45DC</div> |
+
+### Option 1
+
+Select the highest tolerable resistance for each resistor (usually around 100 ohms). WARNING This implementation is simple but has the following drawbacks.
+- There isn't a resistance low enough that the interface can tolerate and high enough that would prevent damage if more than one line (total) experienced a fault for an extended amount of time
+- The RP2040 doesn't have over-voltage tolerant inputs
+
+### Option 2
+
+This option completely isolates the Maple Bus I/O from the RP2040 at the expense of being more complex. Select a 2-bit bus transceiver which satisfies the following.
+- Must support at least 50 mA on each output
+- Must NOT have latched outputs
+
+The chip number 74LVC2T45DC made by Texas Instruments or Nexperia satisfies these requirements.
 
 ## Dreamcast Controller Pinout
 
