@@ -57,14 +57,13 @@ Select the highest tolerable resistance for each resistor (usually around 100 oh
 
 ![Isolation Circuity Option 2](images/Isolation_Circuitry_Option_2.png)
 
-This option completely isolates the Maple Bus I/O from the RP2040 at the expense of being more complex. I highly recommend this or something like this for any commercial application. Select a 2-bit bus transceiver which satisfies the following.
+This option completely isolates the Maple Bus I/O from the RP2040 at the expense of being more complex and less accessible to DIYers. I highly recommend this or something like this for any commercial application. Select a 2-bit bus transceiver which satisfies the following.
 - Must support at least 50 mA on each output
 - Must NOT have latched outputs
 
-The chip number 74LVC2T45DC made by Texas Instruments or Nexperia satisfies these requirements. These are normally packaged as SOP8, 0.5mm.
+The chip number 74LVC2T45DC made by Texas Instruments or Nexperia satisfies these requirements (found on digikey.com or mouser.com). These are normally packaged as SOP8, 0.5mm. Using this chip presents a challenge for most DIYers due to the small component leads, requiring specialized equipment such as a hot air solder reflow station or a fine-tipped soldering iron, microscope, and a steady hand. Adapters like the one depicted below are at least readily available online, simplifying connection to standard prototyping PCBs or breadboards.
 
-Working with this option presents a challenge for most DIYers due to the small component leads, requiring specialized equipment such as a hot air solder reflow station or a fine-tipped soldering iron and microscope. SOP8 or SOP10 adapters are at least readily available online, simplifying connection to standard prototyping PCBs or breadboards like depicted below.
-![SOP Adapter](images/SOP_Adapter.jpg)
+<img src="images/SOP_Adapter.jpg?raw=true" alt="drawing" width="242"/>
 
 ## Dreamcast Controller Pinout
 
