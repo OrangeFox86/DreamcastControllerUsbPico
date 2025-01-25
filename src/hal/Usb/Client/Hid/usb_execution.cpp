@@ -16,28 +16,28 @@
 #include "msc_disk.hpp"
 #include "cdc.hpp"
 
-UsbGamepad usbGamepads[NUMBER_OF_GAMEPADS] = {
-  UsbGamepad(ITF_NUM_GAMEPAD(NUMBER_OF_GAMEPADS, 0)),
-  UsbGamepad(ITF_NUM_GAMEPAD(NUMBER_OF_GAMEPADS, 1)),
-  UsbGamepad(ITF_NUM_GAMEPAD(NUMBER_OF_GAMEPADS, 2)),
-  UsbGamepad(ITF_NUM_GAMEPAD(NUMBER_OF_GAMEPADS, 3))
+UsbGamepad usbGamepads[MAX_NUMBER_OF_USB_GAMEPADS] = {
+  UsbGamepad(ITF_NUM_GAMEPAD(MAX_NUMBER_OF_USB_GAMEPADS, 0)),
+  UsbGamepad(ITF_NUM_GAMEPAD(MAX_NUMBER_OF_USB_GAMEPADS, 1)),
+  UsbGamepad(ITF_NUM_GAMEPAD(MAX_NUMBER_OF_USB_GAMEPADS, 2)),
+  UsbGamepad(ITF_NUM_GAMEPAD(MAX_NUMBER_OF_USB_GAMEPADS, 3))
 };
 
-UsbGamepadDreamcastControllerObserver usbGamepadDreamcastControllerObservers[NUMBER_OF_GAMEPADS] = {
+UsbGamepadDreamcastControllerObserver usbGamepadDreamcastControllerObservers[MAX_NUMBER_OF_USB_GAMEPADS] = {
   UsbGamepadDreamcastControllerObserver(usbGamepads[0]),
   UsbGamepadDreamcastControllerObserver(usbGamepads[1]),
   UsbGamepadDreamcastControllerObserver(usbGamepads[2]),
   UsbGamepadDreamcastControllerObserver(usbGamepads[3])
 };
 
-UsbControllerDevice* devices[NUMBER_OF_GAMEPADS] = {
+UsbControllerDevice* devices[MAX_NUMBER_OF_USB_GAMEPADS] = {
   &usbGamepads[0],
   &usbGamepads[1],
   &usbGamepads[2],
   &usbGamepads[3]
 };
 
-DreamcastControllerObserver* observers[NUMBER_OF_GAMEPADS] = {
+DreamcastControllerObserver* observers[MAX_NUMBER_OF_USB_GAMEPADS] = {
   &usbGamepadDreamcastControllerObservers[0],
   &usbGamepadDreamcastControllerObservers[1],
   &usbGamepadDreamcastControllerObservers[2],
@@ -53,13 +53,13 @@ uint32_t get_num_usb_controllers()
 {
   uint8_t installedGamepads = get_usb_descriptor_number_of_gamepads();
 
-  if (installedGamepads <= NUMBER_OF_GAMEPADS)
+  if (installedGamepads <= MAX_NUMBER_OF_USB_GAMEPADS)
   {
     return installedGamepads;
   }
   else
   {
-    return NUMBER_OF_GAMEPADS;
+    return MAX_NUMBER_OF_USB_GAMEPADS;
   }
 }
 

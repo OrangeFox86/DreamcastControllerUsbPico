@@ -7,7 +7,7 @@
 // Going in reverse order because the host seems to usually enumerate the highest value first
 #define ITF_NUM_GAMEPAD(numGamepads, idx) (numGamepads - idx - 1)
 
-#define NUMBER_OF_GAMEPADS (4)
+#define MAX_NUMBER_OF_USB_GAMEPADS (4)
 
 // For mass storage device
 #define ITF_NUM_MSC(numGamepads) (numGamepads)
