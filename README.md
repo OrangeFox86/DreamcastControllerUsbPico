@@ -22,7 +22,7 @@ Proceed at your own risk! I am not liable for any damage that may occur due to t
 
 ## Connecting the Hardware for Host Mode
 
-Host mode allows you to connect up to 4 Dreamcast controllers to a PC over USB.
+Host mode allows you to connect up to 4 Dreamcast controllers to a PC over USB. This is compatible with the [flycast](https://github.com/flyinghead/flycast) emulator which will communicate with an attached VMU's screen and jump pack.
 
 <p align="center">
   <img src="images/schematic.png?raw=true" alt="Schematic"/>
