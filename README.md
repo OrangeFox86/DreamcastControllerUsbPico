@@ -1,6 +1,6 @@
 # DreamcastControllerUsbPico
 
-DreamcastControllerUsbPico is a Dreamcast controller/peripheral emulation platform with USB interfacing applications, built upon the Raspberry Pi Pico. This platform may either interface from a Dreamcast peripheral (aka host mode) or to a Dreamcast controller port (aka client mode).
+Using a Raspberry Pi Pico, DreamcastControllerUsbPico enables USB interfacing with a Dreamcast or its controllers and peripherals, functioning in either host mode or client mode as depicted below.
 
 | Host Mode | Client Mode |
 | -------- | ------- |
@@ -56,9 +56,9 @@ For reference, the following is the pinout for the Dreamcast controller port. Ta
 
 Each [release](https://github.com/OrangeFox86/DreamcastControllerUsbPico/releases) will contain multiple uf2 files. Currently, there are 3 flavors of these binaries.
 
-**host-1p.uf2**: [Host mode](#connecting-the-hardware-for-host-mode) configuration, only `1P` active - all operating systems support this
-**host-4p.uf2**: [Host mode](#connecting-the-hardware-for-host-mode) configuration, `1P`, `2P`, `3P`, and `4P` active - this is more problematic when used on Windows as controllers won't get enumerated properly
-**client-with-usb-host.uf2**: [Client mode](#connecting-the-hardware-for-client-mode) configuration supporting a single Dualshock4 controller connected to the USB port
+- **host-1p.uf2**: [Host mode](#connecting-the-hardware-for-host-mode) configuration, only `1P` active - all operating systems support this
+- **host-4p.uf2**: [Host mode](#connecting-the-hardware-for-host-mode) configuration, `1P`, `2P`, `3P`, and `4P` active - this is more problematic when used on Windows as controllers won't properly enumerate
+- **client-with-usb-host.uf2**: [Client mode](#connecting-the-hardware-for-client-mode) configuration supporting a single Dualshock4 controller connected to the USB port
 
 ## Loading the UF2 Binary
 
