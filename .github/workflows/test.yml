@@ -10,16 +10,18 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     defaults:
         run:
           shell: sh
 
     steps:
       - uses: actions/checkout@v2
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: gcc-arm-none-eabi
-          version: 1.0
-      - name: Build and run tests
+      - name: Install prerequisites
+        run: sudo apt -y install gcc-arm-none-eabi build-essential
+      - name: Install dependencies
+        run: git submodule update --recursive --init
+      - name: Build main package
+        run: ./build.sh
+      - name: Build and run unit tests
         run: ./run_tests.sh
