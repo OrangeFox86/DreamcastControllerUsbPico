@@ -1,0 +1,25 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    defaults:
+        run:
+          shell: sh
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: cmake gcc-arm-none-eabi
+          version: 1.0
+      - name: Build and run tests
+        run: ./run_tests.sh
