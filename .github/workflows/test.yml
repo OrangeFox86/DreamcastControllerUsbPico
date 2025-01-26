@@ -19,7 +19,11 @@ jobs:
       - uses: actions/checkout@v2
       - uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: gcc-arm-none-eabi
+          packages: gcc-arm-none-eabi build-essential
           version: 1.0
-      - name: Build and run tests
+      - name: Install prerequisites
+        run: git submodule update --recursive --init
+      - name: Build main package
+        run: ./build
+      - name: Build and run unit tests
         run: ./run_tests.sh
