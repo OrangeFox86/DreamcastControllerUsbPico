@@ -9,7 +9,7 @@ if [ $STATUS -ne 0 ]; then
     exit $STATUS
 fi
 
-/usr/bin/cmake \
+cmake \
     --build ${BUILD_DIR} \
     --config Debug \
     --target test \

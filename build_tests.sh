@@ -4,7 +4,7 @@ export BUILD_DIR="build-test"
 GCC="/usr/bin/gcc"
 GPP="/usr/bin/g++"
 
-/usr/bin/cmake \
+cmake \
     --no-warn-unused-cli \
     -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE \
     -DCMAKE_BUILD_TYPE:STRING=Debug \
@@ -22,7 +22,7 @@ if [ $STATUS -ne 0 ]; then
     exit $STATUS
 fi
 
-/usr/bin/cmake \
+cmake \
     --build ${BUILD_DIR} \
     --config Debug \
     --target testExe \
