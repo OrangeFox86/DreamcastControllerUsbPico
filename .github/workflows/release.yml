@@ -15,6 +15,8 @@ jobs:
         with:
           packages: gcc-arm-none-eabi
           version: 1.0
+      - name: Insall prerequisites
+        run: git submodule update --recursive --init
       - name: Build and run tests
         run: ./build.sh
       - name: upload binaries to release
