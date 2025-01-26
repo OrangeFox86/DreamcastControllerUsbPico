@@ -22,4 +22,4 @@ jobs:
           packages: cmake gcc-arm-none-eabi
           version: 1.0
       - name: Build and run tests
-        run: ./run_tests.sh
+        run: CMAKE_ROOT=/usr/bin/ ./run_tests.sh
