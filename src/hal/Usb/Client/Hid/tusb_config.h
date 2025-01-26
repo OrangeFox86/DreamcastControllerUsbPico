@@ -2,6 +2,7 @@
  * The MIT License (MIT)
  *
  * Copyright (c) 2019 Ha Thach (tinyusb.org)
+ * Modifications are (c) 2022-2025 James Smith of OrangeFox86
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -76,7 +77,7 @@ extern "C" {
 //------------- CLASS -------------//
 #define CFG_TUD_CDC             1 // CDC always defined, even when not used
 #define CFG_TUD_MSC             1
-#define CFG_TUD_HID             NUMBER_OF_GAMEPADS
+#define CFG_TUD_HID             MAX_NUMBER_OF_USB_GAMEPADS
 #define CFG_TUD_MIDI            0
 #define CFG_TUD_VENDOR          0
 

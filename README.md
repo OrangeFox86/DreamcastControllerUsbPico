@@ -1,18 +1,20 @@
 # DreamcastControllerUsbPico
 
-Maple Bus emulation platform built upon the Raspberry Pi Pico for interfacing from a Dreamcast peripheral (host mode) or to a Dreamcast controller port (client mode)
+Using a Raspberry Pi Pico, DreamcastControllerUsbPico enables USB interfacing with a Dreamcast or its controllers and peripherals, functioning in either host mode or client mode as depicted below.
 
 | Host Mode | Client Mode |
 | -------- | ------- |
 | ![host mode](images/host_mode_sm.gif) | ![client mode](images/client_mode_sm.gif) |
 
+This platform may easily be forked and adapted for other interfacing needs. Feel free to do so under the conditions of the supplied [LICENSE.md](LICENSE.md).
+
 Refer to the [releases](https://github.com/OrangeFox86/DreamcastControllerUsbPico/releases) page for current progress. Refer to the [issues](https://github.com/OrangeFox86/DreamcastControllerUsbPico/issues) tab for things left to be implemented and known bugs.
 
-## Why the RP2040 is a Game Changer (and what makes this project different from others)
+---
 
-To emulate a bespoke bus such as the Maple Bus on an MCU, one would usually either need to add extra hardware or bit bang the interface. This is not true with the RP2040 and its PIO. Think of it as several extra small processors on the side using a special machine language purpose-built for handling I/O. This means communication can be offloaded to the PIO and only check on them after an interrupt is activated or a timeout has elapsed. Check out [maple_in.pio](src/hal/MapleBus/maple_in.pio) and [maple_out.pio](src/hal/MapleBus/maple_out.pio) to see the PIO code.
+# General Disclaimer
 
-Luckily, the RP2040 comes with 2 PIO blocks each with 4 separate state machines. This means that the RP2040 can easily emulate 4 separate controller interfaces, each at full speed!
+Proceed at your own risk! I am not liable for any damage that may occur due to the use of any provided schematics, firmware, or any other recommendations made within this project (see [LICENSE.md](LICENSE.md)). There is risk of damage to any attached hardware (ex: USB port, Dreamcast peripheral, or Dreamcast) if circuitry is improperly handled.
 
 ---
 
@@ -20,43 +22,80 @@ Luckily, the RP2040 comes with 2 PIO blocks each with 4 separate state machines.
 
 ## Connecting the Hardware for Host Mode
 
-Host mode allows you to connect up to 4 Dreamcast controllers to a PC over USB.
-
-This should be implemented at your own risk! There is risk of damage to your PC USB ports, Pico, Dreamcast peripherals, or Dreamcast if circuitry is improperly handled, and I am not liable for any damage that may occur due to use of the following schematic or firmware (see [LICENSE.md](LICENSE.md)).
+Host mode allows you to connect up to 4 Dreamcast controllers to a PC over USB. This is compatible with the [flycast](https://github.com/flyinghead/flycast) emulator which will communicate with an attached VMU's screen and jump pack.
 
 <p align="center">
   <img src="images/schematic.png?raw=true" alt="Schematic"/>
 </p>
 
-### Isolation Circuitry
-
-Select the appropriate isolation circuitry for your needs.
-
-<p align="center">
-  <img src="images/Isolation_Circuitry.png?raw=true" alt="Isolation Circuitry"/>
-</p>
-
-### Dreamcast Controller Pinout
-
-For reference, the following is the pinout for the Dreamcast controller port. Take note that many other sources found online refer to one of the ground pins as a connection sense, but the Dreamcast controller port module has both of these ground pins hard wired together. As such, this project doesn't rely on any such hardware sense line. Instead, the detection of a connected device is performed by polling the bus until a response is received, just as a real Dreamcast would.
-
-<p align="center">
-  <img src="images/Dreamcast_Port.png?raw=true" alt="Dreamcast Port"/>
-</p>
+Refer to the [Isolation Circuitry](#isolation-circuitry) and [Dreamcast Controller Pinout](#dreamcast-controller-pinout) below.
 
 ## Connecting the Hardware for Client Mode
 
 Client mode emulates a single controller for use with a Dreamcast. This was added in as an extra feature for this project mainly to demonstrate that the MapleBus library may be used in either direction. Currently this mode only supports a single DualShock4 controller plugged into the USB port at bootup (hot-plug not supported, micro-USB OTG cable required).
 
-This should be implemented at your own risk! There is risk of damage to your PC USB ports, Pico, Dreamcast peripherals, or Dreamcast if circuitry is improperly handled, and I am not liable for any damage that may occur due to use of the following schematic or firmware (see [LICENSE.md](LICENSE.md)).
-
 <p align="center">
   <img src="images/client-schematic.png?raw=true" alt="Client-Schematic"/>
 </p>
 
-## Build Instructions (for Linux and Windows)
+Refer to the [Isolation Circuitry](#isolation-circuitry) and [Dreamcast Controller Pinout](#dreamcast-controller-pinout) below.
 
-If running under Windows, install [WSL](https://docs.microsoft.com/en-us/windows/wsl/install) and your desired flavor of Linux. I recommend using Ubuntu 20.04 as that is what I have used for development. Then the steps below may be run within your WSL instance.
+## Isolation Circuitry
+
+Select the appropriate isolation circuitry for your needs.
+
+### Option 1
+
+![Isolation Circuity Option 1](images/Isolation_Circuitry_Option_1.png)
+
+Select the highest tolerable resistance for each resistor (usually around 100 ohms). This implementation is simple but has the following drawbacks.
+- There isn't a resistance low enough which the interface can tolerate and high enough that would prevent damage to the RP2040 if more than one line (total) experienced a fault for an extended amount of time
+- The RP2040 doesn't have over-voltage tolerant inputs, so accidental shorting to the 5V line will cause damage
+- Hot-swapping should be avoided
+
+### Option 2
+
+![Isolation Circuity Option 2](images/Isolation_Circuitry_Option_2.png)
+
+This option completely isolates the Maple Bus I/O from the RP2040 at the expense of being more complex and less accessible to DIYers. I highly recommend this or something like this for any commercial application. Select a 2-bit bus transceiver which satisfies the following.
+- Must support at least 50 mA on each output
+- Must NOT have latched outputs
+
+The chip number `74LVC2T45DC` made by Texas Instruments or Nexperia satisfies these requirements (found on digikey.com or mouser.com).
+
+## Dreamcast Controller Pinout
+
+For reference, the following is the pinout for the Dreamcast controller port. Take note that many other sources found online refer to one of the ground pins as a connection sense, but the Dreamcast controller port module has both of these ground pins hard wired together. As such, this project's host mode operation doesn't rely on any such hardware sense line. Instead, the detection of a connected device is performed by polling the bus until a response is received, just as a real Dreamcast would.
+
+<p align="center">
+  <img src="images/Dreamcast_Port.png?raw=true" alt="Dreamcast Port"/>
+</p>
+
+## Selecting the Appropriate Binary
+
+Each [release](https://github.com/OrangeFox86/DreamcastControllerUsbPico/releases) will contain multiple uf2 files. Currently, there are 3 flavors of these binaries.
+
+- **host-1p.uf2**: [Host mode](#connecting-the-hardware-for-host-mode) configuration, only `1P` active - all operating systems support this
+- **host-4p.uf2**: [Host mode](#connecting-the-hardware-for-host-mode) configuration, `1P`, `2P`, `3P`, and `4P` active - this is more problematic when used on Windows as controllers won't properly enumerate
+- **client-with-usb-host.uf2**: [Client mode](#connecting-the-hardware-for-client-mode) configuration supporting a single Dualshock4 controller connected to the USB port
+
+## Loading the UF2 Binary
+
+Hold the BOOTSEL button on the Pico while plugging the USB connection into your PC. A drive with a FAT partition labeled RPI-RP2 should pop up on your system. Open this drive, and then copy the desired uf2 file for either host or client operation here. The Pico should then automatically load the binary into flash and run it. For more information, refer to the official [Raspberry Pi Pico documentation](https://www.raspberrypi.com/documentation/microcontrollers/raspberry-pi-pico.html#documentation).
+
+## Helpful Tips
+
+### Host Mode Tips
+
+- The LED on the Pico board may be used for quick status - when connected to USB, it should remain on when no button is pressed on any controller and turn off once a button is pressed.
+- The included file `formatted_storage.bin` may be used to delete and format a VMU attached to a controller when this project is used in host mode. For example, rename this file vmu0.bin and copy to DC-Memory drive when a VMU is inserted into the upper slot of Player 1's controller.
+- A serial device shows up on the PC once attached - open serial terminal (BAUD and other settings don't matter), type `h`, and then press enter to see available instructions.
+
+---
+
+# Build Instructions (for Linux and Windows)
+
+If running under Windows, install [WSL](https://docs.microsoft.com/en-us/windows/wsl/install) and your desired flavor of Linux. I recommend using Ubuntu 22.04 as that is what I have used for development. Then the steps below may be run within your WSL instance.
 
 1. Install git, cmake, and gcc-arm-none-eabi compiler by running the following commands
 ```bash
@@ -95,23 +134,17 @@ After build completes, binaries should be located under `dist/`. Pre-built relea
 
 This project may be opened in vscode. In vscode, the default shortcut `ctrl+shift+b` will build the project. The default shortcut `F5` will run tests with gdb for local debugging. Open the terminal tab after executing tests with debugging to see the results.
 
-## Loading the UF2 Binary
-
-Hold the BOOTSEL button on the Pico while plugging the USB connection into your PC. A drive with a FAT partition labeled RPI-RP2 should pop up on your system. Open this drive, and then copy the desired uf2 file for either host or client operation here. The Pico should then automatically load the binary into flash and run it. For more information, refer to the official [Raspberry Pi Pico documentation](https://www.raspberrypi.com/documentation/microcontrollers/raspberry-pi-pico.html#documentation).
-
-## Helpful Tips
-
-### Host Mode Tips
-
-- The LED on the Pico board may be used for quick status - when connected to USB, it should remain on when no button is pressed on any controller and turn off once a button is pressed.
-- The included file `formatted_storage.bin` may be used to delete and format a VMU attached to a controller when this project is used in host mode. For example, rename this file vmu0.bin and copy to DC-Memory drive when a VMU is inserted into the upper slot of Player 1's controller.
-- A serial device shows up on the PC once attached - open serial terminal (BAUD and other settings don't matter), type `h`, and then press enter to see available instructions.
-
 ---
 
 # Maple Bus Implementation
 
-Refer to documentation [here](https://dreamcast.wiki/Maple_bus) for general information about the Maple Bus.
+The Maple Bus is a serial communications protocol which Dreamcast uses to communicate with controllers and other peripherals. Refer to documentation [here](https://dreamcast.wiki/Maple_bus) for general information about the Maple Bus.
+
+## Why the RP2040 is a Game Changer for Emulating Communication Protocols
+
+To emulate a bespoke communication protocol such as the Maple Bus on an MCU, one would usually either need to add extra hardware or bit bang the interface. This is not true with the RP2040 and its PIO. Think of it as several extra small processors on the side using a special machine language purpose-built for handling I/O. This means communication can be offloaded to the PIO and only check on them after an interrupt is activated or a timeout has elapsed. Check out [maple_in.pio](src/hal/MapleBus/maple_in.pio) and [maple_out.pio](src/hal/MapleBus/maple_out.pio) to see the PIO code.
+
+Luckily, the RP2040 comes with 2 PIO blocks each with 4 separate state machines. This means that the RP2040 can easily emulate 4 separate controller interfaces, each at full speed!
 
 ## Interfacing with the PIO State Machines
 

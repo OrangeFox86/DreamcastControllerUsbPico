@@ -2,6 +2,7 @@
  * The MIT License (MIT)
  *
  * Copyright (c) 2019 Ha Thach (tinyusb.org)
+ * Modifications are (c) 2022-2025 James Smith of OrangeFox86
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,13 +31,13 @@
 #include "configuration.h"
 #include <string.h>
 
-static uint8_t numberOfGamepads = NUMBER_OF_GAMEPADS;
+static uint8_t numberOfGamepads = MAX_NUMBER_OF_USB_GAMEPADS;
 
 void set_usb_descriptor_number_of_gamepads(uint8_t num)
 {
-    if (num > NUMBER_OF_GAMEPADS)
+    if (num > MAX_NUMBER_OF_USB_GAMEPADS)
     {
-        num = NUMBER_OF_GAMEPADS;
+        num = MAX_NUMBER_OF_USB_GAMEPADS;
     }
     numberOfGamepads = num;
 }
@@ -212,31 +213,33 @@ uint8_t player_to_epin(uint8_t player)
 
 #define CDC_DESCRIPTOR(numGamepads) TUD_CDC_DESCRIPTOR(ITF_NUM_CDC(numGamepads), 9, EPIN_CDC_NOTIF, 8, EPOUT_CDC, EPIN_CDC, 64)
 
+// This is setup with the maximum amount of data needed for the description, and it is updated in
+// tud_descriptor_configuration_cb() before being sent to the USB host
 uint8_t desc_configuration[] =
 {
-    CONFIG_HEADER(NUMBER_OF_GAMEPADS),
+    CONFIG_HEADER(MAX_NUMBER_OF_USB_GAMEPADS),
 
     // *************************************************************************
     // * Gamepad Descriptors                                                   *
     // *************************************************************************
 
-    GAMEPAD_CONFIG_DESC(ITF_NUM_GAMEPAD(NUMBER_OF_GAMEPADS, 3), PLAYER_TO_STR_IDX(3), EPIN_GAMEPAD4),
-    GAMEPAD_CONFIG_DESC(ITF_NUM_GAMEPAD(NUMBER_OF_GAMEPADS, 2), PLAYER_TO_STR_IDX(2), EPIN_GAMEPAD3),
-    GAMEPAD_CONFIG_DESC(ITF_NUM_GAMEPAD(NUMBER_OF_GAMEPADS, 1), PLAYER_TO_STR_IDX(1), EPIN_GAMEPAD2),
-    GAMEPAD_CONFIG_DESC(ITF_NUM_GAMEPAD(NUMBER_OF_GAMEPADS, 0), PLAYER_TO_STR_IDX(0), EPIN_GAMEPAD1),
+    GAMEPAD_CONFIG_DESC(ITF_NUM_GAMEPAD(MAX_NUMBER_OF_USB_GAMEPADS, 3), PLAYER_TO_STR_IDX(3), EPIN_GAMEPAD4),
+    GAMEPAD_CONFIG_DESC(ITF_NUM_GAMEPAD(MAX_NUMBER_OF_USB_GAMEPADS, 2), PLAYER_TO_STR_IDX(2), EPIN_GAMEPAD3),
+    GAMEPAD_CONFIG_DESC(ITF_NUM_GAMEPAD(MAX_NUMBER_OF_USB_GAMEPADS, 1), PLAYER_TO_STR_IDX(1), EPIN_GAMEPAD2),
+    GAMEPAD_CONFIG_DESC(ITF_NUM_GAMEPAD(MAX_NUMBER_OF_USB_GAMEPADS, 0), PLAYER_TO_STR_IDX(0), EPIN_GAMEPAD1),
 
     // *************************************************************************
     // * Storage Device Descriptor                                             *
     // *************************************************************************
 
-    MSC_DESCRIPTOR(NUMBER_OF_GAMEPADS),
+    MSC_DESCRIPTOR(MAX_NUMBER_OF_USB_GAMEPADS),
 
     // *************************************************************************
     // * Communication Device Descriptor  (for debug messaging)                *
     // *************************************************************************
 
 #if USB_CDC_ENABLED
-    CDC_DESCRIPTOR(NUMBER_OF_GAMEPADS),
+    CDC_DESCRIPTOR(MAX_NUMBER_OF_USB_GAMEPADS),
 #endif
 };
 

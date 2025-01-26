@@ -1,3 +1,26 @@
+// MIT License
+//
+// Copyright (c) 2022-2025 James Smith of OrangeFox86
+// https://github.com/OrangeFox86/DreamcastControllerUsbPico
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #include "UsbControllerDevice.h"
 #include "UsbGamepadDreamcastControllerObserver.hpp"
 #include "UsbGamepad.h"
@@ -16,28 +39,28 @@
 #include "msc_disk.hpp"
 #include "cdc.hpp"
 
-UsbGamepad usbGamepads[NUMBER_OF_GAMEPADS] = {
-  UsbGamepad(ITF_NUM_GAMEPAD(NUMBER_OF_GAMEPADS, 0)),
-  UsbGamepad(ITF_NUM_GAMEPAD(NUMBER_OF_GAMEPADS, 1)),
-  UsbGamepad(ITF_NUM_GAMEPAD(NUMBER_OF_GAMEPADS, 2)),
-  UsbGamepad(ITF_NUM_GAMEPAD(NUMBER_OF_GAMEPADS, 3))
+UsbGamepad usbGamepads[MAX_NUMBER_OF_USB_GAMEPADS] = {
+  UsbGamepad(ITF_NUM_GAMEPAD(MAX_NUMBER_OF_USB_GAMEPADS, 0)),
+  UsbGamepad(ITF_NUM_GAMEPAD(MAX_NUMBER_OF_USB_GAMEPADS, 1)),
+  UsbGamepad(ITF_NUM_GAMEPAD(MAX_NUMBER_OF_USB_GAMEPADS, 2)),
+  UsbGamepad(ITF_NUM_GAMEPAD(MAX_NUMBER_OF_USB_GAMEPADS, 3))
 };
 
-UsbGamepadDreamcastControllerObserver usbGamepadDreamcastControllerObservers[NUMBER_OF_GAMEPADS] = {
+UsbGamepadDreamcastControllerObserver usbGamepadDreamcastControllerObservers[MAX_NUMBER_OF_USB_GAMEPADS] = {
   UsbGamepadDreamcastControllerObserver(usbGamepads[0]),
   UsbGamepadDreamcastControllerObserver(usbGamepads[1]),
   UsbGamepadDreamcastControllerObserver(usbGamepads[2]),
   UsbGamepadDreamcastControllerObserver(usbGamepads[3])
 };
 
-UsbControllerDevice* devices[NUMBER_OF_GAMEPADS] = {
+UsbControllerDevice* devices[MAX_NUMBER_OF_USB_GAMEPADS] = {
   &usbGamepads[0],
   &usbGamepads[1],
   &usbGamepads[2],
   &usbGamepads[3]
 };
 
-DreamcastControllerObserver* observers[NUMBER_OF_GAMEPADS] = {
+DreamcastControllerObserver* observers[MAX_NUMBER_OF_USB_GAMEPADS] = {
   &usbGamepadDreamcastControllerObservers[0],
   &usbGamepadDreamcastControllerObservers[1],
   &usbGamepadDreamcastControllerObservers[2],
@@ -53,13 +76,13 @@ uint32_t get_num_usb_controllers()
 {
   uint8_t installedGamepads = get_usb_descriptor_number_of_gamepads();
 
-  if (installedGamepads <= NUMBER_OF_GAMEPADS)
+  if (installedGamepads <= MAX_NUMBER_OF_USB_GAMEPADS)
   {
     return installedGamepads;
   }
   else
   {
-    return NUMBER_OF_GAMEPADS;
+    return MAX_NUMBER_OF_USB_GAMEPADS;
   }
 }
 
@@ -152,7 +175,7 @@ void usb_init(
     numDevices = max;
   }
   set_usb_devices(devices, numDevices);
-  
+
   board_init();
   tusb_init();
   msc_init(mscMutex);
