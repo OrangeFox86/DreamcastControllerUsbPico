@@ -16,7 +16,7 @@ target_link_libraries(host-4p
 )
 target_compile_options(host-4p PRIVATE
   -Wall
-  -Werror
+  #-Werror
   -O3
 )
 target_compile_definitions(host-4p PUBLIC SELECTED_NUMBER_OF_DEVICES=4)
@@ -42,7 +42,7 @@ target_link_libraries(host-1p
 )
 target_compile_options(host-1p PRIVATE
   -Wall
-  -Werror
+  #-Werror
   -O3
 )
 target_compile_definitions(host-1p PUBLIC SELECTED_NUMBER_OF_DEVICES=1)

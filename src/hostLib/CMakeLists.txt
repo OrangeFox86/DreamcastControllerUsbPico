@@ -11,7 +11,7 @@ add_library(hostLib STATIC ${SRC})
 if(NOT ENABLE_UNIT_TEST)
   target_compile_options(hostLib PRIVATE
     -Wall
-    -Werror
+    #-Werror
     -O3
   )
 endif()

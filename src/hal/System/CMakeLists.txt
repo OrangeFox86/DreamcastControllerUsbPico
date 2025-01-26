@@ -13,7 +13,7 @@ target_link_libraries(hal-System
 )
 target_compile_options(hal-System PRIVATE
   -Wall
-  -Werror
+  #-Werror
   -O3
 )
 

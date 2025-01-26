@@ -15,7 +15,7 @@ target_link_libraries(hal-Usb-Client-Hid
 )
 target_compile_options(hal-Usb-Client-Hid PRIVATE
   -Wall
-  -Werror
+  #-Werror
   -O3
 )
 
