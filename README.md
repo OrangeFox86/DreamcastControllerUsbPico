@@ -95,7 +95,7 @@ Hold the BOOTSEL button on the Pico while plugging the USB connection into your 
 
 # Build Instructions (for Linux and Windows)
 
-If running under Windows, install [WSL](https://docs.microsoft.com/en-us/windows/wsl/install) and your desired flavor of Linux. I recommend using Ubuntu 20.04 as that is what I have used for development. Then the steps below may be run within your WSL instance.
+If running under Windows, install [WSL](https://docs.microsoft.com/en-us/windows/wsl/install) and your desired flavor of Linux. I recommend using Ubuntu 22.04 as that is what I have used for development. Then the steps below may be run within your WSL instance.
 
 1. Install git, cmake, and gcc-arm-none-eabi compiler by running the following commands
 ```bash
