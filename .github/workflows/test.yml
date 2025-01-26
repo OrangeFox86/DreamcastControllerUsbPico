@@ -22,7 +22,4 @@ jobs:
           packages: gcc-arm-none-eabi
           version: 1.0
       - name: Build and run tests
-        run: |
-          # CMake doesn't work with awalsh128/cache-apt-pkgs-action for some reason
-          sudo apt install cmake
-          ./run_tests.sh
+        run: ./run_tests.sh
