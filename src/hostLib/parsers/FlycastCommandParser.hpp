@@ -4,6 +4,8 @@
 
 #include "PrioritizedTxScheduler.hpp"
 
+#include "PlayerData.hpp"
+
 #include <memory>
 
 // Command structure: [whitespace]<command-char>[command]<\n>
@@ -15,7 +17,8 @@ public:
     FlycastCommandParser(
         std::shared_ptr<PrioritizedTxScheduler>* schedulers,
         const uint8_t* senderAddresses,
-        uint32_t numSenders);
+        uint32_t numSenders,
+        const std::vector<std::shared_ptr<PlayerData>>& playerData);
 
     //! @returns the string of command characters this parser handles
     virtual const char* getCommandChars() final;
@@ -30,4 +33,5 @@ private:
     std::shared_ptr<PrioritizedTxScheduler>* const mSchedulers;
     const uint8_t* const mSenderAddresses;
     const uint32_t mNumSenders;
+    std::vector<std::shared_ptr<PlayerData>> mPlayerData;
 };

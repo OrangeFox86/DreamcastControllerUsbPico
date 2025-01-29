@@ -41,6 +41,9 @@ class ScreenData
         //! @param[in] numWords  Number of words to write
         void setData(uint32_t* data, uint32_t startIndex=0, uint32_t numWords=NUM_SCREEN_WORDS);
 
+        //! Resets the screen to its initialized default
+        void resetToDefault();
+
         //! @returns true if new data is available since last call to readData
         bool isNewDataAvailable() const;
 
@@ -53,6 +56,8 @@ class ScreenData
         static const uint32_t NUM_SCREEN_WORDS = 48;
 
     private:
+        //! The default screen data on initialization and resetToDefault()
+        static const uint32_t DEFAULT_SCREEN_DATA[NUM_SCREEN_WORDS];
         //! Mutex used to ensure integrity of data between multiple cores
         MutexInterface& mMutex;
         //! The current screen data

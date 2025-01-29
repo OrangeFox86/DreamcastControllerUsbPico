@@ -70,7 +70,8 @@ void core1()
     };
     CriticalSectionMutex screenMutexes[numDevices];
     std::shared_ptr<ScreenData> screenData[numDevices];
-    std::shared_ptr<PlayerData> playerData[numDevices];
+    std::vector<std::shared_ptr<PlayerData>> playerData;
+    playerData.resize(numDevices);
     DreamcastControllerObserver** observers = get_usb_controller_observers();
     std::shared_ptr<MapleBusInterface> buses[numDevices];
     std::shared_ptr<DreamcastMainNode> dreamcastMainNodes[numDevices];
@@ -100,7 +101,7 @@ void core1()
             &schedulers[0], MAPLE_HOST_ADDRESSES, numDevices));
     ttyParser->addCommandParser(
         std::make_shared<FlycastCommandParser>(
-            &schedulers[0], MAPLE_HOST_ADDRESSES, numDevices));
+            &schedulers[0], MAPLE_HOST_ADDRESSES, numDevices, playerData));
 
     while(true)
     {
