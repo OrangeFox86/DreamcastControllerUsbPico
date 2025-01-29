@@ -184,6 +184,7 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
             {
                 // Single player special case - always send to the one available, regardless of address
                 idx = 0;
+                packet.frame.senderAddr = *senderAddress;
             }
             else
             {
