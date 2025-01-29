@@ -2,6 +2,10 @@
 #include "hal/MapleBus/MaplePacket.hpp"
 
 #include <stdio.h>
+#include <cctype>
+#include <cstring>
+#include <string>
+#include <cstdlib>
 
 // Simple definition of a transmitter which just echos status and received data
 class FlycastEchoTransmitter : public Transmitter
@@ -37,12 +41,16 @@ public:
     }
 } flycastEchoTransmitter;
 
-FlycastCommandParser::FlycastCommandParser(std::shared_ptr<PrioritizedTxScheduler>* schedulers,
-                                                             const uint8_t* senderAddresses,
-                                                             uint32_t numSenders) :
+FlycastCommandParser::FlycastCommandParser(
+    std::shared_ptr<PrioritizedTxScheduler>* schedulers,
+    const uint8_t* senderAddresses,
+    uint32_t numSenders,
+    const std::vector<std::shared_ptr<PlayerData>>& playerData
+) :
     mSchedulers(schedulers),
     mSenderAddresses(senderAddresses),
-    mNumSenders(numSenders)
+    mNumSenders(numSenders),
+    mPlayerData(playerData)
 {}
 
 const char* FlycastCommandParser::getCommandChars()
@@ -60,10 +68,69 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
     }
 
     bool valid = false;
-    const char* const eol = chars + len;
+    const char* eol = chars + len;
     std::vector<uint32_t> words;
     const char* iter = chars + 1; // Skip past 'X' (implied)
-    while(iter < eol)
+
+    // left strip
+    while (iter < eol && std::isspace(*iter))
+    {
+        ++iter;
+    }
+    // right strip
+    while (iter < eol && std::isspace(*(eol - 1)))
+    {
+        --eol;
+    }
+
+    // Check for special commanding
+    if (iter < eol)
+    {
+        switch(*iter)
+        {
+            // Either X- to reset all or one of {X-0, X-1, X-2, X-3} to reset a specific player
+            case '-':
+            {
+                // Remove minus
+                ++iter;
+                int idx = -1;
+                if (iter < eol)
+                {
+                    std::string number;
+                    number.assign(iter, eol - iter);
+                    try
+                    {
+                        idx = std::stoi(number);
+                    }
+                    catch(...)
+                    {
+                        // Default to all
+                        idx = -1;
+                    }
+                }
+
+                // Reset screen data
+                if (idx < 0)
+                {
+                    // all
+                    for (std::shared_ptr<PlayerData>& playerData : mPlayerData)
+                    {
+                        playerData->screenData.resetToDefault();
+                    }
+                }
+                else if (static_cast<std::size_t>(idx) < mPlayerData.size())
+                {
+                    mPlayerData[idx]->screenData.resetToDefault();
+                }
+            }
+            return;
+
+            // No special case
+            default: break;
+        }
+    }
+
+    while (iter < eol)
     {
         uint32_t word = 0;
         uint32_t i = 0;
@@ -113,11 +180,21 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
             int32_t idx = -1;
             const uint8_t* senderAddress = mSenderAddresses;
 
-            for (uint32_t i = 0; i < mNumSenders && idx < 0; ++i, ++senderAddress)
+            if (mNumSenders == 1)
             {
-                if (sender == *senderAddress)
+                // Single player special case - always send to the one available, regardless of address
+                idx = 0;
+                packet.frame.senderAddr = *senderAddress;
+                packet.frame.recipientAddr = (packet.frame.recipientAddr & 0x3F) | *senderAddress;
+            }
+            else
+            {
+                for (uint32_t i = 0; i < mNumSenders && idx < 0; ++i, ++senderAddress)
                 {
-                    idx = i;
+                    if (sender == *senderAddress)
+                    {
+                        idx = i;
+                    }
                 }
             }
 
