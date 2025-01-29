@@ -180,11 +180,19 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
             int32_t idx = -1;
             const uint8_t* senderAddress = mSenderAddresses;
 
-            for (uint32_t i = 0; i < mNumSenders && idx < 0; ++i, ++senderAddress)
+            if (mNumSenders == 1)
             {
-                if (sender == *senderAddress)
+                // Single player special case - always send to the one available, regardless of address
+                idx = 0;
+            }
+            else
+            {
+                for (uint32_t i = 0; i < mNumSenders && idx < 0; ++i, ++senderAddress)
                 {
-                    idx = i;
+                    if (sender == *senderAddress)
+                    {
+                        idx = i;
+                    }
                 }
             }
 
