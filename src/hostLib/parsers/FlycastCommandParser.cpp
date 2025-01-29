@@ -83,46 +83,51 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
         --eol;
     }
 
-    // Special case
-    // Either X- to reset all or one of {X0-, X1-, X2-, X3-} to reset a specific player
-    if (iter < eol && *(eol - 1) == '-')
+    // Check for special commanding
+    if (iter < eol)
     {
-        // Reset command
-
-        // Remove minus
-        eol--;
-        int idx = -1;
-        if (iter < eol)
+        switch(*iter)
         {
-            std::string number;
-            number.assign(iter, eol - iter);
-            try
+            // Either X- to reset all or one of {X-0, X-1, X-2, X-3} to reset a specific player
+            case '-':
             {
-                idx = std::stoi(number);
-            }
-            catch(...)
-            {
-                // Default to all
-                idx = -1;
-            }
-        }
+                // Remove minus
+                ++iter;
+                int idx = -1;
+                if (iter < eol)
+                {
+                    std::string number;
+                    number.assign(iter, eol - iter);
+                    try
+                    {
+                        idx = std::stoi(number);
+                    }
+                    catch(...)
+                    {
+                        // Default to all
+                        idx = -1;
+                    }
+                }
 
-        // Reset screen data
-        if (idx < 0)
-        {
-            // all
-            for (std::shared_ptr<PlayerData>& playerData : mPlayerData)
-            {
-                playerData->screenData.resetToDefault();
+                // Reset screen data
+                if (idx < 0)
+                {
+                    // all
+                    for (std::shared_ptr<PlayerData>& playerData : mPlayerData)
+                    {
+                        playerData->screenData.resetToDefault();
+                    }
+                }
+                else if (static_cast<std::size_t>(idx) < mPlayerData.size())
+                {
+                    mPlayerData[idx]->screenData.resetToDefault();
+                }
             }
-        }
-        else if (static_cast<std::size_t>(idx) < mPlayerData.size())
-        {
-            mPlayerData[idx]->screenData.resetToDefault();
-        }
+            return;
 
-        // Nothing else to do
-        return;
+            // No special case
+            default: break;
+        }
     }
 
     while (iter < eol)
