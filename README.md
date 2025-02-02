@@ -48,7 +48,7 @@ Select the appropriate isolation circuitry for your needs.
 
 ![Isolation Circuity Option 1](images/Isolation_Circuitry_Option_1.png)
 
-Select the highest tolerable resistance for each resistor (usually around 100 ohms). This implementation is simple but has the following drawbacks.
+Select the highest tolerable resistance for each resistor (usually around 100 ohms, but **you may need to go as low as 50 ohms to support an Arcade Stick**). This implementation is simple but has the following drawbacks.
 - There isn't a resistance low enough which the interface can tolerate and high enough that would prevent damage to the RP2040 if more than one line (total) experienced a fault for an extended amount of time
 - The RP2040 doesn't have over-voltage tolerant inputs, so accidental shorting to the 5V line will cause damage
 - Hot-swapping should be avoided
