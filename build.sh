@@ -1,6 +1,19 @@
 #!/bin/sh
 
-BUILD_DIR="build"
+# Provide one of the following as argument to adjust flavor
+# pico (default)
+# pico_w
+# pico2
+# pico2_w
+
+FLAVOR=pico
+
+if [ $# -gt 0 ]; then
+FLAVOR=$1
+shift
+fi
+
+BUILD_DIR="build-${FLAVOR}"
 DIST_DIR="dist"
 GCC="/usr/bin/arm-none-eabi-gcc"
 GPP="/usr/bin/arm-none-eabi-g++"
@@ -12,6 +25,7 @@ rm ${BUILD_DIR}/src/*/*/*.uf2
 
 cmake \
     --no-warn-unused-cli \
+    -DPICO_BOARD=${FLAVOR} \
     -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE \
     -DCMAKE_BUILD_TYPE:STRING=Debug \
     -DCMAKE_C_COMPILER:FILEPATH=${GCC} \
@@ -42,5 +56,9 @@ if [ $STATUS -ne 0 ]; then
 fi
 
 mkdir -p ${DIST_DIR}
-rm -rf ${DIST_DIR}/*
-cp ${BUILD_DIR}/src/*/*/*.uf2 ${DIST_DIR}
+rm -rf "${DIST_DIR}/*-${FLAVOR}.uf2"
+for file in ${BUILD_DIR}/src/*/*/*.uf2
+do
+    filename=$(basename $file)
+    mv -v -- "$file" "${DIST_DIR}/${filename%.uf2}-${FLAVOR}.uf2"
+done

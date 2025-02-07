@@ -21,7 +21,13 @@ jobs:
         run: sudo apt -y install gcc-arm-none-eabi build-essential
       - name: Install dependencies
         run: git submodule update --recursive --init
-      - name: Build main package
-        run: ./build.sh
+      - name: Build main package for pico
+        run: ./build.sh pico
+      - name: Build main package for pico2
+        run: ./build.sh pico2
+      - name: Build main package for pico_w
+        run: ./build.sh pico_w
+      - name: Build main package for pico2_w
+        run: ./build.sh pico2_w
       - name: Build and run unit tests
         run: ./run_tests.sh
