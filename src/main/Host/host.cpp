@@ -24,6 +24,7 @@
 #ifndef ENABLE_UNIT_TEST
 
 #include "pico/stdlib.h"
+#include "hardware/clocks.h"
 #include "pico/multicore.h"
 
 #include "configuration.h"
