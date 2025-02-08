@@ -1,20 +1,27 @@
 #!/bin/sh
 
-# Provide one of the following as argument to adjust flavor
+# USAGE:
+# build.sh <platform> <dist-suffix>
+
+# Provide one of the following as argument to adjust platform
 # pico (default)
-# pico_w
 # pico2
-# pico2_w
 
 FLAVOR=pico
+DIST_SUFFIX=
 
 if [ $# -gt 0 ]; then
 FLAVOR=$1
 shift
 fi
 
+if [ $# -gt 0 ]; then
+DIST_SUFFIX="-$1"
+shift
+fi
+
 BUILD_DIR="build-${FLAVOR}"
-DIST_DIR="dist"
+DIST_DIR="./dist"
 GCC="/usr/bin/arm-none-eabi-gcc"
 GPP="/usr/bin/arm-none-eabi-g++"
 
@@ -27,7 +34,7 @@ cmake \
     --no-warn-unused-cli \
     -DPICO_BOARD=${FLAVOR} \
     -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE \
-    -DCMAKE_BUILD_TYPE:STRING=Debug \
+    -DCMAKE_BUILD_TYPE:STRING=Release \
     -DCMAKE_C_COMPILER:FILEPATH=${GCC} \
     -DCMAKE_CXX_COMPILER:FILEPATH=${GPP} \
     -DDREAMCAST_CONTROLLER_USB_PICO_TEST:BOOL=FALSE \
@@ -44,7 +51,7 @@ fi
 
 cmake \
     --build ${BUILD_DIR} \
-    --config Debug \
+    --config Release \
     --target all \
     -j 10 \
 
@@ -56,9 +63,8 @@ if [ $STATUS -ne 0 ]; then
 fi
 
 mkdir -p ${DIST_DIR}
-rm -rf "${DIST_DIR}/*-${FLAVOR}.uf2"
 for file in ${BUILD_DIR}/src/*/*/*.uf2
 do
     filename=$(basename $file)
-    mv -v -- "$file" "${DIST_DIR}/${filename%.uf2}-${FLAVOR}.uf2"
+    cp -v -- "$file" "${DIST_DIR}/${filename%.uf2}${DIST_SUFFIX}.uf2"
 done

@@ -18,25 +18,15 @@ jobs:
       - name: Build main package for pico
         run: ./build.sh pico
       - name: Build main package for pico2
-        run: ./build.sh pico2
-      - name: Build main package for pico_w
-        run: ./build.sh pico_w
-      - name: Build main package for pico2_w
-        run: ./build.sh pico2_w
+        run: ./build.sh pico2 pico2
       - name: upload binaries to release
         uses: softprops/action-gh-release@v1
         if: ${{startsWith(github.ref, 'refs/tags/') }}
         with:
             files: |
-              dist/client-with-usb-host-pico.uf2
-              dist/host-1p-pico.uf2
-              dist/host-4p-pico.uf2
+              dist/client-with-usb-host.uf2
+              dist/host-1p.uf2
+              dist/host-4p.uf2
               dist/client-with-usb-host-pico2.uf2
               dist/host-1p-pico2.uf2
               dist/host-4p-pico2.uf2
-              dist/client-with-usb-host-pico_w.uf2
-              dist/host-1p-pico_w.uf2
-              dist/host-4p-pico_w.uf2
-              dist/client-with-usb-host-pico2_w.uf2
-              dist/host-1p-pico2_w.uf2
-              dist/host-4p-pico2_w.uf2

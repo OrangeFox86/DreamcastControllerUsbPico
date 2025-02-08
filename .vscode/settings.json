@@ -62,7 +62,11 @@
         "iomanip": "cpp",
         "variant": "cpp",
         "printf.h": "c",
-        "bitset": "cpp"
+        "bitset": "cpp",
+        "*.ipp": "cpp",
+        "ranges": "cpp",
+        "regex": "cpp",
+        "valarray": "cpp"
     },
     "cmake.configureOnOpen": false
 }
