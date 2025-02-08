@@ -73,7 +73,7 @@ For reference, the following is the pinout for the Dreamcast controller port. Ta
 
 ## Selecting the Appropriate Binary
 
-Each [release](https://github.com/OrangeFox86/DreamcastControllerUsbPico/releases) will contain multiple uf2 files. Currently, there are 3 flavors of these binaries.
+Each [release](https://github.com/OrangeFox86/DreamcastControllerUsbPico/releases) will contain multiple uf2 files. Currently, there are 3 flavors of these binaries for each of the Pico Version 1 and Pico Version 2 boards.
 
 - **host-1p.uf2**: [Host mode](#connecting-the-hardware-for-host-mode) configuration, only `1P` active - all operating systems support this
 - **host-4p.uf2**: [Host mode](#connecting-the-hardware-for-host-mode) configuration, `1P`, `2P`, `3P`, and `4P` active - this is more problematic when used on Windows as controllers won't properly enumerate
