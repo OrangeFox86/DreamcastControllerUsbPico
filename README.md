@@ -73,11 +73,11 @@ For reference, the following is the pinout for the Dreamcast controller port. Ta
 
 ## Selecting the Appropriate Binary
 
-Each [release](https://github.com/OrangeFox86/DreamcastControllerUsbPico/releases) will contain multiple uf2 files. Currently, there are 3 flavors of these binaries.
+Each [release](https://github.com/OrangeFox86/DreamcastControllerUsbPico/releases) will contain multiple uf2 files. Currently, there are 3 flavors of these binaries for each of the Pico Version 1 (RP2040) and Pico Version 2 (RP2350) boards. The W variants of the hardware may also be used, but the status LED will not be functional.
 
-- **host-1p.uf2**: [Host mode](#connecting-the-hardware-for-host-mode) configuration, only `1P` active - all operating systems support this
-- **host-4p.uf2**: [Host mode](#connecting-the-hardware-for-host-mode) configuration, `1P`, `2P`, `3P`, and `4P` active - this is more problematic when used on Windows as controllers won't properly enumerate
-- **client-with-usb-host.uf2**: [Client mode](#connecting-the-hardware-for-client-mode) configuration supporting a single Dualshock4 controller connected to the USB port
+- **host-1p*.uf2**: [Host mode](#connecting-the-hardware-for-host-mode) configuration, only `1P` active - all operating systems support this
+- **host-4p*.uf2**: [Host mode](#connecting-the-hardware-for-host-mode) configuration, `1P`, `2P`, `3P`, and `4P` active - this is more problematic when used on Windows as controllers won't properly enumerate
+- **client-with-usb-host*.uf2**: [Client mode](#connecting-the-hardware-for-client-mode) configuration supporting a single Dualshock4 controller connected to the USB port
 
 ## Loading the UF2 Binary
 
@@ -87,7 +87,7 @@ Hold the BOOTSEL button on the Pico while plugging the USB connection into your 
 
 ### Host Mode Tips
 
-- The LED on the Pico board may be used for quick status - when connected to USB, it should remain on when no button is pressed on any controller and turn off once a button is pressed.
+- The LED on the W variants of the Pico board will not work with this project. On the standard Pico and Pico2 boards, the LED may be used for quick status - when connected to USB, it should remain on when no button is pressed on any controller and turn off once a button is pressed.
 - The included file `formatted_storage.bin` may be used to delete and format a VMU attached to a controller when this project is used in host mode. For example, rename this file vmu0.bin and copy to DC-Memory drive when a VMU is inserted into the upper slot of Player 1's controller.
 - A serial device shows up on the PC once attached - open serial terminal (BAUD and other settings don't matter), type `h`, and then press enter to see available instructions.
 

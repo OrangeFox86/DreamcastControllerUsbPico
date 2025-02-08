@@ -24,7 +24,6 @@
 #include "MapleBus.hpp"
 #include "pico/stdlib.h"
 #include "hardware/structs/systick.h"
-#include "hardware/regs/m0plus.h"
 #include "hardware/irq.h"
 #include "configuration.h"
 #include "maple_in.pio.h"
