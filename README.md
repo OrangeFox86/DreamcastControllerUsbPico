@@ -1,6 +1,6 @@
-# DreamcastControllerUsbPico
+# DreamPort (formally DreamcastControllerUsbPico)
 
-Using a Raspberry Pi Pico, DreamcastControllerUsbPico enables USB interfacing with a Dreamcast or its controllers and peripherals, functioning in either host mode or client mode as depicted below.
+Using a Raspberry Pi Pico, DreamPort enables USB interfacing with a Dreamcast or its controllers and peripherals, functioning in either host mode or client mode as depicted below.
 
 | Host Mode | Client Mode |
 | -------- | ------- |
@@ -8,7 +8,7 @@ Using a Raspberry Pi Pico, DreamcastControllerUsbPico enables USB interfacing wi
 
 This platform may easily be forked and adapted for other interfacing needs. Feel free to do so under the conditions of the supplied [LICENSE.md](LICENSE.md).
 
-Refer to the [releases](https://github.com/OrangeFox86/DreamcastControllerUsbPico/releases) page for current progress. Refer to the [issues](https://github.com/OrangeFox86/DreamcastControllerUsbPico/issues) tab for things left to be implemented and known bugs.
+Refer to the [releases](https://github.com/OrangeFox86/DreamPort/releases) page for current progress. Refer to the [issues](https://github.com/OrangeFox86/DreamPort/issues) tab for things left to be implemented and known bugs.
 
 ---
 
@@ -22,7 +22,7 @@ Proceed at your own risk! I am not liable for any damage that may occur due to t
 
 ## Connecting the Hardware for Host Mode
 
-Host mode allows you to connect up to 4 Dreamcast controllers to a PC over USB. This is compatible with the [flycast](https://github.com/flyinghead/flycast) emulator which will communicate with an attached VMU's screen and jump pack. See [this wiki article](https://github.com/OrangeFox86/DreamcastControllerUsbPico/wiki/DreamcastControllerUsb-plus-Flycast-equals-%E2%9D%A4%EF%B8%8F) for help on how to setup flycast for use with this project.
+Host mode allows you to connect up to 4 Dreamcast controllers to a PC over USB. This is compatible with the [flycast](https://github.com/flyinghead/flycast) emulator which will communicate with an attached VMU's screen and jump pack. See [this wiki article](https://github.com/OrangeFox86/DreamPort/wiki/DreamcastControllerUsb-plus-Flycast-equals-%E2%9D%A4%EF%B8%8F) for help on how to setup flycast for use with this project.
 
 <p align="center">
   <img src="images/schematic.png?raw=true" alt="Schematic"/>
@@ -73,7 +73,7 @@ For reference, the following is the pinout for the Dreamcast controller port. Ta
 
 ## Selecting the Appropriate Binary
 
-Each [release](https://github.com/OrangeFox86/DreamcastControllerUsbPico/releases) will contain multiple uf2 files. Currently, there are 3 flavors of these binaries for each of the Pico Version 1 (RP2040) and Pico Version 2 (RP2350) boards. The W variants of the hardware may also be used, but the status LED will not be functional.
+Each [release](https://github.com/OrangeFox86/DreamPort/releases) will contain multiple uf2 files. Currently, there are 3 flavors of these binaries for each of the Pico Version 1 (RP2040) and Pico Version 2 (RP2350) boards. The W variants of the hardware may also be used, but the status LED will not be functional.
 
 - **host-1p*.uf2**: [Host mode](#connecting-the-hardware-for-host-mode) configuration, only `1P` active - all operating systems support this
 - **host-4p*.uf2**: [Host mode](#connecting-the-hardware-for-host-mode) configuration, `1P`, `2P`, `3P`, and `4P` active - this is more problematic when used on Windows as controllers won't properly enumerate
@@ -110,8 +110,8 @@ sudo apt -y install build-essential gdb
 
 3. Clone this repo then cd into the created directory
 ```bash
-git clone https://github.com/Tails86/DreamcastControllerUsbPico.git
-cd DreamcastControllerUsbPico
+git clone https://github.com/Tails86/DreamPort.git
+cd DreamPort
 ```
 
 4. Pull down the pico SDK (this project now uses a fork of the SDK - it will no longer compile under the standard SDK)
@@ -130,7 +130,7 @@ Hint: if you have issues building, the easiest way to correct any submodule sync
 ./build.sh
 ```
 
-After build completes, binaries should be located under `dist/`. Pre-built release binaries may be found [here](https://github.com/OrangeFox86/DreamcastControllerUsbPico/releases).
+After build completes, binaries should be located under `dist/`. Pre-built release binaries may be found [here](https://github.com/OrangeFox86/DreamPort/releases).
 
 This project may be opened in vscode. In vscode, the default shortcut `ctrl+shift+b` will build the project. The default shortcut `F5` will run tests with gdb for local debugging. Open the terminal tab after executing tests with debugging to see the results.
 
