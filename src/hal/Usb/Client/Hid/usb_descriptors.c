@@ -294,7 +294,7 @@ char const *string_desc_arr[] =
 {
     (const char[]) {0x09, 0x04}, // 0: is supported language is English (0x0409)
     "OrangeFox86",               // 1: Manufacturer
-    "Dreamcast Controller USB",  // 2: Product
+    "DreamPort",                 // 2: Product
     NULL,                        // 3: Serial (special case; get pico serial)
     "P1",                        // 4: Gamepad 1
     "P2",                        // 5: Gamepad 2
