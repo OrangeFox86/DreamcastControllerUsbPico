@@ -31,10 +31,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: builds
-          path: |
-            dist/client-with-usb-host.uf2
-            dist/host-1p.uf2
-            dist/host-4p.uf2
-            dist/pico2_client-with-usb-host.uf2
-            dist/pico2_host-1p.uf2
-            dist/pico2_host-4p.uf2
+          path: dist/*
