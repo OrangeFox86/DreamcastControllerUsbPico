@@ -21,6 +21,6 @@ else()
   add_definitions(-DUNITTEST)
 endif()
 
-project(DreamcastControllerUsbPico)
+project(DreamPort)
 
 add_subdirectory(src)
