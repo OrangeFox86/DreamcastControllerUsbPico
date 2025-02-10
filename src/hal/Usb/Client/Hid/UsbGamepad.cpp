@@ -53,10 +53,10 @@ bool UsbGamepad::isButtonPressed()
     || currentButtons != 0
     || isAnalogPressed(currentLeftAnalog[0])
     || isAnalogPressed(currentLeftAnalog[1])
-    || isAnalogPressed(currentLeftAnalog[2])
+    || isTriggerPressed(currentLeftAnalog[2])
     || isAnalogPressed(currentRightAnalog[0])
     || isAnalogPressed(currentRightAnalog[1])
-    || isAnalogPressed(currentRightAnalog[2])
+    || isTriggerPressed(currentRightAnalog[2])
   );
 }
 
@@ -112,6 +112,17 @@ void UsbGamepad::setAnalogTrigger(bool isLeft, int8_t z)
     currentRightAnalog[2] = z;
   }
   buttonsUpdated = buttonsUpdated || (z != lastZ);
+  if (buttonsUpdated)
+  {
+    if (isLeft)
+    {
+      printf("Trig: %i %s\n", (int)currentLeftAnalog[2], isTriggerPressed(currentLeftAnalog[2]) ? "true" : "false");
+    }
+    else
+    {
+      printf("Trig: %i %s\n", (int)currentRightAnalog[2], isTriggerPressed(currentRightAnalog[2]) ? "true" : "false");
+    }
+  }
 }
 
 int8_t UsbGamepad::getAnalogThumbX(bool isLeft)
@@ -182,10 +193,10 @@ void UsbGamepad::updateAllReleased()
   {
     currentLeftAnalog[0] = 0;
     currentLeftAnalog[1] = 0;
-    currentLeftAnalog[2] = 0;
+    currentLeftAnalog[2] = MIN_TRIGGER_VALUE;
     currentRightAnalog[0] = 0;
     currentRightAnalog[1] = 0;
-    currentRightAnalog[2] = 0;
+    currentRightAnalog[2] = MIN_TRIGGER_VALUE;
     currentDpad[DPAD_UP] = false;
     currentDpad[DPAD_DOWN] = false;
     currentDpad[DPAD_LEFT] = false;

@@ -8,7 +8,7 @@
 # pico2
 
 FLAVOR=pico
-DIST_SUFFIX=
+DIST_PREFIX=
 
 if [ $# -gt 0 ]; then
 FLAVOR=$1
@@ -16,7 +16,7 @@ shift
 fi
 
 if [ $# -gt 0 ]; then
-DIST_SUFFIX="-$1"
+DIST_PREFIX="${1}_"
 shift
 fi
 
@@ -66,5 +66,5 @@ mkdir -p ${DIST_DIR}
 for file in ${BUILD_DIR}/src/*/*/*.uf2
 do
     filename=$(basename $file)
-    cp -v -- "$file" "${DIST_DIR}/${filename%.uf2}${DIST_SUFFIX}.uf2"
+    cp -v -- "$file" "${DIST_DIR}/${DIST_PREFIX}${filename}"
 done

@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 #include "UsbControllerDevice.h"
+#include "usb_descriptors.h"
 
 //! This class is designed to work with the setup code in usb_descriptors.c
 class UsbGamepad : public UsbControllerDevice
@@ -144,6 +145,11 @@ class UsbGamepad : public UsbControllerDevice
     inline bool isAnalogPressed(int16_t analog)
     {
       return (analog > ANALOG_PRESSED_TOL || analog < -ANALOG_PRESSED_TOL);
+    }
+
+    inline bool isTriggerPressed(int16_t analog)
+    {
+      return (analog > (MIN_TRIGGER_VALUE + ANALOG_PRESSED_TOL));
     }
 
   public:

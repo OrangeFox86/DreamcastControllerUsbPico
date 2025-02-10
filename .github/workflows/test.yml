@@ -27,3 +27,8 @@ jobs:
         run: ./build.sh pico2 pico2
       - name: Build and run unit tests
         run: ./run_tests.sh
+      - name: Save the test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: builds
+          path: dist/*

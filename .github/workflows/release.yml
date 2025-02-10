@@ -23,10 +23,4 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: ${{startsWith(github.ref, 'refs/tags/') }}
         with:
-            files: |
-              dist/client-with-usb-host.uf2
-              dist/host-1p.uf2
-              dist/host-4p.uf2
-              dist/client-with-usb-host-pico2.uf2
-              dist/host-1p-pico2.uf2
-              dist/host-4p-pico2.uf2
+            files: dist/*
