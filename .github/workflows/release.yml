@@ -27,6 +27,6 @@ jobs:
               dist/client-with-usb-host.uf2
               dist/host-1p.uf2
               dist/host-4p.uf2
-              dist/client-with-usb-host-pico2.uf2
-              dist/host-1p-pico2.uf2
-              dist/host-4p-pico2.uf2
+              dist/pico2_client-with-usb-host.uf2
+              dist/pico2_host-1p.uf2
+              dist/pico2_host-4p.uf2
