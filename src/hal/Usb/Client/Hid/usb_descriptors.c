@@ -123,7 +123,7 @@ tusb_desc_device_t const desc_device =
     .idVendor           = 0x1209,
     .idProduct          = 0x2F07,
 
-    .bcdDevice          = 0x0100,
+    .bcdDevice          = 0x0101,
 
     .iManufacturer      = 0x01,
     .iProduct           = 0x02,
@@ -209,9 +209,9 @@ uint8_t player_to_epin(uint8_t player)
     TUD_HID_DESCRIPTOR(itfNum, strIdx, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), endpt, GAMEPAD_REPORT_SIZE, 1)
 
 // Only doing transfer at full speed since each file will only be about 128KB, max of 8 files
-#define MSC_DESCRIPTOR(numGamepads) TUD_MSC_DESCRIPTOR(ITF_NUM_MSC(numGamepads), 8, EPOUT_MSC, EPIN_MSC, 64)
+#define MSC_DESCRIPTOR(numGamepads) TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 8, EPOUT_MSC, EPIN_MSC, 64)
 
-#define CDC_DESCRIPTOR(numGamepads) TUD_CDC_DESCRIPTOR(ITF_NUM_CDC(numGamepads), 9, EPIN_CDC_NOTIF, 8, EPOUT_CDC, EPIN_CDC, 64)
+#define CDC_DESCRIPTOR(numGamepads) TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 9, EPIN_CDC_NOTIF, 8, EPOUT_CDC, EPIN_CDC, 64)
 
 // This is setup with the maximum amount of data needed for the description, and it is updated in
 // tud_descriptor_configuration_cb() before being sent to the USB host
