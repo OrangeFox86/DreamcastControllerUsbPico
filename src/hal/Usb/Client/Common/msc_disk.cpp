@@ -77,7 +77,7 @@ Copyright (c) 2022-2025 James Smith of OrangeFox86 https://github.com/OrangeFox8
 This drive is where Dreamcast memory unit data may be viewed when one or more are\n\
 inserted into any controller. To write, copy file with the same name as the\n\
 target memory unit. Attempting to write more than 128 kb, read from/write\n\
-to a VMU not attached, or change any file names here will cause a drive error.\n\
+to a VMU not attached, or change any file names here will be refused by the drive.\n\
 \n\
 Reading an entire VMU takes about 3 seconds and write takes 15 seconds."
 
