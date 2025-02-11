@@ -2,6 +2,8 @@
 
 Using a Raspberry Pi Pico, DreamPort enables USB interfacing with a Dreamcast or its controllers and peripherals, functioning in either host mode or client mode as depicted below.
 
+Looking for instructions on how to use this with flycast? [Bring me to it!](https://github.com/OrangeFox86/DreamPort?tab=readme-ov-file#connecting-the-hardware-for-host-mode) 
+
 | Host Mode | Client Mode |
 | -------- | ------- |
 | ![host mode](images/host_mode_sm.gif) | ![client mode](images/client_mode_sm.gif) |
