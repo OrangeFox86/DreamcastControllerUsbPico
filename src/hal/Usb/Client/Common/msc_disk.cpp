@@ -72,15 +72,14 @@ static uint8_t errorCount = 0;
 
 // README contents stored on ramdisk - must not be greater than 512 bytes
 #define README_CONTENTS "\
-This is where Dreamcast memory unit data may be viewed when one or more are\n\
+MIT License\n\n\
+Copyright (c) 2022-2025 James Smith of OrangeFox86 https://github.com/OrangeFox86/DreamPort\n\n\
+This drive is where Dreamcast memory unit data may be viewed when one or more are\n\
 inserted into any controller. To write, copy file with the same name as the\n\
 target memory unit. Attempting to write more than 128 kb or to read from/write\n\
 to a VMU not attached will cause a drive error.\n\
 \n\
-Reading an entire VMU takes about 3 seconds and write takes 15 seconds. It is\n\
-important to note that any operation done on the mass storage device will delay\n\
-other controller operations.\
-"
+Reading an entire VMU takes about 3 seconds and write takes 15 seconds."
 
 // Size of string minus null terminator byte
 #define README_SIZE (sizeof(README_CONTENTS) - 1)
