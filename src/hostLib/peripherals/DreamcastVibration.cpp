@@ -92,7 +92,7 @@ void DreamcastVibration::task(uint64_t currentTimeUs)
         mFirst = false;
 
         // Send some vibrations on connection
-        send(currentTimeUs, 7, 0, 0, 500);
+        send(currentTimeUs, 5, 0, 0, 250);
     }
 }
 
