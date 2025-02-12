@@ -70,7 +70,8 @@
         "compare": "cpp",
         "concepts": "cpp",
         "netfwd": "cpp",
-        "numbers": "cpp"
+        "numbers": "cpp",
+        "shared_mutex": "cpp"
     },
     "cmake.configureOnOpen": false
 }

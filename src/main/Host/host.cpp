@@ -77,6 +77,7 @@ void core1()
     std::shared_ptr<MapleBusInterface> buses[numDevices];
     std::vector<std::shared_ptr<DreamcastMainNode>> dreamcastMainNodes;
     dreamcastMainNodes.resize(numDevices);
+    Mutex schedulerMutexes[numDevices];
     std::shared_ptr<PrioritizedTxScheduler> schedulers[numDevices];
     Clock clock;
     for (uint32_t i = 0; i < numDevices; ++i)
@@ -88,7 +89,7 @@ void core1()
                                                      clock,
                                                      usb_msc_get_file_system());
         buses[i] = create_maple_bus(maplePins[i], mapleDirPins[i], DIR_OUT_HIGH);
-        schedulers[i] = std::make_shared<PrioritizedTxScheduler>(MAPLE_HOST_ADDRESSES[i]);
+        schedulers[i] = std::make_shared<PrioritizedTxScheduler>(schedulerMutexes[i], MAPLE_HOST_ADDRESSES[i]);
         dreamcastMainNodes[i] = std::make_shared<DreamcastMainNode>(
             *buses[i],
             *playerData[i],

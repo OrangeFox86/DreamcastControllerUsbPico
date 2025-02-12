@@ -24,6 +24,7 @@
 #pragma once
 
 #include "hal/MapleBus/MaplePacket.hpp"
+#include "hal/System/MutexInterface.hpp"
 #include "dreamcast_constants.h"
 #include "Transmission.hpp"
 #include <list>
@@ -36,8 +37,10 @@ public:
     //! Enumerates available priorities to be used with add()
     enum Priority : uint8_t
     {
+        PRIORITY_BEGIN = 0,
         //! Priority for external entity taking control of the bus (max)
-        EXTERNAL_TRANSMISSION_PRIORITY = 0,
+        //! Add/remove will be serialized for this priority
+        EXTERNAL_TRANSMISSION_PRIORITY = PRIORITY_BEGIN,
         //! Priority for main peripheral
         MAIN_TRANSMISSION_PRIORITY,
         //! Priority for sub peripheral (min)
@@ -68,13 +71,15 @@ public:
             std::list<std::shared_ptr<Transmission>>::iterator mItemIter;
             //! The time at which this item was peeked
             uint64_t mTime;
+            //! The priority of this item
+            Priority mPriority;
     };
 
 public:
     //! Default constructor
     //! @param[in] senderAddress  The sender address set in every packet added
     //! @param[in] max  The maximum accepted priority
-    PrioritizedTxScheduler(uint8_t senderAddress, uint32_t max = (PRIORITY_COUNT-1));
+    PrioritizedTxScheduler(MutexInterface& m, uint8_t senderAddress, uint32_t max = (PRIORITY_COUNT-1));
 
     //! Virtual destructor
     virtual ~PrioritizedTxScheduler();
@@ -149,6 +154,8 @@ public:
     static const uint32_t INVALID_TX_ID = 0;
 
 protected:
+    //! Mutex used to serialize push/pop of external items
+    MutexInterface& mScheduleMutex;
     //! The address of this sender
     const uint8_t mSenderAddress;
     //! The next transmission ID to set

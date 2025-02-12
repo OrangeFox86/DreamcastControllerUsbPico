@@ -256,7 +256,6 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
 
             if (idx >= 0)
             {
-                // TODO: this isn't exactly safe to call on this core
                 mSchedulers[idx]->add(
                     PrioritizedTxScheduler::EXTERNAL_TRANSMISSION_PRIORITY,
                     PrioritizedTxScheduler::TX_TIME_ASAP,
