@@ -37,10 +37,8 @@ public:
     //! Enumerates available priorities to be used with add()
     enum Priority : uint8_t
     {
-        PRIORITY_BEGIN = 0,
         //! Priority for external entity taking control of the bus (max)
-        //! Add/remove will be serialized for this priority
-        EXTERNAL_TRANSMISSION_PRIORITY = PRIORITY_BEGIN,
+        EXTERNAL_TRANSMISSION_PRIORITY = 0,
         //! Priority for main peripheral
         MAIN_TRANSMISSION_PRIORITY,
         //! Priority for sub peripheral (min)
@@ -71,8 +69,6 @@ public:
             std::list<std::shared_ptr<Transmission>>::iterator mItemIter;
             //! The time at which this item was peeked
             uint64_t mTime;
-            //! The priority of this item
-            Priority mPriority;
     };
 
 public:

@@ -136,10 +136,10 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
             }
             return;
 
-            // XD [0-4] [0-4]
-            case 'D' :
+            // XP [0-4] [0-4]
+            case 'P' :
             {
-                // Remove D
+                // Remove P
                 ++iter;
                 int idxin = -1;
                 int idxout = -1;
@@ -195,6 +195,30 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
                 }
             }
             return;
+
+            // Reserved
+            case '0': // Fall through
+            case '1': // Fall through
+            case '2': // Fall through
+            case '3': // Fall through
+            case '4': // Fall through
+            case '5': // Fall through
+            case '6': // Fall through
+            case '7': // Fall through
+            case '8': // Fall through
+            case '9': // Fall through
+            case 'a': // Fall through
+            case 'b': // Fall through
+            case 'c': // Fall through
+            case 'd': // Fall through
+            case 'e': // Fall through
+            case 'f': // Fall through
+            case 'A': // Fall through
+            case 'B': // Fall through
+            case 'C': // Fall through
+            case 'D': // Fall through
+            case 'E': // Fall through
+            case 'F': // Fall through
 
             // No special case
             default: break;

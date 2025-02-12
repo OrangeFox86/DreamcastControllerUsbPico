@@ -24,6 +24,7 @@
 #include "PrioritizedTxScheduler.hpp"
 #include "configuration.h"
 #include "utils.h"
+#include <hal/System/LockGuard.hpp>
 
 #include <assert.h>
 
@@ -45,10 +46,7 @@ uint32_t PrioritizedTxScheduler::add(std::shared_ptr<Transmission> tx)
 {
     assert(tx->priority < mSchedule.size());
 
-    if (tx->priority == Priority::EXTERNAL_TRANSMISSION_PRIORITY)
-    {
-        mScheduleMutex.lock();
-    }
+    LockGuard lock(mScheduleMutex);
 
     std::list<std::shared_ptr<Transmission>>& schedule = mSchedule[tx->priority];
     // Keep iterating until correct position is found
@@ -58,11 +56,6 @@ uint32_t PrioritizedTxScheduler::add(std::shared_ptr<Transmission> tx)
         ++iter;
     }
     schedule.insert(iter, tx);
-
-    if (tx->priority == Priority::EXTERNAL_TRANSMISSION_PRIORITY)
-    {
-        mScheduleMutex.unlock();
-    }
 
     return tx->transmissionId;
 }
@@ -131,7 +124,6 @@ uint64_t PrioritizedTxScheduler::computeNextTimeCadence(uint64_t currentTime,
 PrioritizedTxScheduler::ScheduleItem PrioritizedTxScheduler::peekNext(uint64_t time)
 {
     ScheduleItem scheduleItem;
-    Priority idx = Priority::PRIORITY_BEGIN;
 
     // Find a priority list with item ready to be popped
     std::vector<std::list<std::shared_ptr<Transmission>>>::iterator scheduleIter = mSchedule.begin();
@@ -139,7 +131,6 @@ PrioritizedTxScheduler::ScheduleItem PrioritizedTxScheduler::peekNext(uint64_t t
            && (scheduleIter->empty() || (*scheduleIter->begin())->nextTxTimeUs > time))
     {
         ++scheduleIter;
-        idx = static_cast<Priority>(static_cast<uint8_t>(idx) + 1);
     }
 
     if (scheduleIter != mSchedule.end())
@@ -194,7 +185,6 @@ PrioritizedTxScheduler::ScheduleItem PrioritizedTxScheduler::peekNext(uint64_t t
             scheduleItem.mItemIter = itemIter;
             scheduleItem.mTime = time;
             scheduleItem.mIsValid = true;
-            scheduleItem.mPriority = idx;
         }
     }
 
@@ -207,10 +197,7 @@ std::shared_ptr<Transmission> PrioritizedTxScheduler::popItem(ScheduleItem& sche
 
     if (scheduleItem.mIsValid)
     {
-        if (scheduleItem.mPriority == Priority::EXTERNAL_TRANSMISSION_PRIORITY)
-        {
-            mScheduleMutex.lock();
-        }
+        LockGuard lock(mScheduleMutex);
 
         // Save the transmission
         item = scheduleItem.getTx();
@@ -229,11 +216,6 @@ std::shared_ptr<Transmission> PrioritizedTxScheduler::popItem(ScheduleItem& sche
                                                         item->nextTxTimeUs);
             add(item);
         }
-
-        if (scheduleItem.mPriority == Priority::EXTERNAL_TRANSMISSION_PRIORITY)
-        {
-            mScheduleMutex.unlock();
-        }
     }
 
     return item;
@@ -241,16 +223,12 @@ std::shared_ptr<Transmission> PrioritizedTxScheduler::popItem(ScheduleItem& sche
 
 uint32_t PrioritizedTxScheduler::cancelById(uint32_t transmissionId)
 {
-    Priority idx = Priority::PRIORITY_BEGIN;
     uint32_t n = 0;
     for (std::vector<std::list<std::shared_ptr<Transmission>>>::iterator scheduleIter = mSchedule.begin();
          scheduleIter != mSchedule.end();
          ++scheduleIter)
     {
-        if (idx == Priority::EXTERNAL_TRANSMISSION_PRIORITY)
-        {
-            mScheduleMutex.lock();
-        }
+        LockGuard lock(mScheduleMutex);
 
         std::list<std::shared_ptr<Transmission>>::iterator iter2 = scheduleIter->begin();
         while (iter2 != scheduleIter->end())
@@ -265,13 +243,6 @@ uint32_t PrioritizedTxScheduler::cancelById(uint32_t transmissionId)
                 ++iter2;
             }
         }
-
-        if (idx == Priority::EXTERNAL_TRANSMISSION_PRIORITY)
-        {
-            mScheduleMutex.unlock();
-        }
-
-        idx = static_cast<Priority>(static_cast<uint8_t>(idx) + 1);
     }
 
     return n;
@@ -279,16 +250,12 @@ uint32_t PrioritizedTxScheduler::cancelById(uint32_t transmissionId)
 
 uint32_t PrioritizedTxScheduler::cancelByRecipient(uint8_t recipientAddr)
 {
-    Priority idx = Priority::PRIORITY_BEGIN;
     uint32_t n = 0;
     for (std::vector<std::list<std::shared_ptr<Transmission>>>::iterator scheduleIter = mSchedule.begin();
          scheduleIter != mSchedule.end();
          ++scheduleIter)
     {
-        if (idx == Priority::EXTERNAL_TRANSMISSION_PRIORITY)
-        {
-            mScheduleMutex.lock();
-        }
+        LockGuard lock(mScheduleMutex);
 
         std::list<std::shared_ptr<Transmission>>::iterator iter = scheduleIter->begin();
         while (iter != scheduleIter->end())
@@ -303,29 +270,18 @@ uint32_t PrioritizedTxScheduler::cancelByRecipient(uint8_t recipientAddr)
                 ++iter;
             }
         }
-
-        if (idx == Priority::EXTERNAL_TRANSMISSION_PRIORITY)
-        {
-            mScheduleMutex.unlock();
-        }
-
-        idx = static_cast<Priority>(static_cast<uint8_t>(idx) + 1);
     }
     return n;
 }
 
 uint32_t PrioritizedTxScheduler::countRecipients(uint8_t recipientAddr)
 {
-    Priority idx = Priority::PRIORITY_BEGIN;
     uint32_t n = 0;
     for (std::vector<std::list<std::shared_ptr<Transmission>>>::iterator scheduleIter = mSchedule.begin();
          scheduleIter != mSchedule.end();
          ++scheduleIter)
     {
-        if (idx == Priority::EXTERNAL_TRANSMISSION_PRIORITY)
-        {
-            mScheduleMutex.lock();
-        }
+        LockGuard lock(mScheduleMutex);
 
         for (std::list<std::shared_ptr<Transmission>>::iterator iter = scheduleIter->begin();
             iter != scheduleIter->end();
@@ -336,39 +292,21 @@ uint32_t PrioritizedTxScheduler::countRecipients(uint8_t recipientAddr)
                 ++n;
             }
         }
-
-        if (idx == Priority::EXTERNAL_TRANSMISSION_PRIORITY)
-        {
-            mScheduleMutex.unlock();
-        }
-
-        idx = static_cast<Priority>(static_cast<uint8_t>(idx) + 1);
     }
     return n;
 }
 
 uint32_t PrioritizedTxScheduler::cancelAll()
 {
-    Priority idx = Priority::PRIORITY_BEGIN;
     uint32_t n = 0;
     for (std::vector<std::list<std::shared_ptr<Transmission>>>::iterator scheduleIter = mSchedule.begin();
          scheduleIter != mSchedule.end();
          ++scheduleIter)
     {
-        if (idx == Priority::EXTERNAL_TRANSMISSION_PRIORITY)
-        {
-            mScheduleMutex.lock();
-        }
+        LockGuard lock(mScheduleMutex);
 
         n += scheduleIter->size();
         scheduleIter->clear();
-
-        if (idx == Priority::EXTERNAL_TRANSMISSION_PRIORITY)
-        {
-            mScheduleMutex.unlock();
-        }
-
-        idx = static_cast<Priority>(static_cast<uint8_t>(idx) + 1);
     }
     return n;
 }
