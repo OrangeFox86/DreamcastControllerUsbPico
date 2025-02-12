@@ -82,7 +82,7 @@ void core1()
     Clock clock;
     for (uint32_t i = 0; i < numDevices; ++i)
     {
-        screenData[i] = std::make_shared<ScreenData>(screenMutexes[i]);
+        screenData[i] = std::make_shared<ScreenData>(screenMutexes[i], i);
         playerData[i] = std::make_shared<PlayerData>(i,
                                                      *(observers[i]),
                                                      *screenData[i],

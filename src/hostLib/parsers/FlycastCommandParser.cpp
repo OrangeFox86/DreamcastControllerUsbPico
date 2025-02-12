@@ -140,6 +140,29 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
             }
             return;
 
+            // XD [0-4] [0-4]
+            case 'D' :
+            {
+                // Remove D
+                ++iter;
+                int idxin = -1;
+                int idxout = -1;
+                if (2 == sscanf(iter, "%i %i", &idxin, &idxout) &&
+                    idxin >= 0 &&
+                    static_cast<std::size_t>(idxin) < mPlayerData.size() &&
+                    idxout >= 0 &&
+                    static_cast<std::size_t>(idxout) < ScreenData::NUM_DEFAULT_SCREENS)
+                {
+                    mPlayerData[idxin]->screenData.setDataToADefault(idxout);
+                    printf("1\n");
+                }
+                else
+                {
+                    printf("0\n");
+                }
+            }
+            return;
+
             // XS to return serial
             case 'S' :
             {
