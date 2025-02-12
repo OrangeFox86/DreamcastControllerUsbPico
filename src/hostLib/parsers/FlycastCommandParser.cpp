@@ -1,11 +1,15 @@
 #include "FlycastCommandParser.hpp"
 #include "hal/MapleBus/MaplePacket.hpp"
+#include "pico/unique_id.h"
 
 #include <stdio.h>
 #include <cctype>
 #include <cstring>
 #include <string>
 #include <cstdlib>
+
+// Format: X[modifier-char]<cmd-data>\n
+// This parser must always return a single line of data
 
 // Simple definition of a transmitter which just echos status and received data
 class FlycastEchoTransmitter : public Transmitter
@@ -45,12 +49,14 @@ FlycastCommandParser::FlycastCommandParser(
     std::shared_ptr<PrioritizedTxScheduler>* schedulers,
     const uint8_t* senderAddresses,
     uint32_t numSenders,
-    const std::vector<std::shared_ptr<PlayerData>>& playerData
+    const std::vector<std::shared_ptr<PlayerData>>& playerData,
+    const std::vector<std::shared_ptr<DreamcastMainNode>>& nodes
 ) :
     mSchedulers(schedulers),
     mSenderAddresses(senderAddresses),
     mNumSenders(numSenders),
-    mPlayerData(playerData)
+    mPlayerData(playerData),
+    nodes(nodes)
 {}
 
 const char* FlycastCommandParser::getCommandChars()
@@ -113,14 +119,64 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
                 if (idx < 0)
                 {
                     // all
+                    int count = 0;
                     for (std::shared_ptr<PlayerData>& playerData : mPlayerData)
                     {
+                        ++count;
                         playerData->screenData.resetToDefault();
                     }
+                    printf("%i\n", count);
                 }
                 else if (static_cast<std::size_t>(idx) < mPlayerData.size())
                 {
                     mPlayerData[idx]->screenData.resetToDefault();
+                    printf("1\n");
+                }
+                else
+                {
+                    printf("0\n");
+
+                }
+            }
+            return;
+
+            // XS to return serial
+            case 'S' :
+            {
+                char buffer[PICO_UNIQUE_BOARD_ID_SIZE_BYTES * 2 + 2] = {0};
+                pico_get_unique_board_id_string(buffer, sizeof(buffer) - 1);
+                buffer[sizeof(buffer) - 1] = '\0';
+                printf("%s\n", buffer);
+            }
+            return;
+
+            // X?0, X?1, X?2, or X?3 will print summary for the given node index
+            case '?' :
+            {
+                // Remove question mark
+                ++iter;
+                int idx = -1;
+                if (iter < eol)
+                {
+                    std::string number;
+                    number.assign(iter, eol - iter);
+                    try
+                    {
+                        idx = std::stoi(number);
+                    }
+                    catch(...)
+                    {
+                        idx = -1;
+                    }
+                }
+
+                if (idx >= 0 && static_cast<std::size_t>(idx) < nodes.size())
+                {
+                    nodes[idx]->printSummary();
+                }
+                else
+                {
+                    printf("NULL\n");
                 }
             }
             return;
@@ -200,6 +256,7 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
 
             if (idx >= 0)
             {
+                // TODO: this isn't exactly safe to call on this core
                 mSchedulers[idx]->add(
                     PrioritizedTxScheduler::EXTERNAL_TRANSMISSION_PRIORITY,
                     PrioritizedTxScheduler::TX_TIME_ASAP,

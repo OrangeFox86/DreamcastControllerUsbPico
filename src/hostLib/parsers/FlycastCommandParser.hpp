@@ -5,6 +5,7 @@
 #include "PrioritizedTxScheduler.hpp"
 
 #include "PlayerData.hpp"
+#include "DreamcastMainNode.hpp"
 
 #include <memory>
 
@@ -18,7 +19,8 @@ public:
         std::shared_ptr<PrioritizedTxScheduler>* schedulers,
         const uint8_t* senderAddresses,
         uint32_t numSenders,
-        const std::vector<std::shared_ptr<PlayerData>>& playerData);
+        const std::vector<std::shared_ptr<PlayerData>>& playerData,
+        const std::vector<std::shared_ptr<DreamcastMainNode>>& nodes);
 
     //! @returns the string of command characters this parser handles
     virtual const char* getCommandChars() final;
@@ -34,4 +36,5 @@ private:
     const uint8_t* const mSenderAddresses;
     const uint32_t mNumSenders;
     std::vector<std::shared_ptr<PlayerData>> mPlayerData;
+    std::vector<std::shared_ptr<DreamcastMainNode>> nodes;
 };

@@ -66,7 +66,11 @@
         "*.ipp": "cpp",
         "ranges": "cpp",
         "regex": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "compare": "cpp",
+        "concepts": "cpp",
+        "netfwd": "cpp",
+        "numbers": "cpp"
     },
     "cmake.configureOnOpen": false
 }

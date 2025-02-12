@@ -75,7 +75,8 @@ void core1()
     playerData.resize(numDevices);
     DreamcastControllerObserver** observers = get_usb_controller_observers();
     std::shared_ptr<MapleBusInterface> buses[numDevices];
-    std::shared_ptr<DreamcastMainNode> dreamcastMainNodes[numDevices];
+    std::vector<std::shared_ptr<DreamcastMainNode>> dreamcastMainNodes;
+    dreamcastMainNodes.resize(numDevices);
     std::shared_ptr<PrioritizedTxScheduler> schedulers[numDevices];
     Clock clock;
     for (uint32_t i = 0; i < numDevices; ++i)
@@ -102,15 +103,15 @@ void core1()
             &schedulers[0], MAPLE_HOST_ADDRESSES, numDevices));
     ttyParser->addCommandParser(
         std::make_shared<FlycastCommandParser>(
-            &schedulers[0], MAPLE_HOST_ADDRESSES, numDevices, playerData));
+            &schedulers[0], MAPLE_HOST_ADDRESSES, numDevices, playerData, dreamcastMainNodes));
 
     while(true)
     {
         // Process each main node
-        for (uint32_t i = 0; i < numDevices; ++i)
+        for (auto& node : dreamcastMainNodes)
         {
             // Worst execution duration of below is ~350 us at 133 MHz when debug print is disabled
-            dreamcastMainNodes[i]->task(time_us_64());
+            node->task(time_us_64());
         }
         // Process any waiting commands in the TTY parser
         ttyParser->process();
