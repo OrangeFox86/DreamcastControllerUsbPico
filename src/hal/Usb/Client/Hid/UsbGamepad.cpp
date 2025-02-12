@@ -112,17 +112,6 @@ void UsbGamepad::setAnalogTrigger(bool isLeft, int8_t z)
     currentRightAnalog[2] = z;
   }
   buttonsUpdated = buttonsUpdated || (z != lastZ);
-  if (buttonsUpdated)
-  {
-    if (isLeft)
-    {
-      printf("Trig: %i %s\n", (int)currentLeftAnalog[2], isTriggerPressed(currentLeftAnalog[2]) ? "true" : "false");
-    }
-    else
-    {
-      printf("Trig: %i %s\n", (int)currentRightAnalog[2], isTriggerPressed(currentRightAnalog[2]) ? "true" : "false");
-    }
-  }
 }
 
 int8_t UsbGamepad::getAnalogThumbX(bool isLeft)
