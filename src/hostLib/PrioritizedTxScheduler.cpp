@@ -223,13 +223,12 @@ std::shared_ptr<Transmission> PrioritizedTxScheduler::popItem(ScheduleItem& sche
 
 uint32_t PrioritizedTxScheduler::cancelById(uint32_t transmissionId)
 {
+    LockGuard lock(mScheduleMutex);
     uint32_t n = 0;
     for (std::vector<std::list<std::shared_ptr<Transmission>>>::iterator scheduleIter = mSchedule.begin();
          scheduleIter != mSchedule.end();
          ++scheduleIter)
     {
-        LockGuard lock(mScheduleMutex);
-
         std::list<std::shared_ptr<Transmission>>::iterator iter2 = scheduleIter->begin();
         while (iter2 != scheduleIter->end())
         {
@@ -250,13 +249,12 @@ uint32_t PrioritizedTxScheduler::cancelById(uint32_t transmissionId)
 
 uint32_t PrioritizedTxScheduler::cancelByRecipient(uint8_t recipientAddr)
 {
+    LockGuard lock(mScheduleMutex);
     uint32_t n = 0;
     for (std::vector<std::list<std::shared_ptr<Transmission>>>::iterator scheduleIter = mSchedule.begin();
          scheduleIter != mSchedule.end();
          ++scheduleIter)
     {
-        LockGuard lock(mScheduleMutex);
-
         std::list<std::shared_ptr<Transmission>>::iterator iter = scheduleIter->begin();
         while (iter != scheduleIter->end())
         {
@@ -276,13 +274,12 @@ uint32_t PrioritizedTxScheduler::cancelByRecipient(uint8_t recipientAddr)
 
 uint32_t PrioritizedTxScheduler::countRecipients(uint8_t recipientAddr)
 {
+    LockGuard lock(mScheduleMutex);
     uint32_t n = 0;
     for (std::vector<std::list<std::shared_ptr<Transmission>>>::iterator scheduleIter = mSchedule.begin();
          scheduleIter != mSchedule.end();
          ++scheduleIter)
     {
-        LockGuard lock(mScheduleMutex);
-
         for (std::list<std::shared_ptr<Transmission>>::iterator iter = scheduleIter->begin();
             iter != scheduleIter->end();
             ++iter)
@@ -298,12 +295,12 @@ uint32_t PrioritizedTxScheduler::countRecipients(uint8_t recipientAddr)
 
 uint32_t PrioritizedTxScheduler::cancelAll()
 {
+    LockGuard lock(mScheduleMutex);
     uint32_t n = 0;
     for (std::vector<std::list<std::shared_ptr<Transmission>>>::iterator scheduleIter = mSchedule.begin();
          scheduleIter != mSchedule.end();
          ++scheduleIter)
     {
-        LockGuard lock(mScheduleMutex);
 
         n += scheduleIter->size();
         scheduleIter->clear();
