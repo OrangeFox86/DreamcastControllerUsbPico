@@ -37,6 +37,7 @@
 #include "CriticalSectionMutex.hpp"
 #include "Mutex.hpp"
 #include "Clock.hpp"
+#include "PicoIdentification.cpp"
 
 #include "hal/System/LockGuard.hpp"
 #include "hal/MapleBus/MapleBusInterface.hpp"
@@ -102,9 +103,10 @@ void core1()
     ttyParser->addCommandParser(
         std::make_shared<MaplePassthroughCommandParser>(
             &schedulers[0], MAPLE_HOST_ADDRESSES, numDevices));
+    PicoIdentification picoIdentification;
     ttyParser->addCommandParser(
         std::make_shared<FlycastCommandParser>(
-            &schedulers[0], MAPLE_HOST_ADDRESSES, numDevices, playerData, dreamcastMainNodes));
+            picoIdentification, &schedulers[0], MAPLE_HOST_ADDRESSES, numDevices, playerData, dreamcastMainNodes));
 
     while(true)
     {

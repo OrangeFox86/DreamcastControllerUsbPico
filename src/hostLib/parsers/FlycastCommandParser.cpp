@@ -1,6 +1,5 @@
 #include "FlycastCommandParser.hpp"
 #include "hal/MapleBus/MaplePacket.hpp"
-#include "hal/System/Identification.hpp"
 
 #include <stdio.h>
 #include <cctype>
@@ -46,12 +45,14 @@ public:
 } flycastEchoTransmitter;
 
 FlycastCommandParser::FlycastCommandParser(
+    SystemIdentification& identification,
     std::shared_ptr<PrioritizedTxScheduler>* schedulers,
     const uint8_t* senderAddresses,
     uint32_t numSenders,
     const std::vector<std::shared_ptr<PlayerData>>& playerData,
     const std::vector<std::shared_ptr<DreamcastMainNode>>& nodes
 ) :
+    mIdentification(identification),
     mSchedulers(schedulers),
     mSenderAddresses(senderAddresses),
     mNumSenders(numSenders),
@@ -161,8 +162,8 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
             // XS to return serial
             case 'S' :
             {
-                char buffer[SERIAL_SIZE + 1] = {0};
-                system_get_serial(buffer, sizeof(buffer) - 1);
+                char buffer[mIdentification.getSerialSize() + 1] = {0};
+                mIdentification.getSerial(buffer, sizeof(buffer) - 1);
                 buffer[sizeof(buffer) - 1] = '\0';
                 printf("%s\n", buffer);
             }

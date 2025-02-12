@@ -1,6 +1,7 @@
 #pragma once
 
 #include "hal/Usb/CommandParser.hpp"
+#include "hal/System/SystemIdentification.hpp"
 
 #include "PrioritizedTxScheduler.hpp"
 
@@ -16,6 +17,7 @@ class FlycastCommandParser : public CommandParser
 {
 public:
     FlycastCommandParser(
+        SystemIdentification& identification,
         std::shared_ptr<PrioritizedTxScheduler>* schedulers,
         const uint8_t* senderAddresses,
         uint32_t numSenders,
@@ -32,6 +34,7 @@ public:
     virtual void printHelp() final;
 
 private:
+    SystemIdentification& mIdentification;
     std::shared_ptr<PrioritizedTxScheduler>* const mSchedulers;
     const uint8_t* const mSenderAddresses;
     const uint32_t mNumSenders;
