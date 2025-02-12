@@ -16,12 +16,6 @@ if(NOT ENABLE_UNIT_TEST)
   )
 endif()
 
-target_link_libraries(hostLib
-  PUBLIC
-  PRIVATE
-    hal-System
-)
-
 target_include_directories(hostLib
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
