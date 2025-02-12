@@ -1,6 +1,6 @@
 #include "FlycastCommandParser.hpp"
 #include "hal/MapleBus/MaplePacket.hpp"
-#include "pico/unique_id.h"
+#include "hal/System/Identification.hpp"
 
 #include <stdio.h>
 #include <cctype>
@@ -104,13 +104,8 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
                 {
                     std::string number;
                     number.assign(iter, eol - iter);
-                    try
+                    if (0 == sscanf(iter, "%i", &idx))
                     {
-                        idx = std::stoi(number);
-                    }
-                    catch(...)
-                    {
-                        // Default to all
                         idx = -1;
                     }
                 }
@@ -166,8 +161,8 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
             // XS to return serial
             case 'S' :
             {
-                char buffer[PICO_UNIQUE_BOARD_ID_SIZE_BYTES * 2 + 2] = {0};
-                pico_get_unique_board_id_string(buffer, sizeof(buffer) - 1);
+                char buffer[SERIAL_SIZE + 1] = {0};
+                system_get_serial(buffer, sizeof(buffer) - 1);
                 buffer[sizeof(buffer) - 1] = '\0';
                 printf("%s\n", buffer);
             }
@@ -183,11 +178,7 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
                 {
                     std::string number;
                     number.assign(iter, eol - iter);
-                    try
-                    {
-                        idx = std::stoi(number);
-                    }
-                    catch(...)
+                    if (0 == sscanf(iter, "%i", &idx))
                     {
                         idx = -1;
                     }

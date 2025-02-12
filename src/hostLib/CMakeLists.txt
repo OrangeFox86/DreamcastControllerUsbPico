@@ -19,7 +19,7 @@ endif()
 target_link_libraries(hostLib
   PUBLIC
   PRIVATE
-    pico_unique_id
+    hal-System
 )
 
 target_include_directories(hostLib
