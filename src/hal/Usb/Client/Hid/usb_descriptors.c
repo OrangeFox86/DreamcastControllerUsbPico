@@ -301,10 +301,10 @@ char const *string_desc_arr[] =
     "OrangeFox86",               // 1: Manufacturer
     "DreamPort",                 // 2: Product
     NULL,                        // 3: Serial (special case; get pico serial)
-    "P1",                        // 4: Gamepad 1
-    "P2",                        // 5: Gamepad 2
-    "P3",                        // 6: Gamepad 3
-    "P4",                        // 7: Gamepad 4
+    "DreamPort A",               // 4: Gamepad 1
+    "DreamPort B",               // 5: Gamepad 2
+    "DreamPort C",               // 6: Gamepad 3
+    "DreamPort D",               // 7: Gamepad 4
     "MSC",                       // 8: Mass Storage Class
     "CDC",                       // 9: Communication Device Class
 };
@@ -332,7 +332,7 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
         if (index == PLAYER_TO_STR_IDX(0) && numberOfGamepads == 1)
         {
             // Special case - if there is only 1 controller, change the label
-            str = "Dreamcast Controller";
+            str = "DreamPort";
         }
         else if (str == NULL)
         {
