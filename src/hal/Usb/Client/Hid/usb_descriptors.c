@@ -49,8 +49,10 @@ uint8_t get_usb_descriptor_number_of_gamepads()
 
 #undef TUD_HID_REPORT_DESC_GAMEPAD
 
+#define GET_NUM_BUTTONS(numPlayers, playerIdx) ((numPlayers == 1) ? 32 : (31 - playerIdx))
+
 // Tweak the gamepad descriptor so that the minimum value on analog controls is -128 instead of -127
-#define TUD_HID_REPORT_DESC_GAMEPAD(playerIdx) \
+#define TUD_HID_REPORT_DESC_GAMEPAD(numPlayers, playerIdx) \
   HID_USAGE_PAGE ( HID_USAGE_PAGE_DESKTOP     )                 ,\
   HID_USAGE      ( HID_USAGE_DESKTOP_GAMEPAD  )                 ,\
   HID_COLLECTION ( HID_COLLECTION_APPLICATION )                 ,\
@@ -95,20 +97,20 @@ uint8_t get_usb_descriptor_number_of_gamepads()
     /* Up to 32 bit Button Map (less than 32 to index players on some systems) */ \
     HID_USAGE_PAGE     ( HID_USAGE_PAGE_BUTTON                  ) ,\
     HID_USAGE_MIN      ( 1                                      ) ,\
-    HID_USAGE_MAX      ( 31 - playerIdx                         ) ,\
+    HID_USAGE_MAX      ( GET_NUM_BUTTONS(numPlayers, playerIdx) ) ,\
     HID_LOGICAL_MIN    ( 0                                      ) ,\
     HID_LOGICAL_MAX    ( 1                                      ) ,\
-    HID_REPORT_COUNT   ( 31 - playerIdx                         ) ,\
+    HID_REPORT_COUNT   ( GET_NUM_BUTTONS(numPlayers, playerIdx) ) ,\
     HID_REPORT_SIZE    ( 1                                      ) ,\
     HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
     /* To pad things out to exactly 12 bytes */ \
     HID_USAGE_PAGE_N   ( HID_USAGE_PAGE_VENDOR, 2               ) ,\
     HID_USAGE          ( 0x01                                   ) ,\
     HID_USAGE_MIN      ( 1                                      ) ,\
-    HID_USAGE_MAX      ( 9 + playerIdx                          ) ,\
+    HID_USAGE_MAX      ( 8 + (32 - GET_NUM_BUTTONS(numPlayers, playerIdx))) ,\
     HID_LOGICAL_MIN    ( 0                                      ) ,\
     HID_LOGICAL_MAX    ( 1                                      ) ,\
-    HID_REPORT_COUNT   ( 9 + playerIdx                          ) ,\
+    HID_REPORT_COUNT   ( 8 + (32 - GET_NUM_BUTTONS(numPlayers, playerIdx))) ,\
     HID_REPORT_SIZE    ( 1                                      ) ,\
     HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
   HID_COLLECTION_END \
@@ -153,7 +155,7 @@ uint8_t const *tud_descriptor_device_cb(void) {
 
 uint8_t desc_hid_report[] =
 {
-    TUD_HID_REPORT_DESC_GAMEPAD(0)
+    TUD_HID_REPORT_DESC_GAMEPAD(MAX_NUMBER_OF_USB_GAMEPADS, 0)
 };
 
 // Invoked when received GET HID REPORT DESCRIPTOR
@@ -163,7 +165,7 @@ uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
 {
     if (instance < numberOfGamepads)
     {
-        uint8_t buff[] = {TUD_HID_REPORT_DESC_GAMEPAD(instance)};
+        uint8_t buff[] = {TUD_HID_REPORT_DESC_GAMEPAD(numberOfGamepads, instance)};
         memcpy(desc_hid_report, buff, sizeof(desc_hid_report));
         return desc_hid_report;
     }

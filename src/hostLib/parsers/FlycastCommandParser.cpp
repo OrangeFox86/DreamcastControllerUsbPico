@@ -197,6 +197,7 @@ void FlycastCommandParser::submit(const char* chars, uint32_t len)
             return;
 
             // Reserved
+            case ' ': // Fall through
             case '0': // Fall through
             case '1': // Fall through
             case '2': // Fall through
