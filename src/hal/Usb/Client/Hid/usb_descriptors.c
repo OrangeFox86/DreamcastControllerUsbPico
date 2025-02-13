@@ -95,20 +95,20 @@ uint8_t get_usb_descriptor_number_of_gamepads()
     /* Up to 32 bit Button Map (less than 32 to index players on some systems) */ \
     HID_USAGE_PAGE     ( HID_USAGE_PAGE_BUTTON                  ) ,\
     HID_USAGE_MIN      ( 1                                      ) ,\
-    HID_USAGE_MAX      ( 32 - playerIdx                         ) ,\
+    HID_USAGE_MAX      ( 31 - playerIdx                         ) ,\
     HID_LOGICAL_MIN    ( 0                                      ) ,\
     HID_LOGICAL_MAX    ( 1                                      ) ,\
-    HID_REPORT_COUNT   ( 32 - playerIdx                         ) ,\
+    HID_REPORT_COUNT   ( 31 - playerIdx                         ) ,\
     HID_REPORT_SIZE    ( 1                                      ) ,\
     HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
     /* To pad things out to exactly 12 bytes */ \
     HID_USAGE_PAGE_N   ( HID_USAGE_PAGE_VENDOR, 2               ) ,\
     HID_USAGE          ( 0x01                                   ) ,\
     HID_USAGE_MIN      ( 1                                      ) ,\
-    HID_USAGE_MAX      ( 8 + playerIdx                          ) ,\
+    HID_USAGE_MAX      ( 9 + playerIdx                          ) ,\
     HID_LOGICAL_MIN    ( 0                                      ) ,\
     HID_LOGICAL_MAX    ( 1                                      ) ,\
-    HID_REPORT_COUNT   ( 8 + playerIdx                          ) ,\
+    HID_REPORT_COUNT   ( 9 + playerIdx                          ) ,\
     HID_REPORT_SIZE    ( 1                                      ) ,\
     HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
   HID_COLLECTION_END \
