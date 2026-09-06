@@ -142,7 +142,7 @@ void FlycastWebUsbCommandHandler::process(
             char buffer[mIdentification.getSerialSize() + 1] = {0};
             mIdentification.getSerial(buffer, sizeof(buffer) - 1);
             buffer[sizeof(buffer) - 1] = '\0';
-            responseFn(kResponseSuccess, {{buffer, strlen(buffer) + 1}});
+            responseFn(kResponseSuccess, {{buffer, static_cast<std::uint16_t>(strlen(buffer) + 1)}});
         }
         return;
 

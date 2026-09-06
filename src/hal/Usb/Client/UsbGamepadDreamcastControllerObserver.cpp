@@ -121,6 +121,10 @@ void UsbGamepadDreamcastControllerObserver::setSecondaryControllerCondition(
 void UsbGamepadDreamcastControllerObserver::setChangeCondition(bool changeSignal)
 {
     mUsbController.setButton(DREAMCAST_GAMEPAD_CHANGE_EVENT, changeSignal);
+    if (changeSignal)
+    {
+        mUsbController.incrementDial();
+    }
     mSendPending.store(true, std::memory_order_release);
 }
 
