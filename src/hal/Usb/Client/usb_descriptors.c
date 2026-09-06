@@ -129,7 +129,7 @@ int16_t usb_gamepad_instance_to_index(uint8_t instance)
     HID_REPORT_COUNT   ( 2                                      ) ,\
     HID_REPORT_SIZE    ( 8                                      ) ,\
     HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
-    /* 8 bit Rx, Ry */ \
+    /* 8 bit Rx, Ry (physical range used to determine player index on android) */ \
     HID_USAGE_PAGE     ( HID_USAGE_PAGE_DESKTOP                 ) ,\
     HID_USAGE          ( HID_USAGE_DESKTOP_RX                   ) ,\
     HID_USAGE          ( HID_USAGE_DESKTOP_RY                   ) ,\
@@ -161,7 +161,7 @@ int16_t usb_gamepad_instance_to_index(uint8_t instance)
     HID_REPORT_COUNT   ( GET_NUM_BUTTONS(numPlayers, playerIdx) ) ,\
     HID_REPORT_SIZE    ( 1                                      ) ,\
     HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
-    /* To pad things out to exactly 13 bytes */ \
+    /* To pad things out to exactly 12 bytes */ \
     HID_USAGE_PAGE_N   ( HID_USAGE_PAGE_VENDOR, 2               ) ,\
     HID_USAGE_MIN      ( 1                                      ) ,\
     HID_USAGE_MAX      ( 8 + (32 - GET_NUM_BUTTONS(numPlayers, playerIdx))) ,\
@@ -169,14 +169,6 @@ int16_t usb_gamepad_instance_to_index(uint8_t instance)
     HID_LOGICAL_MAX    ( 1                                      ) ,\
     HID_REPORT_COUNT   ( 8 + (32 - GET_NUM_BUTTONS(numPlayers, playerIdx))) ,\
     HID_REPORT_SIZE    ( 1                                      ) ,\
-    HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
-    /* 8 bit Dial */ \
-    HID_USAGE_PAGE     ( HID_USAGE_PAGE_DESKTOP                 ) ,\
-    HID_USAGE          ( HID_USAGE_DESKTOP_DIAL                 ) ,\
-    HID_LOGICAL_MIN    ( 0                                      ) ,\
-    HID_LOGICAL_MAX    ( 255                                    ) ,\
-    HID_REPORT_COUNT   ( 1                                      ) ,\
-    HID_REPORT_SIZE    ( 8                                      ) ,\
     HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
   HID_COLLECTION_END
 

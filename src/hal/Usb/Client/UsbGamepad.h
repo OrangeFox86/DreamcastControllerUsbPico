@@ -115,8 +115,6 @@ class UsbGamepad : public UsbControllerDevice
     //! @param[in] button Button value [0,15]
     //! @param[in] isPressed The state of @p button
     void setButton(uint8_t button, bool isPressed);
-    //! Advances the HID dial, wrapping from 127 to 0
-    void incrementDial();
     //! Release all currently pressed keys
     void updateAllReleased() final;
     //! Updates the host with any newly pressed keys
@@ -166,8 +164,6 @@ class UsbGamepad : public UsbControllerDevice
     bool currentDpad[DPAD_COUNT];
     //! Current button states
     uint32_t currentButtons;
-    //! Current HID dial value
-    uint8_t currentDial;
     //! True when something has been updated since the last successful send
     bool buttonsUpdated;
 };
