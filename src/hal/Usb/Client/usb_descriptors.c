@@ -103,7 +103,6 @@ int16_t usb_gamepad_instance_to_index(uint8_t instance)
 }
 
 #define GET_NUM_BUTTONS(numPlayers, playerIdx) ((numPlayers == 1 && playerIdx == 0) ? 32 : (31 - playerIdx))
-#define GET_DIAL_MAX(playerIdx) (255 - (playerIdx))
 
 // Contains some tweaks from normal gamepad definition
 #undef TUD_HID_REPORT_DESC_GAMEPAD
@@ -136,6 +135,10 @@ int16_t usb_gamepad_instance_to_index(uint8_t instance)
     HID_USAGE          ( HID_USAGE_DESKTOP_RY                   ) ,\
     HID_LOGICAL_MIN    ( MIN_ANALOG_VALUE                       ) ,\
     HID_LOGICAL_MAX    ( MAX_ANALOG_VALUE                       ) ,\
+    HID_UNIT           ( 0x14                                   ) ,\
+    HID_UNIT_EXPONENT  ( 0                                      ) ,\
+    HID_PHYSICAL_MIN   ( 0                                      ) ,\
+    HID_PHYSICAL_MAX   ( playerIdx + 1                          ) ,\
     HID_REPORT_COUNT   ( 2                                      ) ,\
     HID_REPORT_SIZE    ( 8                                      ) ,\
     HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
@@ -168,9 +171,10 @@ int16_t usb_gamepad_instance_to_index(uint8_t instance)
     HID_REPORT_SIZE    ( 1                                      ) ,\
     HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\
     /* 8 bit Dial */ \
-    HID_USAGE          ( HID_USAGE_DESKTOP_SLIDER               ) ,\
+    HID_USAGE_PAGE     ( HID_USAGE_PAGE_DESKTOP                 ) ,\
+    HID_USAGE          ( HID_USAGE_DESKTOP_DIAL                 ) ,\
     HID_LOGICAL_MIN    ( 0                                      ) ,\
-    HID_LOGICAL_MAX    ( GET_DIAL_MAX(playerIdx)                ) ,\
+    HID_LOGICAL_MAX    ( 255                                    ) ,\
     HID_REPORT_COUNT   ( 1                                      ) ,\
     HID_REPORT_SIZE    ( 8                                      ) ,\
     HID_INPUT          ( HID_DATA | HID_VARIABLE | HID_ABSOLUTE ) ,\

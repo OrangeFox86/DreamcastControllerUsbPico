@@ -179,7 +179,7 @@ void UsbGamepad::setButton(uint8_t button, bool isPressed)
 
 void UsbGamepad::incrementDial()
 {
-  currentDial = (currentDial >= 127) ? 0 : currentDial + 1;
+  currentDial = (currentDial >= 255) ? 1 : currentDial + 1;
   buttonsUpdated = true;
 }
 
@@ -198,6 +198,7 @@ void UsbGamepad::updateAllReleased()
     currentDpad[DPAD_LEFT] = false;
     currentDpad[DPAD_RIGHT] = false;
     currentButtons &= (1 << BUTTON20); // button 20 is a special case and should be left alone
+    currentDial = 0;
     buttonsUpdated = true;
   }
 }
