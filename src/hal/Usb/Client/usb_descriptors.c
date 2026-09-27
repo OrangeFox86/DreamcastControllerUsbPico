@@ -135,7 +135,7 @@ int16_t usb_gamepad_instance_to_index(uint8_t instance)
     HID_USAGE          ( HID_USAGE_DESKTOP_RY                   ) ,\
     HID_LOGICAL_MIN    ( MIN_ANALOG_VALUE                       ) ,\
     HID_LOGICAL_MAX    ( MAX_ANALOG_VALUE                       ) ,\
-    HID_UNIT           ( 0x14                                   ) ,\
+    HID_UNIT           ( 0x12                                   ) ,\
     HID_UNIT_EXPONENT  ( 0                                      ) ,\
     HID_PHYSICAL_MIN   ( 0                                      ) ,\
     HID_PHYSICAL_MAX   ( playerIdx + 1                          ) ,\
