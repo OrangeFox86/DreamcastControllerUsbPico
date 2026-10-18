@@ -135,7 +135,7 @@ class DreamcastMainNode : public DreamcastNode
         //! Number of communication failures before main peripheral is disconnected
         static const uint32_t MAX_FAILURE_DISCONNECT_COUNT = 10;
         //! Number of milliseconds that a connect signal is asserted
-        static const uint32_t CONNECT_EVENT_SIGNAL_TIME_MS = 25;
+        static const uint32_t CONNECT_EVENT_SIGNAL_TIME_MS = 100;
 
     protected:
         //! True when the node only operates for detection only
